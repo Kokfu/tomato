@@ -1,0 +1,58 @@
+import * as THREE from 'three';
+import type { ChunkData, Landmark } from './types.ts';
+import type { BuildContext } from './ChunkManager.ts';
+
+/**
+ * A landmark model builder. It receives the chunk being built and returns an object positioned in
+ * CHUNK-LOCAL coordinates (metres from the chunk min-x / min-z corner, y = absolute elevation).
+ * Builders must derive positions from mapped data (the building footprint, the road geometry or
+ * the mapped landmark coordinates) and are only invoked for high-detail chunks, so landmark
+ * geometry is lazy-loaded and disposed together with its chunk.
+ */
+export type LandmarkBuilder = (args: { data: ChunkData; ctx: BuildContext; landmark?: Landmark }) => THREE.Object3D | null;
+
+export interface LandmarkOverride {
+  /** OSM building ids whose generic extrusion is replaced by the custom model. */
+  buildingIds: number[];
+  /** OSM way ids of roads that trigger the builder when present in a chunk (e.g. bridge ways). */
+  roadIds?: number[];
+  /** Id in landmarks.json, passed to the builder for convenience. */
+  landmarkId?: string;
+  build: LandmarkBuilder;
+}
+
+/**
+ * Registry for hand-made landmark models that override generic generated buildings.
+ * Register overrides before chunks are built.
+ */
+export class LandmarkManager {
+  landmarks: Landmark[] = [];
+  private overrides: LandmarkOverride[] = [];
+  private replaced = new Set<number>();
+
+  setLandmarks(list: Landmark[]): void {
+    this.landmarks = list;
+  }
+
+  register(o: LandmarkOverride): void {
+    this.overrides.push(o);
+    for (const id of o.buildingIds) this.replaced.add(id);
+  }
+
+  /** True when a custom model replaces the generic extrusion of this OSM building. */
+  replacesBuilding(osmId: number): boolean {
+    return this.replaced.has(osmId);
+  }
+
+  /** Called by the chunk builder for high-detail chunks. */
+  buildForChunk(data: ChunkData, ctx: BuildContext): THREE.Object3D[] {
+    const out: THREE.Object3D[] = [];
+    for (const o of this.overrides) {
+      const hit = data.buildings.some((b) => o.buildingIds.includes(b.id)) || (!!o.roadIds && data.roads.some((r) => o.roadIds!.includes(r.id)));
+      if (!hit) continue;
+      const obj = o.build({ data, ctx, landmark: this.landmarks.find((l) => l.id === o.landmarkId) });
+      if (obj) out.push(obj);
+    }
+    return out;
+  }
+}

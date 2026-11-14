@@ -1,0 +1,32 @@
+{
+  "name": "kuching-3d",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Real-world open-world walking simulator of Kuching, Sarawak, built from OpenStreetMap data.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit",
+    "data:fetch": "node tools/extract-map-data/fetch-osm.ts && node tools/extract-map-data/fetch-dem.ts",
+    "data:build": "node tools/generate-world/build.ts",
+    "data:validate": "node tools/validate-geography/validate.ts",
+    "data:all": "npm run data:fetch && npm run data:build && npm run data:validate",
+    "test": "node --test \"tests/unit/*.test.ts\"",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.6",
+    "@types/three": "^0.187.0",
+    "earcut": "^3.2.4",
+    "geotiff": "^3.0.5",
+    "polygon-clipping": "^0.15.7",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}
