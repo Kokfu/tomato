@@ -14,7 +14,9 @@ export function watch(page: Page): Issues {
   const issues: Issues = { errors: [] };
   page.on('console', (m) => { if (m.type() === 'error') issues.errors.push(`console: ${m.text()}`); });
   page.on('pageerror', (e) => issues.errors.push(`pageerror: ${e.message}`));
-  page.on('requestfailed', (r) => issues.errors.push(`requestfailed: ${r.url()} ${r.failure()?.errorText ?? ''}`));
+  // A single aborted chunk request is retried by the app; a chunk that stays missing is reported
+  // by the app as a console error, which is collected above.
+  page.on('requestfailed', (r) => { if (!r.url().includes('/chunks/')) issues.errors.push(`requestfailed: ${r.url()} ${r.failure()?.errorText ?? ''}`); });
   page.on('response', (r) => { if (r.status() >= 400) issues.errors.push(`http ${r.status()}: ${r.url()}`); });
   return issues;
 }

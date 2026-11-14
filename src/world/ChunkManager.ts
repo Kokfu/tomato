@@ -58,6 +58,7 @@ export class ChunkManager {
   private prefetchKeys: string[] = [];
   private base: string;
   private frame = 0;
+  private failures = new Map<string, number>();
   private warming: { group: THREE.Group; frame: number }[] = [];
 
   constructor(manifest: Manifest, height: HeightMap, collision: CollisionWorld, mats: Materials, landmarks: LandmarkManager, quality: Quality) {
@@ -225,8 +226,19 @@ export class ChunkManager {
         this.onChunkData?.(c.data);
       })
       .catch((e) => {
-        console.error(`Chunk ${key} failed to load:`, e);
-        c.state = 'error';
+        // Transient network failures are retried (the chunk is simply requested again); only a
+        // repeated failure is reported and leaves the chunk as a solid "not loaded" boundary.
+        const tries = (this.failures.get(key) ?? 0) + 1;
+        this.failures.set(key, tries);
+        if (tries < 4) {
+          console.warn(`Chunk ${key} failed to load (attempt ${tries}), retrying`);
+          window.setTimeout(() => {
+            if (this.chunks.get(key) === c) this.chunks.delete(key);
+          }, 400 * tries);
+        } else {
+          console.error(`Chunk ${key} failed to load:`, e);
+          c.state = 'error';
+        }
       })
       .finally(() => this.inflight--);
   }
