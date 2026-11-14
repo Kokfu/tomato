@@ -45,7 +45,7 @@ const sizes: Record<string, unknown> = {};
 }
 
 // ---- runtime measurements ------------------------------------------------------------------------
-interface Sample { label: string; quality: string; fpsAvg: number; fpsP1Low: number; frameMsP95: number; calls: number; triangles: number; geometries: number; textures: number; chunks: number; heapMB: number | null; pixelRatio: number }
+interface Sample { label: string; quality: string; fpsAvg: number; fpsP1Low: number; frameMsP95: number; frameMsP99: number; frameMsMax: number; framesOver33ms: number; frames: number; calls: number; triangles: number; geometries: number; textures: number; chunks: number; heapMB: number | null; pixelRatio: number }
 
 async function measure(page: Page, label: string, quality: string, view: { lm?: string; yaw?: number; move?: boolean }): Promise<Sample> {
   await page.evaluate(({ quality, view }) => {
@@ -81,7 +81,7 @@ async function measure(page: Page, label: string, quality: string, view: { lm?: 
       const r = k.renderer.info;
       resolve({
         label, quality, fpsAvg: +(1000 / avg).toFixed(1), fpsP1Low: +(1000 / (worst.reduce((s, v) => s + v, 0) / worst.length)).toFixed(1),
-        frameMsP95: +times[Math.floor(times.length * 0.95)].toFixed(2), calls: r.render.calls, triangles: r.render.triangles,
+        frameMsP95: +times[Math.floor(times.length * 0.95)].toFixed(2), frameMsP99: +times[Math.floor(times.length * 0.99)].toFixed(2), frameMsMax: +times[times.length - 1].toFixed(1), framesOver33ms: times.filter((v) => v > 33.4).length, frames: times.length, calls: r.render.calls, triangles: r.render.triangles,
         geometries: r.memory.geometries, textures: r.memory.textures, chunks: k.world.chunks.loadedCount,
         heapMB: (performance as any).memory ? +((performance as any).memory.usedJSHeapSize / 1048576).toFixed(1) : null,
         pixelRatio: +k.renderer.getPixelRatio().toFixed(2),
@@ -126,40 +126,47 @@ async function session(browser: Browser, name: string, ctxOpts: any, cpuThrottle
   return { name, cpuThrottle, viewport: ctxOpts.viewport, deviceScaleFactor: ctxOpts.deviceScaleFactor ?? 1, initial, samples, streaming, consoleErrors: errors };
 }
 
-const browser = await chromium.launch({
-  channel: 'msedge',
-  args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--disable-gpu-vsync', '--disable-frame-rate-limit', '--enable-precise-memory-info'],
-});
-const gpu = await (async () => {
+const BASE_ARGS = ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-precise-memory-info'];
+async function runAll(vsync: boolean) {
+  const browser = await chromium.launch({ channel: 'msedge', args: vsync ? BASE_ARGS : [...BASE_ARGS, '--disable-gpu-vsync', '--disable-frame-rate-limit'] });
   const p = await browser.newPage();
-  const info = await p.evaluate(() => {
+  const renderer = await p.evaluate(() => {
     const gl = document.createElement('canvas').getContext('webgl2');
     const ext = gl?.getExtension('WEBGL_debug_renderer_info');
     return ext ? gl!.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'unknown';
   });
-  const ua = await p.evaluate(() => navigator.userAgent);
+  const userAgent = await p.evaluate(() => navigator.userAgent);
   await p.close();
-  return { renderer: info, userAgent: ua };
-})();
+  const runs = [
+    await session(browser, 'desktop-1920x1080', { viewport: { width: 1920, height: 1080 } }, 1, ['low', 'medium', 'high']),
+    await session(browser, 'laptop-1366x768', { viewport: { width: 1366, height: 768 } }, 1, ['medium']),
+    await session(browser, 'mobile-390x844-emulated', { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }, 4, ['low', 'medium']),
+    await session(browser, 'mobile-360x800-emulated', { viewport: { width: 360, height: 800 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }, 4, ['low']),
+  ];
+  await browser.close();
+  return { renderer, userAgent, runs };
+}
+const uncapped = await runAll(false);
+const vsynced = await runAll(true);
+const gpu = { renderer: uncapped.renderer, userAgent: uncapped.userAgent };
 
 const results = {
   generatedAt: new Date().toISOString(),
   url,
   machine: { cpu: os.cpus()[0]?.model, cores: os.cpus().length, memoryGB: Math.round(os.totalmem() / 1073741824), platform: `${os.platform()} ${os.release()}`, gpu: gpu.renderer, browser: gpu.userAgent },
-  note: 'Frame rates measured headless with vsync disabled. Mobile rows are desktop-hardware emulation (viewport, DPR 3, touch, 4x CPU throttle), not a physical phone.',
+  note: 'runsUncapped: headless Edge with vsync disabled (average fps shows headroom; frame-time spikes in this mode are an artefact of uncapped presentation). runsVsync: normal 60 Hz presentation (use these for frame-time stability). Mobile rows are desktop-hardware emulation (viewport, DPR 3, touch, 4x CPU throttle), not a physical phone.',
   sizes,
-  runs: [
-    await session(browser, 'desktop-1920x1080', { viewport: { width: 1920, height: 1080 } }, 1, ['low', 'medium', 'high']),
-    await session(browser, 'laptop-1366x768', { viewport: { width: 1366, height: 768 } }, 1, ['medium']),
-    await session(browser, 'mobile-390x844-emulated', { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }, 4, ['low', 'medium']),
-    await session(browser, 'mobile-360x800-emulated', { viewport: { width: 360, height: 800 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }, 4, ['low']),
-  ],
+  runsUncapped: uncapped.runs,
+  runsVsync: vsynced.runs,
 };
-await browser.close();
 writeFileSync('docs/perf-results.json', JSON.stringify(results, null, 1));
-for (const r of results.runs) {
-  console.log(`\n${r.name} (cpu x${r.cpuThrottle}) playable in ${r.initial.timeToPlayableMs} ms, ${r.initial.requests} requests, ${(r.initial.bytesUncompressed / 1e6).toFixed(2)} MB uncompressed (chunks ${(r.initial.chunkBytesUncompressed / 1e6).toFixed(2)} MB / ${r.initial.chunkRequests})`);
-  for (const s of r.samples) console.log(`  ${s.quality.padEnd(6)} ${s.label.padEnd(48)} ${String(s.fpsAvg).padStart(6)} fps avg ${String(s.fpsP1Low).padStart(6)} 1%low  calls ${s.calls} tris ${s.triangles} chunks ${s.chunks} heap ${s.heapMB} MB`);
-  if (r.consoleErrors.length) console.log('  errors:', r.consoleErrors.slice(0, 3));
+for (const [mode, runs] of [['UNCAPPED', results.runsUncapped], ['VSYNC', results.runsVsync]] as const) {
+  console.log(`
+=== ${mode} ===`);
+  for (const r of runs) {
+    console.log(`${r.name} (cpu x${r.cpuThrottle}) playable in ${r.initial.timeToPlayableMs} ms, ${r.initial.requests} requests, ${(r.initial.bytesUncompressed / 1e6).toFixed(2)} MB uncompressed (chunks ${(r.initial.chunkBytesUncompressed / 1e6).toFixed(2)} MB / ${r.initial.chunkRequests})`);
+    for (const s of r.samples) console.log(`  ${s.quality.padEnd(6)} ${s.label.padEnd(48)} ${String(s.fpsAvg).padStart(6)} fps  p99 ${String(s.frameMsP99).padStart(5)} ms  max ${String(s.frameMsMax).padStart(5)} ms  >33ms: ${s.framesOver33ms}/${s.frames}  calls ${s.calls} tris ${s.triangles} chunks ${s.chunks} heap ${s.heapMB} MB`);
+    if (r.consoleErrors.length) console.log('  errors:', r.consoleErrors.slice(0, 3));
+  }
 }
-console.log('\nGPU:', gpu.renderer);
+console.log('GPU:', gpu.renderer);

@@ -1,0 +1,472 @@
+{
+ "generatedAt": "2026-11-14T17:06:42.798Z",
+ "url": "http://localhost:4173/",
+ "machine": {
+  "cpu": "13th Gen Intel(R) Core(TM) i5-13420H",
+  "cores": 12,
+  "memoryGB": 16,
+  "platform": "win32 10.0.26200",
+  "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x0000A7A8) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0"
+ },
+ "note": "Frame rates measured headless with vsync disabled. Mobile rows are desktop-hardware emulation (viewport, DPR 3, touch, 4x CPU throttle), not a physical phone.",
+ "sizes": {
+  "chunks": {
+   "count": 513,
+   "rawTotal": 2505100,
+   "gzipTotal": 860771,
+   "rawAvg": 4883,
+   "gzipAvg": 1678,
+   "rawMax": 25268,
+   "gzipMax": 8019
+  },
+  "dataFiles": {
+   "build-report.json": {
+    "raw": 507,
+    "gzip": 313
+   },
+   "height.bin": {
+    "raw": 264130,
+    "gzip": 165518
+   },
+   "landmarks.json": {
+    "raw": 6245,
+    "gzip": 1586
+   },
+   "manifest.json": {
+    "raw": 4652,
+    "gzip": 1724
+   },
+   "overview.json": {
+    "raw": 267365,
+    "gzip": 88016
+   }
+  },
+  "appBuild": {
+   "files": {
+    "assets/index-BRnmS6gR.js": {
+     "raw": 563404,
+     "gzip": 148276
+    },
+    "assets/index-CIrT6fIc.css": {
+     "raw": 6339,
+     "gzip": 2030
+    },
+    "index.html": {
+     "raw": 4613,
+     "gzip": 1692
+    }
+   },
+   "rawTotal": 574356,
+   "gzipTotal": 151998
+  }
+ },
+ "runs": [
+  {
+   "name": "desktop-1920x1080",
+   "cpuThrottle": 1,
+   "viewport": {
+    "width": 1920,
+    "height": 1080
+   },
+   "deviceScaleFactor": 1,
+   "initial": {
+    "timeToPlayableMs": 1315,
+    "requests": 40,
+    "bytesUncompressed": 1127561,
+    "chunkRequests": 34,
+    "chunkBytesUncompressed": 278178,
+    "defaultQuality": "medium"
+   },
+   "samples": [
+    {
+     "label": "Waterfront (river + bridge view)",
+     "quality": "low",
+     "fpsAvg": 236,
+     "fpsP1Low": 17.1,
+     "frameMsP95": 10.5,
+     "calls": 64,
+     "triangles": 16606,
+     "geometries": 149,
+     "textures": 23,
+     "chunks": 21,
+     "heapMB": 12.5,
+     "pixelRatio": 1
+    },
+    {
+     "label": "Main Bazaar / Carpenter Street (dense old town)",
+     "quality": "low",
+     "fpsAvg": 198.9,
+     "fpsP1Low": 6.9,
+     "frameMsP95": 9.7,
+     "calls": 92,
+     "triangles": 21664,
+     "geometries": 180,
+     "textures": 28,
+     "chunks": 26,
+     "heapMB": 16.1,
+     "pixelRatio": 1
+    },
+    {
+     "label": "Running along Jalan Padungan (streaming)",
+     "quality": "low",
+     "fpsAvg": 236.9,
+     "fpsP1Low": 7.2,
+     "frameMsP95": 7.1,
+     "calls": 68,
+     "triangles": 15044,
+     "geometries": 144,
+     "textures": 23,
+     "chunks": 21,
+     "heapMB": 17.4,
+     "pixelRatio": 1
+    },
+    {
+     "label": "Waterfront (river + bridge view)",
+     "quality": "medium",
+     "fpsAvg": 172.1,
+     "fpsP1Low": 7.4,
+     "frameMsP95": 9.3,
+     "calls": 80,
+     "triangles": 20267,
+     "geometries": 227,
+     "textures": 39,
+     "chunks": 37,
+     "heapMB": 22.3,
+     "pixelRatio": 1
+    },
+    {
+     "label": "Main Bazaar / Carpenter Street (dense old town)",
+     "quality": "medium",
+     "fpsAvg": 130.6,
+     "fpsP1Low": 5.9,
+     "frameMsP95": 18.2,
+     "calls": 108,
+     "triangles": 25325,
+     "geometries": 265,
+     "textures": 46,
+     "chunks": 44,
+     "heapMB": 14.9,
+     "pixelRatio": 1
+    },
+    {
+     "label": "Running along Jalan Padungan (streaming)",
+     "quality": "medium",
+     "fpsAvg": 133.4,
+     "fpsP1Low": 7.2,
+     "frameMsP95": 18.6,
+     "calls": 105,
+     "triangles": 20202,
+     "geometries": 260,
+     "textures": 47,
+     "chunks": 45,
+     "heapMB": 20,
+     "pixelRatio": 1
+    },
+    {
+     "label": "Waterfront (river + bridge view)",
+     "quality": "high",
+     "fpsAvg": 112.7,
+     "fpsP1Low": 14.2,
+     "frameMsP95": 28.7,
+     "calls": 155,
+     "triangles": 56928,
+     "geometries": 529,
+     "textures": 99,
+     "chunks": 97,
+     "heapMB": 24.2,
+     "pixelRatio": 1
+    },
+    {
+     "label": "Main Bazaar / Carpenter Street (dense old town)",
+     "quality": "high",
+     "fpsAvg": 105.8,
+     "fpsP1Low": 8.9,
+     "frameMsP95": 25.7,
+     "calls": 182,
+     "triangles": 48399,
+     "geometries": 581,
+     "textures": 110,
+     "chunks": 108,
+     "heapMB": 29.2,
+     "pixelRatio": 1
+    },
+    {
+     "label": "Running along Jalan Padungan (streaming)",
+     "quality": "high",
+     "fpsAvg": 105.9,
+     "fpsP1Low": 11.6,
+     "frameMsP95": 28.9,
+     "calls": 186,
+     "triangles": 40733,
+     "geometries": 555,
+     "textures": 112,
+     "chunks": 110,
+     "heapMB": 22.7,
+     "pixelRatio": 1
+    }
+   ],
+   "streaming": {
+    "fetched": 435,
+    "built": 373,
+    "disposed": 263,
+    "bytes": 2741915,
+    "lastBuildMs": 2,
+    "maxBuildMs": 30.299999982118607
+   },
+   "consoleErrors": []
+  },
+  {
+   "name": "laptop-1366x768",
+   "cpuThrottle": 1,
+   "viewport": {
+    "width": 1366,
+    "height": 768
+   },
+   "deviceScaleFactor": 1,
+   "initial": {
+    "timeToPlayableMs": 920,
+    "requests": 37,
+    "bytesUncompressed": 1100942,
+    "chunkRequests": 31,
+    "chunkBytesUncompressed": 251559,
+    "defaultQuality": "medium"
+   },
+   "samples": [
+    {
+     "label": "Waterfront (river + bridge view)",
+     "quality": "medium",
+     "fpsAvg": 222.9,
+     "fpsP1Low": 64.1,
+     "frameMsP95": 8.3,
+     "calls": 80,
+     "triangles": 20267,
+     "geometries": 226,
+     "textures": 39,
+     "chunks": 37,
+     "heapMB": 16.8,
+     "pixelRatio": 1
+    },
+    {
+     "label": "Main Bazaar / Carpenter Street (dense old town)",
+     "quality": "medium",
+     "fpsAvg": 224,
+     "fpsP1Low": 18.7,
+     "frameMsP95": 9.2,
+     "calls": 108,
+     "triangles": 25325,
+     "geometries": 264,
+     "textures": 46,
+     "chunks": 44,
+     "heapMB": 16.7,
+     "pixelRatio": 1
+    },
+    {
+     "label": "Running along Jalan Padungan (streaming)",
+     "quality": "medium",
+     "fpsAvg": 222.8,
+     "fpsP1Low": 24.4,
+     "frameMsP95": 8,
+     "calls": 103,
+     "triangles": 19928,
+     "geometries": 259,
+     "textures": 47,
+     "chunks": 45,
+     "heapMB": 17.6,
+     "pixelRatio": 1
+    }
+   ],
+   "streaming": {
+    "fetched": 143,
+    "built": 86,
+    "disposed": 41,
+    "bytes": 930836,
+    "lastBuildMs": 1.2000000178813934,
+    "maxBuildMs": 19.5
+   },
+   "consoleErrors": []
+  },
+  {
+   "name": "mobile-390x844-emulated",
+   "cpuThrottle": 4,
+   "viewport": {
+    "width": 390,
+    "height": 844
+   },
+   "deviceScaleFactor": 3,
+   "initial": {
+    "timeToPlayableMs": 1168,
+    "requests": 27,
+    "bytesUncompressed": 1043271,
+    "chunkRequests": 21,
+    "chunkBytesUncompressed": 193888,
+    "defaultQuality": "low"
+   },
+   "samples": [
+    {
+     "label": "Waterfront (river + bridge view)",
+     "quality": "low",
+     "fpsAvg": 274.9,
+     "fpsP1Low": 65.9,
+     "frameMsP95": 8.9,
+     "calls": 52,
+     "triangles": 13224,
+     "geometries": 149,
+     "textures": 22,
+     "chunks": 21,
+     "heapMB": 12,
+     "pixelRatio": 1.25
+    },
+    {
+     "label": "Main Bazaar / Carpenter Street (dense old town)",
+     "quality": "low",
+     "fpsAvg": 287.7,
+     "fpsP1Low": 35.2,
+     "frameMsP95": 10.3,
+     "calls": 61,
+     "triangles": 14705,
+     "geometries": 180,
+     "textures": 27,
+     "chunks": 26,
+     "heapMB": 15.3,
+     "pixelRatio": 1.25
+    },
+    {
+     "label": "Running along Jalan Padungan (streaming)",
+     "quality": "low",
+     "fpsAvg": 273.3,
+     "fpsP1Low": 43.1,
+     "frameMsP95": 11,
+     "calls": 53,
+     "triangles": 11821,
+     "geometries": 144,
+     "textures": 22,
+     "chunks": 21,
+     "heapMB": 19.3,
+     "pixelRatio": 1.25
+    },
+    {
+     "label": "Waterfront (river + bridge view)",
+     "quality": "medium",
+     "fpsAvg": 189.5,
+     "fpsP1Low": 37.2,
+     "frameMsP95": 13.8,
+     "calls": 60,
+     "triangles": 15261,
+     "geometries": 227,
+     "textures": 39,
+     "chunks": 37,
+     "heapMB": 13.8,
+     "pixelRatio": 1.5
+    },
+    {
+     "label": "Main Bazaar / Carpenter Street (dense old town)",
+     "quality": "medium",
+     "fpsAvg": 189.4,
+     "fpsP1Low": 40.5,
+     "frameMsP95": 13.7,
+     "calls": 70,
+     "triangles": 16756,
+     "geometries": 265,
+     "textures": 46,
+     "chunks": 44,
+     "heapMB": 20.1,
+     "pixelRatio": 1.5
+    },
+    {
+     "label": "Running along Jalan Padungan (streaming)",
+     "quality": "medium",
+     "fpsAvg": 192.7,
+     "fpsP1Low": 35.7,
+     "frameMsP95": 13.5,
+     "calls": 68,
+     "triangles": 13140,
+     "geometries": 260,
+     "textures": 47,
+     "chunks": 45,
+     "heapMB": 21.5,
+     "pixelRatio": 1.5
+    }
+   ],
+   "streaming": {
+    "fetched": 226,
+    "built": 139,
+    "disposed": 94,
+    "bytes": 1526226,
+    "lastBuildMs": 6.199999988079071,
+    "maxBuildMs": 37.30000001192093
+   },
+   "consoleErrors": []
+  },
+  {
+   "name": "mobile-360x800-emulated",
+   "cpuThrottle": 4,
+   "viewport": {
+    "width": 360,
+    "height": 800
+   },
+   "deviceScaleFactor": 3,
+   "initial": {
+    "timeToPlayableMs": 1146,
+    "requests": 27,
+    "bytesUncompressed": 1043271,
+    "chunkRequests": 21,
+    "chunkBytesUncompressed": 193888,
+    "defaultQuality": "low"
+   },
+   "samples": [
+    {
+     "label": "Waterfront (river + bridge view)",
+     "quality": "low",
+     "fpsAvg": 278.6,
+     "fpsP1Low": 41.4,
+     "frameMsP95": 9.8,
+     "calls": 51,
+     "triangles": 12712,
+     "geometries": 149,
+     "textures": 22,
+     "chunks": 21,
+     "heapMB": 14.3,
+     "pixelRatio": 1.25
+    },
+    {
+     "label": "Main Bazaar / Carpenter Street (dense old town)",
+     "quality": "low",
+     "fpsAvg": 347.2,
+     "fpsP1Low": 48.7,
+     "frameMsP95": 7,
+     "calls": 61,
+     "triangles": 14705,
+     "geometries": 180,
+     "textures": 27,
+     "chunks": 26,
+     "heapMB": 15,
+     "pixelRatio": 1.25
+    },
+    {
+     "label": "Running along Jalan Padungan (streaming)",
+     "quality": "low",
+     "fpsAvg": 373.3,
+     "fpsP1Low": 63.1,
+     "frameMsP95": 6.4,
+     "calls": 53,
+     "triangles": 11821,
+     "geometries": 144,
+     "textures": 22,
+     "chunks": 21,
+     "heapMB": 19.9,
+     "pixelRatio": 1.25
+    }
+   ],
+   "streaming": {
+    "fetched": 100,
+    "built": 53,
+    "disposed": 32,
+    "bytes": 711890,
+    "lastBuildMs": 1.5,
+    "maxBuildMs": 25.799999982118607
+   },
+   "consoleErrors": []
+  }
+ ]
+}

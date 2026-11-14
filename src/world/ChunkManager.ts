@@ -44,6 +44,8 @@ export class ChunkManager {
   onChunkRemoved: ((cx: number, cz: number) => void) | null = null;
   quality: Quality;
   stats = { fetched: 0, built: 0, disposed: 0, bytes: 0, lastBuildMs: 0, maxBuildMs: 0 };
+  /** When set, new chunk meshes are uploaded to the GPU as they are built instead of when first seen. */
+  renderer: THREE.WebGLRenderer | null = null;
 
   private chunks = new Map<string, Chunk>();
   private available: Set<string>;
@@ -55,6 +57,8 @@ export class ChunkManager {
   private order: string[] = [];
   private prefetchKeys: string[] = [];
   private base: string;
+  private frame = 0;
+  private warming: { group: THREE.Group; frame: number }[] = [];
 
   constructor(manifest: Manifest, height: HeightMap, collision: CollisionWorld, mats: Materials, landmarks: LandmarkManager, quality: Quality) {
     this.manifest = manifest;
@@ -134,6 +138,13 @@ export class ChunkManager {
    * chunks in the direction of travel).
    */
   update(x: number, z: number, vx = 0, vz = 0): void {
+    // Meshes built earlier have now been drawn once (buffers uploaded): restore frustum culling.
+    this.frame++;
+    while (this.warming.length && this.warming[0].frame < this.frame - 1) {
+      this.warming.shift()!.group.traverse((o) => {
+        o.frustumCulled = true;
+      });
+    }
     const cx = Math.floor(x / CHUNK_SIZE), cz = Math.floor(z / CHUNK_SIZE);
     if (cx !== this.centre.cx || cz !== this.centre.cz) {
       this.centre = { cx, cz };
@@ -261,6 +272,16 @@ export class ChunkManager {
     g.traverse((o) => {
       o.matrixAutoUpdate = false;
     });
+    // Warm-up: upload textures now and draw the chunk once even if it is off-screen, so turning the
+    // camera toward freshly streamed chunks does not cause an upload burst.
+    g.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.frustumCulled = false;
+      const map = (mesh.material as THREE.MeshLambertMaterial).map;
+      if (map && mesh.userData.ownMaterial) this.renderer?.initTexture(map);
+    });
+    this.warming.push({ group: g, frame: this.frame });
     c.group = g;
     c.built = detail;
     this.group.add(g);

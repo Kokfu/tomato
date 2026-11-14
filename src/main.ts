@@ -90,6 +90,7 @@ async function boot(): Promise<void> {
     return;
   }
   registerLandmarks(world.landmarks);
+  world.chunks.renderer = renderer;
   camera.far = world.viewDistance;
   camera.updateProjectionMatrix();
   applyResolution();
