@@ -16,6 +16,8 @@ interface ChunkCollision {
   /** 7 floats per deck segment: ax, az, ah, bx, bz, bh, halfWidth (world metres). */
   decks: Float32Array;
   pdecks: { ring: Float32Array; h: number; minX: number; maxX: number; minZ: number; maxZ: number }[];
+  /** 5 floats per mapped building passage segment: ax, az, bx, bz, halfWidth. */
+  pass: Float32Array;
 }
 
 export interface Ground { h: number; deck: boolean }
@@ -93,7 +95,16 @@ export class CollisionWorld {
       const ring = toWorld(d.r, ox, oz);
       return { ring, h: d.h / QUANT, ...bbox(ring) };
     });
-    this.chunks.set(chunkKey(data.cx, data.cz), { walls, water, decks, pdecks });
+    const src = data.pass ?? [];
+    const pass = new Float32Array(src.length);
+    for (let i = 0; i < src.length; i += 5) {
+      pass[i] = ox + src[i] / QUANT;
+      pass[i + 1] = oz + src[i + 1] / QUANT;
+      pass[i + 2] = ox + src[i + 2] / QUANT;
+      pass[i + 3] = oz + src[i + 3] / QUANT;
+      pass[i + 4] = src[i + 4] / QUANT;
+    }
+    this.chunks.set(chunkKey(data.cx, data.cz), { walls, water, decks, pdecks, pass });
   }
 
   removeChunk(cx: number, cz: number): void {
@@ -163,8 +174,25 @@ export class CollisionWorld {
       }
   }
 
+  /** True inside the corridor of a mapped passage through a building (tunnel=building_passage, covered ways). */
+  inPassage(x: number, z: number): boolean {
+    const c = this.at(x, z);
+    if (!c) return false;
+    const p = c.pass;
+    for (let i = 0; i < p.length; i += 5) {
+      const ax = p[i], az = p[i + 1], vx = p[i + 2] - ax, vz = p[i + 3] - az;
+      const l2 = vx * vx + vz * vz;
+      let t = l2 > 0 ? ((x - ax) * vx + (z - az) * vz) / l2 : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const dx = ax + vx * t - x, dz = az + vz * t - z;
+      if (dx * dx + dz * dz <= p[i + 4] * p[i + 4]) return true;
+    }
+    return false;
+  }
+
   /** Push a circle (radius r, feet at height y) out of building footprints. Returns corrected [x, z]. */
   resolve(x: number, z: number, r: number, y: number): [number, number] {
+    if (this.inPassage(x, z)) return [x, z];
     for (let iter = 0; iter < 3; iter++) {
       let moved = false;
       this.forNearWalls(x, z, r, (w) => {
@@ -197,6 +225,7 @@ export class CollisionWorld {
   /** True when the point lies inside a building footprint (below its roof). */
   insideBuilding(x: number, z: number, y: number): boolean {
     let hit = false;
+    if (this.inPassage(x, z)) return false;
     this.forNearWalls(x, z, 0, (w) => {
       if (!hit && y < w.top && pointInRings(x, z, w.rings)) hit = true;
     });

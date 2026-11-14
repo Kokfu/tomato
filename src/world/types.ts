@@ -69,6 +69,8 @@ export interface ChunkData {
   decks: number[];
   /** Traversable deck polygons (piers, bridge areas). */
   pdecks: PolyDeck[];
+  /** Mapped passages through buildings, 5 ints each: ax, az, bx, bz, halfWidth (cm). */
+  pass?: number[];
   names: string[];
 }
 

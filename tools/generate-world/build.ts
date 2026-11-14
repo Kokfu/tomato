@@ -415,13 +415,13 @@ const inArea = (cx: number, cz: number) => cx >= CX0 && cx <= CX1 && cz >= CZ0 &
 
 interface Bucket {
   roads: RoadData[]; buildings: Building[]; areas: Area[]; trees: Pt[]; decks: number[]; pdecks: { r: Pt[]; h: number }[];
-  names: string[]; nameIdx: Map<string, number>; segs: number[][];
+  names: string[]; nameIdx: Map<string, number>; segs: number[][]; pass: number[];
 }
 const buckets = new Map<string, Bucket>();
 const bucket = (cx: number, cz: number): Bucket => {
   const k = chunkKey(cx, cz);
   let b = buckets.get(k);
-  if (!b) { b = { roads: [], buildings: [], areas: [], trees: [], decks: [], pdecks: [], names: [], nameIdx: new Map(), segs: [] }; buckets.set(k, b); }
+  if (!b) { b = { roads: [], buildings: [], areas: [], trees: [], decks: [], pdecks: [], names: [], nameIdx: new Map(), segs: [], pass: [] }; buckets.set(k, b); }
   return b;
 };
 const nameOf = (b: Bucket, name?: string): number | undefined => {
@@ -493,6 +493,20 @@ for (const r of roads) {
         bucket(cx, cz).decks.push(q(a[0] - ox), q(a[1] - oz), q(r.elev[i - 1]), q(c[0] - ox), q(c[1] - oz), q(r.elev[i]), q(Math.max(hw, 0.9)));
       }
     }
+  }
+  // Mapped passages through / under buildings: collision with walls is waived inside their corridor.
+  if (r.walk && (r.tags.tunnel === 'building_passage' || r.tags.covered === 'yes' || r.tags.highway === 'corridor')) {
+    const pw = Math.max(hw, 1.2);
+    for (let i = 1; i < r.pts.length; i++) {
+      const a = r.pts[i - 1], c = r.pts[i];
+      const sx0 = Math.min(a[0], c[0]) - pw, sx1 = Math.max(a[0], c[0]) + pw, sz0 = Math.min(a[1], c[1]) - pw, sz1 = Math.max(a[1], c[1]) + pw;
+      for (let cz = chunkOf(sz0); cz <= chunkOf(sz1); cz++) for (let cx = chunkOf(sx0); cx <= chunkOf(sx1); cx++) {
+        if (!inArea(cx, cz)) continue;
+        const ox = cx * CHUNK_SIZE, oz = cz * CHUNK_SIZE;
+        bucket(cx, cz).pass.push(q(a[0] - ox), q(a[1] - oz), q(c[0] - ox), q(c[1] - oz), q(pw));
+      }
+    }
+    stats.buildingPassages = (stats.buildingPassages ?? 0) + 1;
   }
   if (used) {
     stats.roads++;
@@ -713,6 +727,7 @@ for (let cz = CZ0; cz <= CZ1; cz++) for (let cx = CX0; cx <= CX1; cx++) {
     pdecks: b.pdecks.map((d) => ({ r: ringQ(d.r, ox, oz), h: q(d.h) })),
     names: b.names,
   };
+  if (b.pass.length) data.pass = b.pass;
   const text = JSON.stringify(data);
   writeFileSync(`${OUT}/chunks/${chunkKey(cx, cz)}.json`, text);
   chunkKeys.push(chunkKey(cx, cz));
