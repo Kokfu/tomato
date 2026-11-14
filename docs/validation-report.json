@@ -1,0 +1,59 @@
+{
+ "generatedAt": "2026-11-14T16:52:34.759Z",
+ "osmTimestamp": "2026-11-14T16:38:21Z",
+ "checks": [
+  {
+   "name": "projection round-trip",
+   "pass": true,
+   "detail": "max 3.80e-3 mm over 441 grid points",
+   "value": 0.000003799060342313254,
+   "limit": 0.0001
+  },
+  {
+   "name": "road vertices preserved",
+   "pass": true,
+   "detail": "7219 ways, 39319 source vertices; 0 unmatched (>5 cm), max error 7.04 mm, rms 4.07 mm",
+   "value": 0.0070398707721849255,
+   "limit": 0.0075
+  },
+  {
+   "name": "road ways present",
+   "pass": true,
+   "detail": "0 of 7219 source highway ways (>=2 vertices in area) missing from output"
+  },
+  {
+   "name": "building footprints preserved",
+   "pass": true,
+   "detail": "3602 buildings, 19763 vertices, max error 7.04 mm, rms 4.08 mm; 5 source buildings near the area edge not emitted",
+   "value": 0.007037819125848719,
+   "limit": 0.0185
+  },
+  {
+   "name": "water outline preserved",
+   "pass": true,
+   "detail": "1903 source water vertices, max boundary error 6.52 mm",
+   "value": 0.0065202023635728915,
+   "limit": 0.02
+  },
+  {
+   "name": "landmark positions",
+   "pass": true,
+   "detail": "29/29 landmarks lie within their mapped OSM feature"
+  },
+  {
+   "name": "Darul Hana Bridge spans the river",
+   "pass": true,
+   "detail": "5 mapped bridge ways, 34 vertices (26 over water), 2 landings 226.7 m apart, both landings on land: true, 9 elevated walkable pieces in output"
+  },
+  {
+   "name": "bridge collision decks emitted",
+   "pass": true,
+   "detail": "200 traversable deck segments across all chunks"
+  },
+  {
+   "name": "spawn on dry open ground",
+   "pass": true,
+   "detail": "spawn 1.5600418, 110.346162 -> chunk 0,-1, in water: false, in building: false"
+  }
+ ]
+}

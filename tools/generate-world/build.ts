@@ -503,10 +503,8 @@ for (const r of roads) {
   }
 }
 // Buildings (whole, by centre)
-const seenB = new Set<number>();
 for (const b of buildings) {
-  if (!inArea(b.cx, b.cz) || seenB.has(b.id)) continue;
-  seenB.add(b.id);
+  if (!inArea(b.cx, b.cz)) continue;
   bucket(b.cx, b.cz).buildings.push(b);
   stats.buildings++;
   if (b.hs === 0) stats.bHeightTag++; else if (b.hs === 1) stats.bLevelsTag++; else stats.bEstimated++;
