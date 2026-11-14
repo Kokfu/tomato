@@ -3,10 +3,10 @@
   "roads": 7310,
   "roadKm": 723.1,
   "roadWidthTagged": 6,
-  "buildings": 3602,
+  "buildings": 3603,
   "bHeightTag": 3,
   "bLevelsTag": 51,
-  "bEstimated": 3548,
+  "bEstimated": 3549,
   "waterPolys": 14,
   "mappedTrees": 19,
   "proceduralTrees": 13015,
@@ -14,6 +14,7 @@
   "footwayKm": 25.1,
   "sidewalkKm": 0,
   "areas": 619,
+  "worshipPlotsAsBuildings": 1,
   "demRiverLevelCm": 0,
   "terrainMaxCm": 3936,
   "untaggedWaterCrossings": 12
@@ -22,7 +23,7 @@
   "Satok Bridge"
  ],
  "chunkBytes": {
-  "total": 2502659,
+  "total": 2502795,
   "max": 25268
  }
 }

@@ -49,6 +49,7 @@ const areas: Area[] = [];
 const waterPolys: MultiPoly = [];
 const mappedTrees: Pt[] = [];
 const pierPolys: Poly[] = [];
+const worshipPlots: typeof elements = [];
 const stats: Record<string, number> = {
   roads: 0, roadKm: 0, roadWidthTagged: 0, buildings: 0, bHeightTag: 0, bLevelsTag: 0, bEstimated: 0,
   waterPolys: 0, mappedTrees: 0, proceduralTrees: 0, bridges: 0, footwayKm: 0, sidewalkKm: 0, areas: 0,
@@ -162,8 +163,28 @@ for (const el of elements) {
     }
     continue;
   }
+  // A small closed place-of-worship plot without any mapped building (e.g. Tua Pek Kong Temple):
+  // remember it; its outline is used as an approximate building footprint below.
+  if (t.amenity === 'place_of_worship' && el.type === 'way' && isClosedWay(el)) worshipPlots.push(el);
   const k = areaKind(t);
   if (k >= 0) for (const p of polygonsOf(el)) areas.push({ k, poly: p });
+}
+// Approximation: plots of at most 700 m2 tagged amenity=place_of_worship that contain no mapped
+// building become a building of kind 'religious' with an estimated height (hs = 2). The outline is
+// the mapped plot, not a surveyed building footprint.
+for (const el of worshipPlots) {
+  for (const poly of polygonsOf(el)) {
+    const area = Math.abs(ringArea(poly[0]));
+    if (area < 20 || area > 700) continue;
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const [x, z] of poly[0]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+    if (buildings.some((b) => b.bb[0] < x1 && b.bb[2] > x0 && b.bb[1] < z1 && b.bb[3] > z0 && (pointInPoly((b.bb[0] + b.bb[2]) / 2, (b.bb[1] + b.bb[3]) / 2, poly) || pointInPoly((x0 + x1) / 2, (z0 + z1) / 2, b.poly)))) continue;
+    const k = KIND('religious');
+    const { h, hs } = buildingHeight(el.tags!, k, area);
+    buildings.push({ id: el.id, poly, h, hs, k, name: el.tags!.name, cx: Math.floor((x0 + x1) / 2 / CHUNK_SIZE), cz: Math.floor((z0 + z1) / 2 / CHUNK_SIZE), bb: [x0, z0, x1, z1] });
+    stats.worshipPlotsAsBuildings = (stats.worshipPlotsAsBuildings ?? 0) + 1;
+    log(`  worship plot used as approximate footprint: way ${el.id} ${el.tags!.name ?? ''} (${area.toFixed(0)} m2)`);
+  }
 }
 log(`roads ${roads.length}, buildings ${buildings.length}, areas ${areas.length}, water polys ${waterPolys.length}, mapped trees ${mappedTrees.length}, pier polys ${pierPolys.length}`);
 
@@ -378,6 +399,18 @@ for (let i = 0; i < heights.length; i++) { heightI16[i] = Math.round(heights[i] 
         const s = isPier ? 1 : t * t * (3 - 2 * t);
         return groundH(r.pts[i][0], r.pts[i][1]) + H * s;
       });
+    }
+    // Short dead-end spurs (viewing platforms, e.g. on the Darul Hana Bridge) stay level with the
+    // deck they branch from instead of following the ramp profile.
+    for (const r of grp) {
+      if (isPier || r.nodes.length < 2) continue;
+      let len = 0;
+      for (let i = 1; i < r.pts.length; i++) len += Math.hypot(r.pts[i][0] - r.pts[i - 1][0], r.pts[i][1] - r.pts[i - 1][1]);
+      if (len > 20) continue;
+      const a = r.nodes[0], z = r.nodes[r.nodes.length - 1];
+      const dead = (n: number) => adj.get(n)!.length === 1 && !nonBridgeNodes.has(n);
+      if (dead(z) && !dead(a)) r.elev = r.elev!.map(() => r.elev![0]);
+      else if (dead(a) && !dead(z)) r.elev = r.elev!.map(() => r.elev![r.elev!.length - 1]);
     }
     stats.bridges++;
   }
