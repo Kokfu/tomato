@@ -3,28 +3,85 @@
   "roads": 7310,
   "roadKm": 723.1,
   "roadWidthTagged": 6,
-  "buildings": 3603,
+  "buildings": 29593,
+  "buildingsOsm": 3603,
+  "buildingsMicrosoft": 17657,
+  "buildingsGoogle": 8333,
   "bHeightTag": 3,
   "bLevelsTag": 51,
-  "bEstimated": 3549,
+  "bEstimated": 29539,
   "waterPolys": 14,
   "mappedTrees": 19,
-  "proceduralTrees": 13015,
+  "proceduralTrees": 12917,
   "bridges": 57,
   "footwayKm": 25.1,
   "sidewalkKm": 0,
   "areas": 619,
   "worshipPlotsAsBuildings": 1,
+  "overtureInFile": 32733,
+  "overtureFromOsmSkipped": 3654,
+  "overtureMlCandidates": 29079,
+  "overtureKept": 25990,
+  "overtureKeptMicrosoft": 17657,
+  "overtureKeptGoogle": 8333,
+  "overtureDroppedOutsideArea": 2222,
+  "overtureDroppedTooSmall": 533,
+  "overtureDroppedDegenerate": 0,
+  "overtureDroppedDuplicateOfOsm": 6,
+  "overtureDroppedOnRoad": 80,
+  "overtureDroppedCrossedByMappedWay": 7,
+  "overtureDroppedInWater": 17,
+  "overtureDroppedDuplicateOfMl": 224,
+  "overtureHeightTag": 0,
+  "overtureHeightFloors": 0,
   "demRiverLevelCm": 0,
   "terrainMaxCm": 3936,
   "untaggedWaterCrossings": 20,
   "buildingPassages": 32
  },
+ "overture": {
+  "used": true,
+  "release": "2026-10-21.0",
+  "featuresInFile": 32733,
+  "bySourceInFile": {
+   "Microsoft ML Buildings": 19291,
+   "Google Open Buildings": 9788,
+   "OpenStreetMap": 3654
+  },
+  "skippedOpenStreetMapSourced": 3654,
+  "mlCandidates": 29079,
+  "kept": {
+   "total": 25990,
+   "Microsoft ML Buildings": 17657,
+   "Google Open Buildings": 8333
+  },
+  "dropped": {
+   "tooSmall": 533,
+   "degenerate": 0,
+   "duplicateOfOsm": 6,
+   "onRoad": 80,
+   "crossedByMappedWay": 7,
+   "inWater": 17,
+   "duplicateOfMl": 224,
+   "outsideArea": 2222
+  },
+  "multiPolygonPartsIgnored": 1,
+  "idCollisions": 0,
+  "heights": {
+   "fromHeight": 0,
+   "fromNumFloors": 0,
+   "estimated": 25990
+  },
+  "simplifyToleranceM": 0.3,
+  "minAreaM2": 12,
+  "verticesBeforeSimplify": 134946,
+  "verticesAfterSimplify": 134562
+ },
  "missingLandmarks": [
   "Satok Bridge"
  ],
  "chunkBytes": {
-  "total": 2509756,
-  "max": 25268
+  "total": 5423453,
+  "max": 29755
  }
 }

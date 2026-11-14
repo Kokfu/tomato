@@ -33,6 +33,11 @@ const ROOFS: Record<Kind, number[]> = {
   hut: [0x8d7663, 0x7c7f82],
 };
 
+// Machine-detected footprints (Overture: Microsoft / Google) get one neutral palette and a plain
+// flat roof: no inferred roof shape or building type is drawn on top of lower-certainty outlines.
+const ML_WALLS = [0xd2cfc7, 0xcdcac3, 0xd7d4cd];
+const ML_ROOFS = [0x9b9b98, 0x939492, 0xa3a29e];
+
 function hashId(id: number): number {
   let h = Math.imul(id | 0, 2654435761) ^ (id / 4294967296) | 0;
   h = Math.imul(h ^ (h >>> 15), 2246822519);
@@ -52,8 +57,9 @@ const STOREY = 3.3;
 function addBuilding(b: BuildingData, ox: number, oz: number, ctx: BuildContext, walls: GeoBuf, roofs: GeoBuf): void {
   const kind = BUILDING_KINDS[b.k];
   const h = hashId(b.id);
-  wallColor.setHex(WALLS[kind][h % WALLS[kind].length]);
-  roofColor.setHex(ROOFS[kind][(h >>> 8) % ROOFS[kind].length]);
+  const ml = !!b.s;
+  wallColor.setHex(ml ? ML_WALLS[h % ML_WALLS.length] : WALLS[kind][h % WALLS[kind].length]);
+  roofColor.setHex(ml ? ML_ROOFS[(h >>> 8) % ML_ROOFS.length] : ROOFS[kind][(h >>> 8) % ROOFS[kind].length]);
   const shade = 0.93 + ((h >>> 16) % 100) / 100 * 0.1;
   wallColor.multiplyScalar(shade);
 
@@ -96,12 +102,12 @@ function addBuilding(b: BuildingData, ox: number, oz: number, ctx: BuildContext,
   });
 
   // Small, simple rectangular footprints get an inferred pitched roof instead of a flat cap.
-  if (!isRoof && rings.length === 1 && addPitchedRoof(kind, h, rings[0], top, height, roofs)) return;
+  if (!ml && !isRoof && rings.length === 1 && addPitchedRoof(kind, h, rings[0], top, height, roofs)) return;
 
   // Other low-rise blocks (e.g. shophouse rows mapped as one irregular outline) get an inferred
   // tiled roof edge: slopes rising from every wall to an inset outline, flat on top.
   let capRing = rings[0], capY = top;
-  if (!isRoof && rings.length === 1 && PITCHED[kind] && height <= 12) {
+  if (!ml && !isRoof && rings.length === 1 && PITCHED[kind] && height <= 12) {
     const ring = simplifyRing(rings[0]);
     const area = Math.abs(area2(ring)) / 2;
     const d = Math.min(3.2, Math.sqrt(area) * 0.16);

@@ -101,6 +101,6 @@ input[type='range'] { width: 100%; accent-color: var(--accent); }
   #location { left: 8px; top: calc(8px + var(--safe-t)); padding: 6px 10px; max-width: calc(100vw - 140px); }
   #loc-name { font-size: 13px; }
   #help { display: none; }
-  #attribution { font-size: 10px; left: 50%; right: auto; transform: translateX(-50%); white-space: nowrap; }
+  #attribution { font-size: 10px; left: 50%; right: auto; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 16px); text-align: center; line-height: 1.25; }
 }
 @media (pointer: coarse) { #help { display: none; } }

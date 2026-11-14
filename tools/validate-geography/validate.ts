@@ -1,4 +1,5 @@
-// Compares the generated world assets against the original OSM source geometry.
+// Compares the generated world assets against the original OSM source geometry (and, for the
+// machine-detected footprints, against the cached Overture Maps extract).
 // Reports transformation / generation error only - NOT the accuracy of OSM itself.
 // Usage: node tools/validate-geography/validate.ts
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -8,6 +9,7 @@ import type { ChunkData, Manifest, Landmark } from '../../src/world/types.ts';
 import { ROAD_TYPES } from '../../src/world/types.ts';
 import { loadOsm, polygonsOf, roadTypeOf, isBridge } from '../generate-world/osm.ts';
 import type { OsmEl } from '../generate-world/osm.ts';
+import { readOverture, ringCentroid, OVERTURE_FILE, OVERTURE_ID_BASE, ML_SIMPLIFY_TOL } from '../generate-world/overture.ts';
 
 const OUT = 'public/data/kuching';
 if (!existsSync('data-src/osm/kuching.json')) {
@@ -121,6 +123,99 @@ const QTOL = 0.0075; // 0.5 cm quantisation per axis -> 0.71 cm worst case
   }
   const s = stat(errs);
   add('building footprints preserved', s.max <= QTOL + 0.011, `${n} buildings, ${s.n} vertices, max error ${(s.max * 1000).toFixed(2)} mm, rms ${(s.rms * 1000).toFixed(2)} mm; ${missing} source buildings near the area edge not emitted`, s.max, QTOL + 0.011);
+}
+
+// 3b. Machine-detected footprints (Overture Maps: Microsoft ML Buildings, Google Open Buildings) ----
+{
+  // Chunk buildings by source; world-space rings.
+  interface Out { id: number; s: number; rings: number[][][] }
+  const ml: Out[] = [];
+  const osmGrid = new Map<string, number[][][][]>();
+  const G = 64;
+  for (const c of chunks.values()) {
+    const ox = c.cx * CHUNK_SIZE, oz = c.cz * CHUNK_SIZE;
+    for (const b of c.buildings) {
+      const rings = b.r.map((r) => { const o: number[][] = []; for (let i = 0; i < r.length; i += 2) o.push([ox + r[i] / QUANT, oz + r[i + 1] / QUANT]); return o; });
+      if (b.s) { ml.push({ id: b.id, s: b.s, rings }); continue; }
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const [x, z] of rings[0]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+      for (let gz = Math.floor(z0 / G); gz <= Math.floor(z1 / G); gz++) for (let gx = Math.floor(x0 / G); gx <= Math.floor(x1 / G); gx++) {
+        const k = `${gx}_${gz}`;
+        if (!osmGrid.has(k)) osmGrid.set(k, []);
+        osmGrid.get(k)!.push(rings);
+      }
+    }
+  }
+  const src = readOverture();
+  if (!ml.length) {
+    add('overture footprints match source', true, 'not applicable: the chunks contain no machine-detected footprints');
+    add('overture footprints clear of OSM buildings', true, 'not applicable');
+  } else if (!src) {
+    add('overture footprints match source', false, `${ml.length} machine-detected footprints in the chunks but ${OVERTURE_FILE} is missing (run: npm run data:fetch)`);
+    add('overture footprints clear of OSM buildings', false, 'source file missing');
+  } else {
+    const byId = new Map(src.features.map((f) => [f.id, f]));
+    const distRing = (x: number, z: number, ring: number[][]): number => {
+      let best = Infinity;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const ax = ring[j][0], az = ring[j][1], vx = ring[i][0] - ax, vz = ring[i][1] - az;
+        const l2 = vx * vx + vz * vz;
+        let t = l2 > 0 ? ((x - ax) * vx + (z - az) * vz) / l2 : 0;
+        t = Math.max(0, Math.min(1, t));
+        best = Math.min(best, Math.hypot(ax + vx * t - x, az + vz * t - z));
+      }
+      return best;
+    };
+    // (a) Every emitted vertex is a source vertex (quantisation only); every source vertex of the
+    // outer ring lies within the simplification tolerance of the emitted outline.
+    const vErr: number[] = [], sErr: number[] = [];
+    let unknown = 0, wrongSource = 0, idClash = 0;
+    const osmIds = new Set<number>();
+    for (const c of chunks.values()) for (const b of c.buildings) if (!b.s) osmIds.add(b.id);
+    const bySrc = [0, 0, 0];
+    for (const o of ml) {
+      bySrc[o.s]++;
+      if (o.id < OVERTURE_ID_BASE || osmIds.has(o.id)) idClash++;
+      const f = byId.get(o.id);
+      if (!f) { unknown++; continue; }
+      if (f.src !== o.s) wrongSource++;
+      const all = f.poly.flat();
+      for (const ring of o.rings) for (const [x, z] of ring) {
+        let best = Infinity;
+        for (const p of all) { const d = Math.hypot(p[0] - x, p[1] - z); if (d < best) best = d; }
+        vErr.push(best);
+      }
+      for (const [x, z] of f.poly[0]) sErr.push(distRing(x, z, o.rings[0]));
+    }
+    const a = stat(vErr), b2 = stat(sErr);
+    const SLIM = ML_SIMPLIFY_TOL + 2 * QTOL;
+    add('overture footprints match source', unknown === 0 && wrongSource === 0 && idClash === 0 && a.max <= QTOL && b2.max <= SLIM,
+      `${ml.length} machine-detected footprints (Microsoft ${bySrc[1]}, Google ${bySrc[2]}) vs Overture ${src.release ?? 'release unknown'}; ${unknown} not found in source, ${wrongSource} with wrong source label, ${idClash} id clashes with OSM; ` +
+      `emitted vertices: ${a.n}, max ${(a.max * 1000).toFixed(2)} mm from a source vertex (limit ${(QTOL * 1000).toFixed(1)} mm); ` +
+      `source outline vertices: ${b2.n}, max ${(b2.max * 100).toFixed(1)} cm, rms ${(b2.rms * 100).toFixed(1)} cm from the emitted outline (limit ${(SLIM * 100).toFixed(1)} cm = ${ML_SIMPLIFY_TOL} m simplification + quantisation)`,
+      b2.max, SLIM);
+    // (b) No machine-detected footprint has its centroid inside an OSM building.
+    const pin = (x: number, z: number, ring: number[][]) => {
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][0], zi = ring[i][1], xj = ring[j][0], zj = ring[j][1];
+        if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+      }
+      return inside;
+    };
+    let inOsm = 0;
+    const examples: string[] = [];
+    for (const o of ml) {
+      const [x, z] = ringCentroid(o.rings[0] as [number, number][]);
+      for (const rings of osmGrid.get(`${Math.floor(x / G)}_${Math.floor(z / G)}`) ?? []) {
+        if (!pin(x, z, rings[0]) || rings.slice(1).some((h) => pin(x, z, h))) continue;
+        inOsm++;
+        if (examples.length < 5) examples.push(String(o.id));
+        break;
+      }
+    }
+    add('overture footprints clear of OSM buildings', inOsm === 0, `${inOsm} of ${ml.length} machine-detected footprints have their centroid inside an OSM building footprint` + (examples.length ? ` (ids ${examples.join(', ')})` : ''), inOsm, 0);
+  }
 }
 
 // 4. River: source water-polygon vertices lie on / inside the generated water ---------------------
@@ -238,6 +333,6 @@ function distToWaterEdge(x: number, z: number): number {
 }
 
 const failed = checks.filter((c) => !c.pass).length;
-writeFileSync('docs/validation-report.json', JSON.stringify({ generatedAt: new Date().toISOString(), osmTimestamp: manifest.osmTimestamp, checks }, null, 1));
+writeFileSync('docs/validation-report.json', JSON.stringify({ generatedAt: new Date().toISOString(), osmTimestamp: manifest.osmTimestamp, overtureRelease: manifest.overtureRelease ?? null, checks }, null, 1));
 console.log(`\n${checks.length - failed}/${checks.length} checks passed. Report: docs/validation-report.json`);
 process.exit(failed ? 1 : 0);

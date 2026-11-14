@@ -1,5 +1,7 @@
 // Generates the static world assets (chunks, height grid, overview, landmarks, manifest)
-// from the cached OSM extract and DEM tile.  Usage: node tools/generate-world/build.ts
+// from the cached OSM extract and DEM tile, plus machine-detected Overture Maps footprints where
+// OSM has no building (optional: skipped when data-src/overture/buildings.geojsonl is absent).
+// Usage: node tools/generate-world/build.ts
 import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync } from 'node:fs';
 import polygonClipping from 'polygon-clipping';
 import earcut from 'earcut';
@@ -11,6 +13,8 @@ import type { ChunkData, RoadData, BuildingData, AreaData, Manifest, RoadType, L
 import { loadOsm, project, polygonsOf, cleanRing, ringArea, pointInPoly, roadTypeOf, roadWidth, isBridge, isTunnel, isWalkable, isClosedWay } from './osm.ts';
 import type { OsmEl, Pt } from './osm.ts';
 import { LANDMARK_DEFS } from './landmark-defs.ts';
+import { readOverture, conflate, SOURCE_NAMES, ML_SIMPLIFY_TOL, ML_MIN_AREA } from './overture.ts';
+import type { ConflateRoad } from './overture.ts';
 
 const OUT = 'public/data/kuching';
 const t0 = Date.now();
@@ -40,7 +44,8 @@ interface Road {
   id: number; type: RoadType; w: number; inferred: boolean; pts: Pt[]; nodes: number[]; tags: Record<string, string>;
   bridge: boolean; tunnel: boolean; elev?: number[]; walk: boolean;
 }
-interface Building { id: number; poly: Poly; h: number; hs: 0 | 1 | 2; k: number; name?: string; cx: number; cz: number; bb: number[] }
+/** s: footprint source, 0 = OpenStreetMap, 1 = Microsoft ML Buildings, 2 = Google Open Buildings (both via Overture). */
+interface Building { id: number; poly: Poly; h: number; hs: 0 | 1 | 2; k: number; name?: string; cx: number; cz: number; bb: number[]; s: 0 | 1 | 2 }
 interface Area { k: number; poly: Poly }
 
 const roads: Road[] = [];
@@ -51,7 +56,7 @@ const mappedTrees: Pt[] = [];
 const pierPolys: Poly[] = [];
 const worshipPlots: typeof elements = [];
 const stats: Record<string, number> = {
-  roads: 0, roadKm: 0, roadWidthTagged: 0, buildings: 0, bHeightTag: 0, bLevelsTag: 0, bEstimated: 0,
+  roads: 0, roadKm: 0, roadWidthTagged: 0, buildings: 0, buildingsOsm: 0, buildingsMicrosoft: 0, buildingsGoogle: 0, bHeightTag: 0, bLevelsTag: 0, bEstimated: 0,
   waterPolys: 0, mappedTrees: 0, proceduralTrees: 0, bridges: 0, footwayKm: 0, sidewalkKm: 0, areas: 0,
 };
 
@@ -157,7 +162,7 @@ for (const el of elements) {
       let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
       for (const [x, z] of poly[0]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
       buildings.push({
-        id: el.type === 'relation' ? -el.id : el.id, poly, h, hs, k, name: t.name,
+        id: el.type === 'relation' ? -el.id : el.id, poly, h, hs, k, name: t.name, s: 0,
         cx: Math.floor((x0 + x1) / 2 / CHUNK_SIZE), cz: Math.floor((z0 + z1) / 2 / CHUNK_SIZE), bb: [x0, z0, x1, z1],
       });
     }
@@ -181,7 +186,7 @@ for (const el of worshipPlots) {
     if (buildings.some((b) => b.bb[0] < x1 && b.bb[2] > x0 && b.bb[1] < z1 && b.bb[3] > z0 && (pointInPoly((b.bb[0] + b.bb[2]) / 2, (b.bb[1] + b.bb[3]) / 2, poly) || pointInPoly((x0 + x1) / 2, (z0 + z1) / 2, b.poly)))) continue;
     const k = KIND('religious');
     const { h, hs } = buildingHeight(el.tags!, k, area);
-    buildings.push({ id: el.id, poly, h, hs, k, name: el.tags!.name, cx: Math.floor((x0 + x1) / 2 / CHUNK_SIZE), cz: Math.floor((z0 + z1) / 2 / CHUNK_SIZE), bb: [x0, z0, x1, z1] });
+    buildings.push({ id: el.id, poly, h, hs, k, name: el.tags!.name, s: 0, cx: Math.floor((x0 + x1) / 2 / CHUNK_SIZE), cz: Math.floor((z0 + z1) / 2 / CHUNK_SIZE), bb: [x0, z0, x1, z1] });
     stats.worshipPlotsAsBuildings = (stats.worshipPlotsAsBuildings ?? 0) + 1;
     log(`  worship plot used as approximate footprint: way ${el.id} ${el.tags!.name ?? ''} (${area.toFixed(0)} m2)`);
   }
@@ -227,6 +232,65 @@ function inWater(x: number, z: number): boolean {
     if (pointInPoly(x, z, water[i])) return true;
   }
   return false;
+}
+
+// ---------------------------------------------------------------------------------------------
+// 2b. Machine-detected footprints from Overture Maps where OpenStreetMap has no building
+// ---------------------------------------------------------------------------------------------
+// OSM buildings are never changed or removed. A Microsoft / Google footprint is added only when it
+// does not duplicate an OSM building, does not sit on a mapped way or in water, is not tiny and
+// does not duplicate another machine-detected footprint (rules and thresholds: overture.ts).
+// Outlines are simplified with a 0.3 m tolerance (ML data only). Kind is always 'generic'; height
+// uses Overture height / num_floors when present, otherwise the estimated area defaults.
+const overtureReport: Record<string, unknown> = { used: false };
+{
+  const ov = readOverture();
+  if (!ov) {
+    log('Overture extract not found (data-src/overture/buildings.geojsonl): building footprints come from OSM only.');
+  } else {
+    const confRoads: ConflateRoad[] = [];
+    for (const r of roads) {
+      if (r.type === 'stream' || r.tunnel || r.tags.highway === 'corridor' || r.pts.length < 2) continue;
+      const lane = ROAD_STYLE[r.type].group >= 2 || r.type === 'pedestrian';
+      confRoads.push({ pts: r.pts, half: lane ? r.w / 2 : 0 });
+    }
+    const tc = Date.now();
+    const res = conflate(ov.features, buildings, confRoads, inWater);
+    const generic = KIND('generic');
+    const keptBySource = [0, 0, 0];
+    let outside = 0, hTag = 0, hFloors = 0;
+    for (const f of res.kept) {
+      const cx = Math.floor((f.bb[0] + f.bb[2]) / 2 / CHUNK_SIZE), cz = Math.floor((f.bb[1] + f.bb[3]) / 2 / CHUNK_SIZE);
+      if (cx < CX0 || cx > CX1 || cz < CZ0 || cz > CZ1) { outside++; continue; }
+      const t: Record<string, string> = {};
+      if (f.height !== undefined) t.height = String(f.height);
+      if (f.floors !== undefined) t['building:levels'] = String(f.floors);
+      const { h, hs } = buildingHeight(t, generic, f.area);
+      if (hs === 0) hTag++; else if (hs === 1) hFloors++;
+      buildings.push({ id: f.id, poly: f.out, h, hs, k: generic, name: f.name, s: f.src, cx, cz, bb: f.bb });
+      keptBySource[f.src]++;
+    }
+    stats.overtureInFile = ov.total;
+    stats.overtureFromOsmSkipped = ov.bySource[SOURCE_NAMES[0]] ?? 0;
+    stats.overtureMlCandidates = ov.features.length;
+    stats.overtureKept = keptBySource[1] + keptBySource[2];
+    stats.overtureKeptMicrosoft = keptBySource[1];
+    stats.overtureKeptGoogle = keptBySource[2];
+    stats.overtureDroppedOutsideArea = outside;
+    for (const [k, v] of Object.entries(res.dropped)) stats[`overtureDropped${k[0].toUpperCase()}${k.slice(1)}`] = v;
+    stats.overtureHeightTag = hTag;
+    stats.overtureHeightFloors = hFloors;
+    Object.assign(overtureReport, {
+      used: true, release: ov.release, featuresInFile: ov.total, bySourceInFile: ov.bySource,
+      skippedOpenStreetMapSourced: ov.bySource[SOURCE_NAMES[0]] ?? 0, mlCandidates: ov.features.length,
+      kept: { total: stats.overtureKept, [SOURCE_NAMES[1]]: keptBySource[1], [SOURCE_NAMES[2]]: keptBySource[2] },
+      dropped: { ...res.dropped, outsideArea: outside },
+      multiPolygonPartsIgnored: ov.multiPolygonParts, idCollisions: ov.idCollisions,
+      heights: { fromHeight: hTag, fromNumFloors: hFloors, estimated: stats.overtureKept - hTag - hFloors },
+      simplifyToleranceM: ML_SIMPLIFY_TOL, minAreaM2: ML_MIN_AREA, verticesBeforeSimplify: res.vertsIn, verticesAfterSimplify: res.vertsOut,
+    });
+    log(`overture ${ov.release ?? '(release unknown)'}: ${ov.total} features, ${ov.features.length} ML candidates -> kept ${stats.overtureKept} (Microsoft ${keptBySource[1]}, Google ${keptBySource[2]}), dropped ${JSON.stringify({ ...res.dropped, outsideArea: outside })}, ${((Date.now() - tc) / 1000).toFixed(1)}s`);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -565,6 +629,7 @@ for (const b of buildings) {
   bucket(b.cx, b.cz).buildings.push(b);
   stats.buildings++;
   if (b.hs === 0) stats.bHeightTag++; else if (b.hs === 1) stats.bLevelsTag++; else stats.bEstimated++;
+  if (b.s === 0) stats.buildingsOsm++; else if (b.s === 1) stats.buildingsMicrosoft++; else stats.buildingsGoogle++;
 }
 // Pier polygons -> polygon decks in every chunk they overlap
 for (const p of pierPolys) {
@@ -761,6 +826,7 @@ for (let cz = CZ0; cz <= CZ1; cz++) for (let cx = CX0; cx <= CX1; cx++) {
       const o: BuildingData = { id: bd.id, r: bd.poly.map((r) => ringQ(r, ox, oz)).filter((r) => r.length >= 6), h: q(bd.h), hs: bd.hs, k: bd.k };
       const n = nameOf(b, bd.name);
       if (n !== undefined) o.n = n;
+      if (bd.s) o.s = bd.s;
       return o;
     }).filter((o) => o.r.length),
     areas: outAreas,
@@ -868,6 +934,7 @@ const manifest: Manifest = {
   version: 1,
   generatedAt: new Date().toISOString(),
   osmTimestamp: timestamp,
+  overtureRelease: overtureReport.used ? ((overtureReport.release as string | null) ?? null) : undefined,
   origin: { lat: ORIGIN_LAT, lon: ORIGIN_LON },
   chunkSize: CHUNK_SIZE, cell: CELL, quant: QUANT,
   bbox: DATA_BBOX,
@@ -876,11 +943,16 @@ const manifest: Manifest = {
   spawn: { x: +spawn[0].toFixed(2), z: +spawn[1].toFixed(2), lat: +slat.toFixed(7), lon: +slon.toFixed(7) },
   attribution: [
     'Map data (c) OpenStreetMap contributors, ODbL 1.0',
+    ...(overtureReport.used ? [
+      'Additional building footprints (machine-detected, labelled per building) from Overture Maps Foundation, overturemaps.org, buildings theme, ODbL 1.0',
+      'Microsoft Global ML Building Footprints, licensed by Microsoft under the Open Database License (via Overture Maps)',
+      'Google Open Buildings, CC BY 4.0 (via Overture Maps)',
+    ] : []),
     'Elevation: Copernicus DEM GLO-30 (c) DLR e.V. 2010-2014 and (c) Airbus Defence and Space GmbH 2014-2018, provided under COPERNICUS by the European Union and ESA',
   ],
   stats,
 };
 writeFileSync(`${OUT}/manifest.json`, JSON.stringify(manifest));
-writeFileSync(`${OUT}/build-report.json`, JSON.stringify({ stats, missingLandmarks: missing, chunkBytes: { total: totalBytes, max: maxBytes } }, null, 1));
+writeFileSync(`${OUT}/build-report.json`, JSON.stringify({ stats, overture: overtureReport, missingLandmarks: missing, chunkBytes: { total: totalBytes, max: maxBytes } }, null, 1));
 log('stats', JSON.stringify(stats));
 log('done');

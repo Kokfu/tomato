@@ -20,13 +20,23 @@ export interface RoadData {
 }
 
 export interface BuildingData {
-  /** OSM id (way id, or relation id negated). */
+  /**
+   * OSM id (way id, or relation id negated) for OSM buildings. Machine-detected footprints from
+   * Overture Maps use 2^52 + the first 48 bits of their Overture (GERS) UUID, which cannot collide
+   * with an OSM id (see tools/generate-world/overture.ts).
+   */
   id: number;
+  /**
+   * Footprint source. Absent or 0 = OpenStreetMap (mapped by people); 1 = Microsoft ML Buildings,
+   * 2 = Google Open Buildings (both machine-detected from imagery, taken from Overture Maps, outline
+   * simplified with a 0.3 m tolerance, lower geometric quality than OSM).
+   */
+  s?: 0 | 1 | 2;
   /** Rings: [outer, hole, hole, ...]. Not clipped; a building lives in the chunk of its centroid. */
   r: number[][];
   /** Height in centimetres. */
   h: number;
-  /** Height source: 0 = OSM height tag, 1 = derived from building:levels, 2 = estimated default. */
+  /** Height source: 0 = height tag (OSM height / Overture height), 1 = derived from building:levels / Overture num_floors, 2 = estimated default. */
   hs: 0 | 1 | 2;
   /** Kind: index into BUILDING_KINDS. */
   k: number;
@@ -95,6 +105,8 @@ export interface Manifest {
   version: number;
   generatedAt: string;
   osmTimestamp: string | null;
+  /** Overture Maps release of the machine-detected footprints; absent when none were used. */
+  overtureRelease?: string | null;
   origin: { lat: number; lon: number };
   chunkSize: number;
   cell: number;

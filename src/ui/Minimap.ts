@@ -661,7 +661,7 @@ export class Minimap {
 
     this.infoEl = h('div', 'fm-panel fm-info hidden');
     this.scaleEl = h('div', 'fm-scale');
-    const attrib = h('div', 'fm-attrib', '© OpenStreetMap contributors');
+    const attrib = h('div', 'fm-attrib', '© OpenStreetMap contributors, Overture Maps Foundation');
     root.append(this.fmCanvas, this.scaleEl, attrib, zoom, this.listEl, this.infoEl, top);
     document.body.append(root);
     this.bindFullMapInput();

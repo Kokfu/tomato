@@ -15,6 +15,8 @@ export const MAP_COLORS = {
   foot: '#efe2c4',
   bridge: '#8d7f6a',
   building: '#9d968a',
+  /** Machine-detected footprints (Overture: Microsoft / Google): lighter than mapped OSM buildings. */
+  buildingMl: '#b4aea3',
   roof: '#b9b2a4',
   ink: '#1b2a33',
   route: '#1a73e8',
@@ -150,6 +152,7 @@ export class Overview {
 interface ChunkPaths {
   water: Path2D;
   buildings: Path2D;
+  mlBuildings: Path2D;
   roofs: Path2D;
   areas: [string, Path2D][];
   /** [group, widthCm, bridge, path] sorted by group. */
@@ -166,10 +169,10 @@ function ring(path: Path2D, r: number[]): void {
 function pathsOf(d: ChunkData): ChunkPaths {
   let cp = chunkPaths.get(d);
   if (cp) return cp;
-  cp = { water: new Path2D(), buildings: new Path2D(), roofs: new Path2D(), areas: [], roads: [] };
+  cp = { water: new Path2D(), buildings: new Path2D(), mlBuildings: new Path2D(), roofs: new Path2D(), areas: [], roads: [] };
   for (const poly of d.water) for (const r of poly) ring(cp.water, r);
   const roofKind = BUILDING_KINDS.indexOf('roof');
-  for (const b of d.buildings) ring(b.k === roofKind ? cp.roofs : cp.buildings, b.r[0]);
+  for (const b of d.buildings) ring(b.k === roofKind ? cp.roofs : b.s ? cp.mlBuildings : cp.buildings, b.r[0]);
   const areas = new Map<string, Path2D>();
   for (const a of d.areas) {
     const color = AREA_COLORS[AREA_KINDS[a.k]];
@@ -247,6 +250,8 @@ export function drawChunks(g: CanvasRenderingContext2D, chunks: ChunkData[], pxP
   each((cp) => {
     g.fillStyle = MAP_COLORS.roof;
     g.fill(cp.roofs);
+    g.fillStyle = MAP_COLORS.buildingMl;
+    g.fill(cp.mlBuildings);
     g.fillStyle = MAP_COLORS.building;
     g.fill(cp.buildings);
   });

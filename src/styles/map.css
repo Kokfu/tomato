@@ -111,5 +111,5 @@
   .fm-info, #fullmap.no-list .fm-info { left: 8px; right: 8px; width: auto; bottom: calc(28px + var(--safe-b)); padding: 10px 10px 10px 12px; }
   .fm-info-btns .fm-btn { flex: 1; }
   .fm-scale { right: 64px; bottom: calc(44px + var(--safe-b)); }
-  .fm-attrib { font-size: 10px; right: 50%; transform: translateX(50%); white-space: nowrap; }
+  .fm-attrib { font-size: 10px; right: 50%; transform: translateX(50%); width: max-content; max-width: calc(100vw - 16px); text-align: center; }
 }

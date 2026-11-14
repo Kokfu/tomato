@@ -1,6 +1,7 @@
 {
- "generatedAt": "2026-11-14T17:40:40.094Z",
+ "generatedAt": "2026-11-14T22:01:16.101Z",
  "osmTimestamp": "2026-11-14T16:38:21Z",
+ "overtureRelease": "2026-10-21.0",
  "checks": [
   {
    "name": "projection round-trip",
@@ -27,6 +28,20 @@
    "detail": "3602 buildings, 19763 vertices, max error 7.04 mm, rms 4.08 mm; 5 source buildings near the area edge not emitted",
    "value": 0.007037819125848719,
    "limit": 0.0185
+  },
+  {
+   "name": "overture footprints match source",
+   "pass": true,
+   "detail": "25990 machine-detected footprints (Microsoft 17657, Google 8333) vs Overture 2026-10-21.0; 0 not found in source, 0 with wrong source label, 0 id clashes with OSM; emitted vertices: 123761, max 7.06 mm from a source vertex (limit 7.5 mm); source outline vertices: 124109, max 30.2 cm, rms 0.9 cm from the emitted outline (limit 31.5 cm = 0.3 m simplification + quantisation)",
+   "value": 0.3019894155237289,
+   "limit": 0.315
+  },
+  {
+   "name": "overture footprints clear of OSM buildings",
+   "pass": true,
+   "detail": "0 of 25990 machine-detected footprints have their centroid inside an OSM building footprint",
+   "value": 0,
+   "limit": 0
   },
   {
    "name": "water outline preserved",

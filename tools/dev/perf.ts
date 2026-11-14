@@ -47,13 +47,14 @@ const sizes: Record<string, unknown> = {};
 // ---- runtime measurements ------------------------------------------------------------------------
 interface Sample { label: string; quality: string; fpsAvg: number; fpsP1Low: number; frameMsP95: number; frameMsP99: number; frameMsMax: number; framesOver33ms: number; frames: number; calls: number; triangles: number; geometries: number; textures: number; chunks: number; heapMB: number | null; pixelRatio: number }
 
-async function measure(page: Page, label: string, quality: string, view: { lm?: string; yaw?: number; move?: boolean }): Promise<Sample> {
+async function measure(page: Page, label: string, quality: string, view: { lm?: string; x?: number; z?: number; yaw?: number; move?: boolean }): Promise<Sample> {
   await page.evaluate(({ quality, view }) => {
     const k = (window as any).__k3d;
     (document.querySelector(`#quality-seg [data-q="${quality}"]`) as HTMLElement).click();
     (document.getElementById('opt-adaptive') as HTMLInputElement).checked = false;
     document.getElementById('opt-adaptive')!.dispatchEvent(new Event('change'));
     if (view.lm) { const l = k.world.landmarks.landmarks.find((x: any) => x.id === view.lm); k.player.teleport(l.x, l.z); }
+    else if (view.x !== undefined) k.player.teleport(view.x, view.z);
     else k.player.teleport(k.world.manifest.spawn.x, k.world.manifest.spawn.z);
     k.tpc.yaw = view.yaw ?? 0;
     k.tpc.pitch = 0.2;
@@ -120,6 +121,9 @@ async function session(browser: Browser, name: string, ctxOpts: any, cpuThrottle
     samples.push(await measure(page, 'Waterfront (river + bridge view)', q, { yaw: 0 }));
     samples.push(await measure(page, 'Main Bazaar / Carpenter Street (dense old town)', q, { lm: 'carpenter-street' }));
     samples.push(await measure(page, 'Running along Jalan Padungan (streaming)', q, { lm: 'jalan-padungan', move: true }));
+    // Densest machine-detected (Overture) residential area: chunk 12,-1 holds the most footprints.
+    samples.push(await measure(page, 'Dense suburb, machine-detected buildings', q, { x: 3200, z: -128 }));
+    samples.push(await measure(page, 'Running through dense suburb (streaming)', q, { x: 3200, z: -128, yaw: 1.6, move: true }));
   }
   const streaming = await page.evaluate(() => ({ ...(window as any).__k3d.world.chunks.stats }));
   await ctx.close();
