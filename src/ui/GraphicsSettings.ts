@@ -17,7 +17,7 @@ export interface Quality {
 }
 
 export const QUALITY: Record<QualityName, Quality> = {
-  low: { name: 'low', highRadius: 1, lowRadius: 2, maxPixelRatio: 1, shadowMap: 0, shadowRange: 0, treeDensity: 0.35, groundTex: 256 },
+  low: { name: 'low', highRadius: 1, lowRadius: 2, maxPixelRatio: 1.25, shadowMap: 0, shadowRange: 0, treeDensity: 0.35, groundTex: 256 },
   medium: { name: 'medium', highRadius: 1, lowRadius: 3, maxPixelRatio: 1.5, shadowMap: 1024, shadowRange: 70, treeDensity: 0.8, groundTex: 512 },
   high: { name: 'high', highRadius: 2, lowRadius: 5, maxPixelRatio: 2, shadowMap: 2048, shadowRange: 110, treeDensity: 1, groundTex: 512 },
 };
