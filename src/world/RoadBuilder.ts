@@ -167,7 +167,7 @@ export function buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBuf
     tmpColor.setHex(style.color);
     if (type === 'steps') tmpColor.multiplyScalar(0.92);
     ribbon(bufs[style.group], pts, hw, tmpColor, ox, oz, ctx, !bridge, yOff, true);
-    if (bridge) bridgeStructure(structure, pts, hw, ox, oz, ctx, type === 'pier');
+    if (bridge && !ctx.landmarks.replacesRoadStructure(r.id)) bridgeStructure(structure, pts, hw, ox, oz, ctx, type === 'pier');
 
     // Dashed centre line on two-way major roads (decorative, inferred - not mapped lane data).
     if (high && style.group === 3 && !(r.f & 8) && hw >= 3) {

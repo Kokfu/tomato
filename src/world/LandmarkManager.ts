@@ -14,7 +14,11 @@ export type LandmarkBuilder = (args: { data: ChunkData; ctx: BuildContext; landm
 export interface LandmarkOverride {
   /** OSM building ids whose generic extrusion is replaced by the custom model. */
   buildingIds: number[];
-  /** OSM way ids of roads that trigger the builder when present in a chunk (e.g. bridge ways). */
+  /**
+   * OSM way ids of roads that trigger the builder when present in a chunk (e.g. bridge ways).
+   * The generic deck sides / railings / piers of these roads are suppressed; the walkable road
+   * surface and its collision decks are still generated from the mapped geometry.
+   */
   roadIds?: number[];
   /** Id in landmarks.json, passed to the builder for convenience. */
   landmarkId?: string;
@@ -29,6 +33,7 @@ export class LandmarkManager {
   landmarks: Landmark[] = [];
   private overrides: LandmarkOverride[] = [];
   private replaced = new Set<number>();
+  private customRoads = new Set<number>();
 
   setLandmarks(list: Landmark[]): void {
     this.landmarks = list;
@@ -37,11 +42,17 @@ export class LandmarkManager {
   register(o: LandmarkOverride): void {
     this.overrides.push(o);
     for (const id of o.buildingIds) this.replaced.add(id);
+    for (const id of o.roadIds ?? []) this.customRoads.add(id);
   }
 
   /** True when a custom model replaces the generic extrusion of this OSM building. */
   replacesBuilding(osmId: number): boolean {
     return this.replaced.has(osmId);
+  }
+
+  /** True when a custom model supplies the structure (railings, towers, piers) of this bridge way. */
+  replacesRoadStructure(osmWayId: number): boolean {
+    return this.customRoads.has(osmWayId);
   }
 
   /** Called by the chunk builder for high-detail chunks. */
