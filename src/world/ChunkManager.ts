@@ -264,10 +264,11 @@ export class ChunkManager {
       g.add(m);
     }
     for (const o of buildBuildings(data, ctx)) g.add(o);
-    if (detail === 'high') {
-      for (const o of buildVegetation(data, ctx)) g.add(o);
-      for (const o of ctx.landmarks.buildForChunk(data, ctx)) g.add(o);
-    }
+    if (detail === 'high') for (const o of buildVegetation(data, ctx)) g.add(o);
+    // Landmark models are cheap (a few thousand triangles, one draw call each) and their generic
+    // extrusions are suppressed at every detail level, so they are built for low detail as well:
+    // otherwise the bridge masts and the DUN roof would vanish from the distant skyline.
+    for (const o of ctx.landmarks.buildForChunk(data, ctx)) g.add(o);
     g.updateMatrixWorld(true);
     g.traverse((o) => {
       o.matrixAutoUpdate = false;

@@ -27,6 +27,7 @@ for (const v of views) {
     const k = (window as any).__k3d;
     if (v.lm) { const l = k.world.landmarks.landmarks.find((x: any) => x.id === v.lm); k.player.teleport(l.x + (v.dx ?? 0), l.z + (v.dz ?? 0)); }
     else if (v.lat !== undefined) k.teleportGeo(v.lat, v.lon);
+    else if (v.x !== undefined) k.player.teleport(v.x, v.z); // world metres (e.g. taken from chunk data)
     if (v.yaw !== undefined) k.tpc.yaw = v.yaw;
     if (v.pitch !== undefined) k.tpc.pitch = v.pitch;
     if (v.dist !== undefined) k.tpc.distance = v.dist;
@@ -38,6 +39,11 @@ for (const v of views) {
   await page.screenshot({ path: `${outDir}/${v.name}.png` });
   const info = await page.evaluate(() => { const k = (window as any).__k3d; const r = k.renderer.info; return { fps: +k.fps.toFixed(1), calls: r.render.calls, tris: r.render.triangles, geo: r.memory.geometries, tex: r.memory.textures, chunks: k.world.chunks.loadedCount, pos: k.player.position.toArray().map((n: number) => +n.toFixed(1)) }; });
   console.log(v.name, JSON.stringify(info));
+  if (rest.includes('--landmarks')) {
+    // Triangle counts of the custom landmark meshes currently in the scene.
+    const lm = await page.evaluate(() => { const out: Record<string, number> = {}; (window as any).__k3d.world.chunks.group.traverse((o: any) => { if (o.userData?.landmark) out[o.userData.landmark] = (out[o.userData.landmark] ?? 0) + o.userData.triangles; }); return out; });
+    console.log('  landmarks', JSON.stringify(lm));
+  }
 }
 if (errors.length) console.log('CONSOLE:', [...new Set(errors)].slice(0, 20).join('\n'));
 await browser.close();

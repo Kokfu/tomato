@@ -6,7 +6,8 @@ import type { BuildContext } from './ChunkManager.ts';
  * A landmark model builder. It receives the chunk being built and returns an object positioned in
  * CHUNK-LOCAL coordinates (metres from the chunk min-x / min-z corner, y = absolute elevation).
  * Builders must derive positions from mapped data (the building footprint, the road geometry or
- * the mapped landmark coordinates) and are only invoked for high-detail chunks, so landmark
+ * the mapped landmark coordinates). They are invoked for every built chunk (ctx.detail tells the
+ * level; models are cheap enough to be shown at low detail too), so landmark
  * geometry is lazy-loaded and disposed together with its chunk.
  */
 export type LandmarkBuilder = (args: { data: ChunkData; ctx: BuildContext; landmark?: Landmark }) => THREE.Object3D | null;
@@ -55,7 +56,7 @@ export class LandmarkManager {
     return this.customRoads.has(osmWayId);
   }
 
-  /** Called by the chunk builder for high-detail chunks. */
+  /** Called by the chunk builder for every chunk it builds (high and low detail). */
   buildForChunk(data: ChunkData, ctx: BuildContext): THREE.Object3D[] {
     const out: THREE.Object3D[] = [];
     for (const o of this.overrides) {

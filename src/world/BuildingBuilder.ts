@@ -4,6 +4,7 @@ import type { ChunkData, BuildingData } from './types.ts';
 import { BUILDING_KINDS } from './types.ts';
 import { GeoBuf } from './Materials.ts';
 import { toVec2 } from './RoadBuilder.ts';
+import { insetRing, pointInRing } from './landmarks/kit.ts';
 import type { BuildContext } from './ChunkManager.ts';
 
 type Kind = (typeof BUILDING_KINDS)[number];
@@ -94,8 +95,45 @@ function addBuilding(b: BuildingData, ox: number, oz: number, ctx: BuildContext,
     }
   });
 
+  // Small, simple rectangular footprints get an inferred pitched roof instead of a flat cap.
+  if (!isRoof && rings.length === 1 && addPitchedRoof(kind, h, rings[0], top, height, roofs)) return;
+
+  // Other low-rise blocks (e.g. shophouse rows mapped as one irregular outline) get an inferred
+  // tiled roof edge: slopes rising from every wall to an inset outline, flat on top.
+  let capRing = rings[0], capY = top;
+  if (!isRoof && rings.length === 1 && PITCHED[kind] && height <= 12) {
+    const ring = simplifyRing(rings[0]);
+    const area = Math.abs(area2(ring)) / 2;
+    const d = Math.min(3.2, Math.sqrt(area) * 0.16);
+    const inner = ring.length >= 6 && area > 40 ? insetRing(ring, d) : null;
+    let ok = !!inner && Math.abs(area2(inner!)) / 2 > area * 0.3 && area2(inner!) > 0 === area2(ring) > 0;
+    if (ok) for (let i = 0; i < inner!.length; i += 2) if (!pointInRing(inner![i], inner![i + 1], ring)) { ok = false; break; }
+    if (ok) {
+      const rise = d * 0.62;
+      roofColor.setHex(TERRACOTTA[(h >>> 8) % TERRACOTTA.length]).multiplyScalar(0.8 + ((h >>> 12) % 16) / 100);
+      const m = ring.length / 2;
+      for (let i = 0, j = m - 1; i < m; j = i, i++) {
+        const ux = ring[i * 2] - ring[j * 2], uz = ring[i * 2 + 1] - ring[j * 2 + 1];
+        const vx = inner![j * 2] - ring[j * 2], vz = inner![j * 2 + 1] - ring[j * 2 + 1];
+        // flat normal of the slope (up-facing)
+        let nx = -uz * rise, ny = uz * vx - ux * vz, nz = ux * rise;
+        if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
+        const l = Math.hypot(nx, ny, nz) || 1;
+        const b0 = roofs.count;
+        roofs.vert(ring[j * 2], top, ring[j * 2 + 1], nx / l, ny / l, nz / l, roofColor);
+        roofs.vert(ring[i * 2], top, ring[i * 2 + 1], nx / l, ny / l, nz / l, roofColor);
+        roofs.vert(inner![i * 2], top + rise, inner![i * 2 + 1], nx / l, ny / l, nz / l, roofColor);
+        roofs.vert(inner![j * 2], top + rise, inner![j * 2 + 1], nx / l, ny / l, nz / l, roofColor);
+        roofs.triUp(b0, b0 + 1, b0 + 2);
+        roofs.triUp(b0, b0 + 2, b0 + 3);
+      }
+      capRing = inner!;
+      capY = top + rise;
+    }
+  }
+
   // Roof (flat cap following the mapped footprint, holes preserved).
-  const contour = toVec2(rings[0]);
+  const contour = toVec2(capRing);
   const holes = rings.slice(1).map(toVec2);
   let tris: number[][];
   try {
@@ -104,8 +142,150 @@ function addBuilding(b: BuildingData, ox: number, oz: number, ctx: BuildContext,
     return;
   }
   const base = roofs.count;
-  for (const r of rings) for (let i = 0; i < r.length; i += 2) roofs.vert(r[i], top, r[i + 1], 0, 1, 0, roofColor);
+  for (const r of [capRing, ...rings.slice(1)]) for (let i = 0; i < r.length; i += 2) roofs.vert(r[i], capY, r[i + 1], 0, 1, 0, roofColor);
   for (const t of tris) roofs.triUp(base + t[0], base + t[1], base + t[2]);
+  if (!isRoof) return;
+
+  // Open-sided roof (OSM building=roof): add the underside, so it does not vanish when seen from
+  // below, and simple support posts. Post positions are inferred (corners and long edges), posts
+  // are visual only (open roofs have no collision).
+  soffitColor.copy(wallColor).multiplyScalar(1.1);
+  const ub = roofs.count;
+  for (const r of rings) for (let i = 0; i < r.length; i += 2) roofs.vert(r[i], y0, r[i + 1], 0, -1, 0, soffitColor);
+  for (const t of tris) {
+    // opposite winding of the top face
+    const a = ub + t[0], bI = ub + t[1], c = ub + t[2];
+    const before = roofs.idx.length;
+    roofs.triUp(a, bI, c);
+    const i1 = roofs.idx[before + 1];
+    roofs.idx[before + 1] = roofs.idx[before + 2];
+    roofs.idx[before + 2] = i1;
+  }
+  if (ctx.detail !== 'high') return;
+  const ring = simplifyRing(rings[0]);
+  const m = ring.length / 2;
+  let cxm = 0, czm = 0;
+  for (let i = 0; i < m; i++) { cxm += ring[i * 2] / m; czm += ring[i * 2 + 1] / m; }
+  const posts: number[] = [];
+  for (let i = 0; i < m; i++) {
+    const j = (i + 1) % m;
+    const ax = ring[i * 2], az = ring[i * 2 + 1], bx = ring[j * 2], bz = ring[j * 2 + 1];
+    const len = Math.hypot(bx - ax, bz - az);
+    const parts = Math.max(1, Math.round(len / 7));
+    for (let k = 0; k < parts; k++) posts.push(ax + ((bx - ax) * k) / parts, az + ((bz - az) * k) / parts);
+  }
+  const stride = Math.max(1, Math.ceil(posts.length / 2 / 16)); // at most 16 posts per roof
+  for (let i = 0; i < posts.length / 2; i += stride) {
+    // pull the post slightly under the roof
+    let px = posts[i * 2], pz = posts[i * 2 + 1];
+    const dl = Math.hypot(cxm - px, czm - pz) || 1;
+    const pull = Math.min(0.35, dl * 0.3);
+    px += ((cxm - px) / dl) * pull; pz += ((czm - pz) / dl) * pull;
+    const ground = ctx.height.sample(ox + px, oz + pz) - 0.2;
+    if (y0 - ground < 0.5) continue;
+    const hw = 0.11;
+    const c: [number, number][] = [[px - hw, pz - hw], [px + hw, pz - hw], [px + hw, pz + hw], [px - hw, pz + hw]];
+    const nrm: [number, number][] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+    for (let k = 0; k < 4; k++) {
+      const p = c[k], q = c[(k + 1) % 4];
+      const A = walls.vert(p[0], ground, p[1], nrm[k][0], 0, nrm[k][1], soffitColor, 0.05, 0.02);
+      const B = walls.vert(q[0], ground, q[1], nrm[k][0], 0, nrm[k][1], soffitColor, 0.05, 0.02);
+      const A2 = walls.vert(p[0], y0, p[1], nrm[k][0], 0, nrm[k][1], soffitColor, 0.05, 0.02);
+      const B2 = walls.vert(q[0], y0, q[1], nrm[k][0], 0, nrm[k][1], soffitColor, 0.05, 0.02);
+      triFacing(walls, B, A, A2, nrm[k][0], 0, nrm[k][1]);
+      triFacing(walls, B, A2, B2, nrm[k][0], 0, nrm[k][1]);
+    }
+  }
+}
+
+const soffitColor = new THREE.Color();
+const gableColor = new THREE.Color();
+
+/** Add a triangle wound so that its front face looks along (nx, ny, nz). */
+function triFacing(buf: GeoBuf, a: number, b: number, c: number, nx: number, ny: number, nz: number): void {
+  const p = buf.pos;
+  const ux = p[b * 3] - p[a * 3], uy = p[b * 3 + 1] - p[a * 3 + 1], uz = p[b * 3 + 2] - p[a * 3 + 2];
+  const vx = p[c * 3] - p[a * 3], vy = p[c * 3 + 1] - p[a * 3 + 1], vz = p[c * 3 + 2] - p[a * 3 + 2];
+  const d = (uy * vz - uz * vy) * nx + (uz * vx - ux * vz) * ny + (ux * vy - uy * vx) * nz;
+  if (d >= 0) buf.tri(a, b, c);
+  else buf.tri(a, c, b);
+}
+
+/** Drop vertices on (nearly) straight runs. Flat [x, z, ...] in, same out. */
+function simplifyRing(r: number[]): number[] {
+  const n = r.length / 2;
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const p = (i + n - 1) % n, q = (i + 1) % n;
+    const ax = r[i * 2] - r[p * 2], az = r[i * 2 + 1] - r[p * 2 + 1], bx = r[q * 2] - r[i * 2], bz = r[q * 2 + 1] - r[i * 2 + 1];
+    const la = Math.hypot(ax, az), lb = Math.hypot(bx, bz);
+    if (la < 0.05) continue;
+    if (lb > 0.05 && Math.abs(ax * bz - az * bx) / (la * lb) < 0.14 && ax * bx + az * bz > 0) continue; // < ~8 degrees
+    out.push(r[i * 2], r[i * 2 + 1]);
+  }
+  return out;
+}
+
+const PITCHED: Partial<Record<Kind, boolean>> = { house: true, shophouse: true, hut: true, generic: true };
+const TERRACOTTA = [0xa5573f, 0x9a4f3a, 0xb0634a, 0x8f4a38];
+
+/**
+ * Inferred pitched roof (OSM carries no roof shapes here): terracotta gable or hip roof for small
+ * rectangular footprints of houses, shophouses, huts and small unclassified buildings. The eaves
+ * sit at the mapped / estimated building height. Returns false when the footprint does not qualify.
+ */
+function addPitchedRoof(kind: Kind, hash: number, ringIn: number[], top: number, height: number, roofs: GeoBuf): boolean {
+  if (!PITCHED[kind] || height > 14) return false;
+  const r = simplifyRing(ringIn);
+  if (r.length !== 8) return false;
+  const P = [0, 1, 2, 3].map((i) => [r[i * 2], r[i * 2 + 1]]);
+  const len = [0, 1, 2, 3].map((i) => Math.hypot(P[(i + 1) % 4][0] - P[i][0], P[(i + 1) % 4][1] - P[i][1]));
+  for (let i = 0; i < 4; i++) {
+    const a = P[i], b = P[(i + 1) % 4], c = P[(i + 2) % 4];
+    const cos = ((b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1])) / (len[i] * len[(i + 1) % 4]);
+    if (Math.abs(cos) > 0.21) return false; // corner not within ~12 degrees of a right angle
+  }
+  const l0 = (len[0] + len[2]) / 2, l1 = (len[1] + len[3]) / 2;
+  const long = Math.max(l0, l1), short = Math.min(l0, l1);
+  if (short < 3 || short > (kind === 'generic' ? 24 : 16) || long > 90) return false;
+  if (kind === 'generic' && height > 10.5) return false; // low-rise only (shophouse rows, small buildings)
+  // Ridge along the long axis, except narrow deep shophouse units (ridge parallel to the street
+  // front, i.e. along the short side).
+  const narrowUnit = kind === 'shophouse' && short < 9 && long / short > 1.8;
+  const ridgeAlong0 = l0 >= l1 !== narrowUnit; // ridge parallel to edges 0 and 2?
+  // E0/E1: the two eave edges (parallel to the ridge); ridge joins the midpoints of the other two.
+  const k = ridgeAlong0 ? 0 : 1;
+  const A = P[k], B = P[(k + 1) % 4], C = P[(k + 2) % 4], D = P[(k + 3) % 4]; // eaves: A-B and C-D
+  const span = ridgeAlong0 ? l1 : l0, ridgeLen = ridgeAlong0 ? l0 : l1;
+  const rise = Math.max(0.8, Math.min(2.8, span * 0.24));
+  const hipped = kind === 'house' && (hash >>> 20) % 3 === 0 && ridgeLen > span * 1.2;
+  const hip = hipped ? Math.min(span / 2, ridgeLen * 0.35) / ridgeLen : 0;
+  const m0 = [(D[0] + A[0]) / 2, (D[1] + A[1]) / 2], m1 = [(B[0] + C[0]) / 2, (B[1] + C[1]) / 2];
+  const R0 = [m0[0] + (m1[0] - m0[0]) * hip, m0[1] + (m1[1] - m0[1]) * hip], R1 = [m1[0] + (m0[0] - m1[0]) * hip, m1[1] + (m0[1] - m1[1]) * hip];
+  roofColor.setHex(kind === 'hut' ? ROOFS.hut[hash % ROOFS.hut.length] : TERRACOTTA[(hash >>> 8) % TERRACOTTA.length]);
+  roofColor.multiplyScalar(0.8 + ((hash >>> 12) % 16) / 100);
+  gableColor.copy(wallColor);
+  const cx = (A[0] + B[0] + C[0] + D[0]) / 4, cz = (A[1] + B[1] + C[1] + D[1]) / 4;
+  const face = (pts: number[][], ys: number[], color: THREE.Color) => {
+    // flat normal, oriented away from the roof interior
+    const ux = pts[1][0] - pts[0][0], uy = ys[1] - ys[0], uz = pts[1][1] - pts[0][1];
+    const vx = pts[2][0] - pts[0][0], vy = ys[2] - ys[0], vz = pts[2][1] - pts[0][1];
+    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const l = Math.hypot(nx, ny, nz) || 1;
+    nx /= l; ny /= l; nz /= l;
+    let mx = 0, mz = 0;
+    for (const p of pts) { mx += p[0] / pts.length; mz += p[1] / pts.length; }
+    if (nx * (mx - cx) + ny * 1 + nz * (mz - cz) < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    const base = roofs.count;
+    pts.forEach((p, i) => roofs.vert(p[0], ys[i], p[1], nx, ny, nz, color));
+    for (let i = 1; i < pts.length - 1; i++) triFacing(roofs, base, base + i, base + i + 1, nx, ny, nz);
+  };
+  const yr = top + rise;
+  face([A, B, R1, R0], [top, top, yr, yr], roofColor);
+  face([C, D, R0, R1], [top, top, yr, yr], roofColor);
+  face([D, A, R0], [top, top, yr], hipped ? roofColor : gableColor);
+  face([B, C, R1], [top, top, yr], hipped ? roofColor : gableColor);
+  return true;
 }
 
 /** One merged wall mesh and one merged roof mesh per chunk, generated from the mapped footprints. */
