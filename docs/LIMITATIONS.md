@@ -4,14 +4,26 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 
 ## Geography and data
 
-- **Building coverage is incomplete.** OSM maps about 3,600 buildings in the prepared 33.6 km2.
-  The city centre (Waterfront, Main Bazaar, Carpenter Street, Padungan) is well covered; many
-  suburban streets have roads but no mapped buildings, so they appear as open ground. Nothing is
-  invented to fill the gaps. See `DATA_COVERAGE.md`.
+- **Most buildings are machine-detected, not mapped.** OSM maps about 3,600 buildings in the
+  prepared 33.6 km2, mainly in the city centre. The other 25,990 footprints (88 %) come from
+  Overture Maps (Microsoft ML Buildings, Google Open Buildings): outlines detected automatically
+  in aerial / satellite imagery. They are drawn as plain grey flat-roofed boxes so they can be told
+  apart from OSM buildings. Expect regularised or rounded outlines, merged neighbours, offsets of
+  a few metres, occasional false positives (canopies, containers, bright ground), buildings that
+  no longer exist and missing new ones. They have no type, name or height. See `DATA_COVERAGE.md`.
+- **Machine-detected buildings can touch roads and each other.** A footprint is removed only when
+  a mapped way's centre line runs through it, when more than half of it lies on a carriageway or
+  in water, or when it duplicates an OSM building or another detection. Smaller overlaps (a corner
+  on a road edge whose width is itself inferred, up to 10 % of area shared with a neighbour)
+  remain, and such a building also blocks movement there. Detections on mapped car parks, pitches
+  or other open land use are not filtered.
+- **Building coverage is still incomplete** where neither OSM nor the detection models have a
+  footprint (for example under tree cover). Nothing is invented to fill such gaps.
 - **Many shophouse rows are mapped as one large footprint** in OSM rather than individual lots, so
   a whole block is extruded as a single building.
 - **Building heights are almost all estimated** (3 tagged heights, 51 derived from levels,
-  the rest by type/area defaults). Skylines are therefore not accurate.
+  the rest by type/area defaults; machine-detected footprints by area alone, so a large detected
+  house and a small warehouse get the same height). Skylines are therefore not accurate.
 - **Roof shapes, facades, colours and window patterns are procedural**, not observed.
 - **Road widths are inferred** from class or lane count except for 6 tagged ways. Kerbs,
   medians, lane counts and markings are not mapped; the centre dashes are decorative.
@@ -26,7 +38,8 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - **Data edge**: the prepared area ends at 1.535-1.580 N, 110.315-110.380 E. Pending, Tabuan Jaya,
   BDC, Third Mile and most of Petra Jaya are outside it (see the roadmap).
 - OSM positional accuracy (typically a few metres for imagery-traced features) is inherited. The
-  validation report measures only our own transformation error (max 7 mm), not OSM's accuracy.
+  validation report measures only our own transformation error (max 7 mm; up to 0.3 m for the
+  deliberately simplified machine-detected outlines), not the accuracy of OSM or of the detections.
 
 ## Gameplay
 

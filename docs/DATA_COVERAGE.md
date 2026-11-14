@@ -11,7 +11,7 @@ the Astana, the State Legislative Assembly (DUN), Tua Pek Kong Temple, the museu
 Jaya. The whole area is one continuous walkable world; there is no teleporting between streets.
 
 Numbers below come from `public/data/kuching/build-report.json` (OSM base timestamp
-2026-11-14T16:38:21Z).
+2026-11-14T16:38:21Z, Overture Maps release 2026-10-21.0).
 
 ## Roads and paths (OpenStreetMap)
 
@@ -33,20 +33,56 @@ Lane counts, turn lanes, kerbs, medians, surface types and markings are essentia
 
 ## Buildings
 
-| Source | Footprints in the area | Height information |
+The world contains **29,593 building footprints**:
+
+| Source | In the world | Status | Height information |
+|---|---|---|---|
+| OpenStreetMap | 3,603 (3,667 mapped in the bbox; the rest straddle the area edge; includes 1 place-of-worship plot used as an approximate footprint) | **mapped** by people | `height` on 3, `building:levels` on 51 |
+| Microsoft ML Buildings (via Overture Maps 2026-10-21.0) | 17,657 | **machine-detected** from imagery | none |
+| Google Open Buildings (via Overture Maps 2026-10-21.0) | 8,333 | **machine-detected** from imagery | none |
+
+So 12 % of the footprints are human-mapped and 88 % are machine-detected. The machine-detected
+ones fill the residential districts where OSM has roads but no buildings; the historic centre and
+commercial core remain almost entirely OSM. In the chunk files every building carries its source
+(`s`: absent/0 OSM, 1 Microsoft, 2 Google); in the 3D view machine-detected buildings are plain
+grey boxes with flat roofs, and on the map they are a lighter grey than OSM buildings.
+
+### How the Overture footprints were selected
+
+The Overture extract for the bbox has 32,733 features: 3,654 sourced from OSM (skipped, because
+OSM buildings are read from the OSM extract directly), 19,291 Microsoft and 9,788 Google. Of
+those 29,079 machine-detected candidates:
+
+| Outcome | Count | Rule (`tools/generate-world/overture.ts`) |
 |---|---|---|
-| OpenStreetMap (used) | 3,667 mapped, 3,602 emitted (the rest straddle the area edge) | `height` on 3, `building:levels` on 51 |
-| Overture Maps 2026-10-21.0, buildings theme (measured, not used) | 32,733 total: 3,654 from OSM, 19,291 Microsoft ML Buildings, 9,788 Google Open Buildings | `height` on 3, `num_floors` on 56 (no more than OSM) |
+| **Kept** | **25,990** | |
+| Centre outside the prepared chunk area | 2,222 | the download bbox is slightly larger than the whole-chunk area |
+| Too small | 533 | footprint under 12 m2 |
+| Duplicate of another machine-detected footprint | 224 | centroid of one inside the other, or more than 10 % of the area shared; Microsoft is preferred over Google, then the lower UUID |
+| Mostly on a carriageway | 80 | more than 50 % of the footprint within the (mostly inferred) half-width of a mapped road or pedestrian street |
+| In water | 17 | more than 50 % of the footprint inside a mapped water polygon |
+| Crossed by a mapped way | 7 | the centre line of any mapped road or path (tunnels and building passages excepted) runs through the footprint |
+| Duplicate of an OSM building | 6 | centroid inside an OSM footprint, an OSM centroid inside it, or more than 10 % of either area shared. Low because Overture already removes ML footprints that overlap the OSM buildings of its release |
+| Degenerate | 0 | fewer than 3 vertices after cleaning |
 
-Findings:
+OSM buildings are never changed, moved or removed by this step. Kept outlines are simplified with
+a 0.3 m Douglas-Peucker tolerance (machine-detected data only; 134,946 -> 134,562 vertices, so the
+effect is small). Ids are `2^52 +` the first 48 bits of the Overture (GERS) UUID, which cannot
+collide with an OSM way id or a negated relation id.
 
-- OSM building coverage is good in the historic centre and commercial core and thin in
-  residential districts. Overture lists about **nine times** as many footprints because it adds
-  machine-learned outlines derived from aerial/satellite imagery. Those are real detected
-  buildings but with lower geometric quality (rounded or merged outlines, occasional false
-  positives) and no attributes.
-- Neither source has meaningful height data for Kuching. Heights in the app are therefore:
-  3 from `height`, 51 from `building:levels` (levels x 3.3 m + 1.0 m), 3,548 **estimated**.
+Quality of the machine-detected footprints (what to expect in the world):
+
+- outlines are regularised boxes or rounded shapes, not surveyed corners; a row of houses is
+  sometimes one merged outline and a large building sometimes several pieces;
+- positions can be a few metres off, so a building can touch or partly overlap a road edge (road
+  widths here are themselves inferred) or a neighbouring OSM building by up to 10 % of its area;
+- false positives (containers, canopies, vehicles, bright ground) and buildings demolished or
+  built since the imagery date occur; Google's confidence scores in this extract range 0.65-0.90;
+- there is no type, name, height or level count: all are kind `generic` with a height estimated
+  from footprint area only.
+
+Heights in the app: 3 from `height`, 51 from `building:levels` (levels x 3.3 m + 1.0 m),
+29,539 **estimated** (3,549 OSM buildings by type/area and all 25,990 machine-detected ones by area).
 - OSM building types present: `yes` 2,265, `house` 837, `retail` 207, `school` 123, `detached` 50,
   `semidetached_house` 48, `commercial` 45, `apartments` 22, `roof` 16, `office` 11, `hotel` 8, others.
 
@@ -58,12 +94,16 @@ Estimated-height defaults (used only when neither `height` nor `building:levels`
 | apartments | 15 m | | religious | 10 m |
 | commercial, retail | 9 m | | industrial, warehouse | 8 m |
 | hotel, office | 20 m | | hut, shed, garage, kiosk | 3 m |
-| open roof / shelter | 4.5 m | | untyped (`building=yes`) | 3.5 / 6.5 / 8 / 10 / 12 m for footprints under 40 / 150 / 600 / 2,500 / over 2,500 m2 |
+| open roof / shelter | 4.5 m | | untyped (`building=yes`) and every machine-detected footprint | 3.5 / 6.5 / 8 / 10 / 12 m for footprints under 40 / 150 / 600 / 2,500 / over 2,500 m2 |
 
 Each building in the chunk files carries its height provenance (`hs`: 0 tagged, 1 from levels,
-2 estimated).
+2 estimated) and its footprint source (`s`).
 
-Footprint vertex error after generation: max 7.0 mm, RMS 4.1 mm over 19,763 vertices (verified).
+OSM footprint vertex error after generation: max 7.0 mm, RMS 4.1 mm over 19,763 vertices (verified).
+Machine-detected footprints: every emitted vertex is within 7.1 mm of a source vertex (123,761
+vertices) and every source outline vertex is within 30.2 cm (RMS 0.9 cm) of the emitted outline,
+i.e. within the 0.3 m simplification tolerance (verified); none has its centroid inside an OSM
+building (verified).
 
 ## River and water
 
@@ -88,7 +128,7 @@ Footprint vertex error after generation: max 7.0 mm, RMS 4.1 mm over 19,763 vert
 | `landuse=retail` / `commercial` | 14 | |
 | `landuse=cemetery` | 8 | |
 | Individually mapped trees (`natural=tree`) | 19 | mapped positions |
-| Procedural trees | 13,015 | **inferred**: deterministic positions inside mapped wood (9 m grid) and park (17 m grid) polygons, excluded from roads, buildings and water |
+| Procedural trees | 12,917 | **inferred**: deterministic positions inside mapped wood (9 m grid) and park (17 m grid) polygons, excluded from roads, buildings and water |
 
 Land-use mapping is sparse; unmapped ground is drawn in a neutral colour rather than guessed.
 

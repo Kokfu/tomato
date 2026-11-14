@@ -2,7 +2,9 @@
 
 A lightweight, browser-based third-person walking simulator of the real city of
 **Kuching, Sarawak, Malaysia**. Roads, building footprints, the Sarawak River, bridges, parks and
-landmark positions are generated from OpenStreetMap; terrain comes from the Copernicus 30 m DEM.
+landmark positions are generated from OpenStreetMap; where OpenStreetMap has no building,
+machine-detected footprints from Overture Maps (Microsoft, Google) are added and shown as plain
+grey buildings; terrain comes from the Copernicus 30 m DEM.
 You walk a human character through the actual street network, starting on the Kuching Waterfront.
 
 It is a static site (HTML5 + TypeScript + Three.js). There is no backend and no map API at runtime.
@@ -43,22 +45,28 @@ running, **JUMP** jumps. Key bindings live in `KEY_BINDINGS` in `src/player/Inpu
 | `npm run typecheck` | TypeScript check |
 | `npm test` | Unit tests (projection, routing) |
 | `npm run test:e2e` | Playwright browser tests (gameplay, layouts, touch, production build) |
-| `npm run data:fetch` | Download the OSM extract and DEM tile into `data-src/` (cached; `-- --force` to refresh) |
+| `npm run data:fetch` | Download the OSM extract, the Overture buildings extract and the DEM tile into `data-src/` (cached) |
 | `npm run data:build` | Regenerate `public/data/kuching/` from the cache |
-| `npm run data:validate` | Compare generated assets with the OSM source geometry |
+| `npm run data:validate` | Compare generated assets with the OSM and Overture source geometry |
 | `npm run data:all` | Fetch, build and validate |
 
-Requirements: Node.js 24+ (the tools run TypeScript directly). Browser tests use the installed
+Requirements: Node.js 24+ (the tools run TypeScript directly). The Overture step of
+`data:fetch` additionally needs the `overturemaps` Python CLI (`pip install overturemaps`, Python
+3.10+, either on PATH or in a virtual environment at `data-src/venv`); without it that step is
+skipped with a message and the world is built from OpenStreetMap buildings only. Browser tests use the installed
 Microsoft Edge by default; set `K3D_CHANNEL=chromium` after `npx playwright install chromium` to
 use Playwright's browser instead.
 
 ## Refreshing the map data
 
 ```bash
-npm run data:fetch -- --force
+node tools/extract-map-data/fetch-osm.ts --force
+node tools/extract-map-data/fetch-overture.ts --force
 npm run data:build
 npm run data:validate
 ```
+
+(`npm run data:fetch -- --force` passes `--force` only to the last step, the DEM download.)
 
 To cover a different or larger area, edit `DATA_BBOX` in `src/world/config.ts` first.
 
@@ -84,9 +92,16 @@ nginx). Serve with gzip or brotli enabled; the JSON chunk files compress about 4
 ## Attribution
 
 - Map data (c) [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, ODbL 1.0.
+- Additional machine-detected building footprints from the
+  [Overture Maps Foundation](https://docs.overturemaps.org/attribution/) buildings theme
+  (release 2026-10-21.0, ODbL 1.0): Microsoft
+  [Global ML Building Footprints](https://github.com/microsoft/GlobalMLBuildingFootprints)
+  (ODbL as distributed by Overture) and [Google Open Buildings](https://sites.research.google/gr/open-buildings/)
+  (CC BY 4.0). Details and the exact licence statements found are in
+  [Geographic sources](docs/GEOGRAPHIC_SOURCES.md).
 - Elevation: Copernicus DEM GLO-30, (c) DLR e.V. 2010-2014 and (c) Airbus Defence and Space GmbH
   2014-2018, provided under COPERNICUS by the European Union and ESA; all rights reserved.
 - Three.js (MIT).
 
-Building heights are estimates unless tagged in the source, and landmark models are
-approximations. See the limitations document before relying on any dimension.
+Building heights are estimates unless tagged in the source, plain grey buildings are
+machine-detected outlines of lower accuracy, and landmark models are approximations. See the limitations document before relying on any dimension.

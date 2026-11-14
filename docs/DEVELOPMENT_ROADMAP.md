@@ -6,8 +6,9 @@ The loader, chunk format and pipeline are area-agnostic. To grow the map:
 
 1. Widen `DATA_BBOX` in `src/world/config.ts` (for example 1.48-1.62 N, 110.28-110.44 E to take
    in Petra Jaya, Satok, Pending, Tabuan Jaya, BDC, Batu Lintang and Third Mile).
-2. `npm run data:fetch -- --force` (the Overpass extract is tiled; raise `NX`/`NY` in
-   `fetch-osm.ts` for larger areas so each request stays small).
+2. Refresh the caches for the new bbox (the Overpass extract is tiled; raise `NX`/`NY` in
+   `fetch-osm.ts` for larger areas so each request stays small): run each of
+   `tools/extract-map-data/fetch-osm.ts`, `fetch-overture.ts` and `fetch-dem.ts` with `--force`.
 3. `npm run data:build && npm run data:validate`.
 
 Chunk count grows with area (about 15 chunks per km2, ~5 KB each on average); the client only
@@ -25,11 +26,11 @@ area) -> Padungan east and Pending -> Batu Lintang and Third Mile -> Tabuan Jaya
 
 ## Data quality
 
-- **Overture Maps buildings** to fill OSM gaps (see `DATA_COVERAGE.md`): add
-  `tools/extract-map-data/fetch-overture.ts` (the `overturemaps` CLI can export a bbox as GeoJSON),
-  conflate with OSM in `build.ts` (keep OSM where footprints overlap, add Overture elsewhere, tag
-  the source per building so the provenance stays visible), and use Overture `height` /
-  `num_floors` where present.
+- Machine-detected footprints (Overture Maps, done): filter detections that fall on mapped car
+  parks, pitches and other open land use; split merged outlines; use Overture `height` /
+  `num_floors` if a future release carries them for this area (the pipeline already reads them).
+- Trace the machine-detected buildings into OpenStreetMap properly (with types and levels); the
+  conflation then drops the detection automatically in favour of the mapped building.
 - Split long shophouse-row footprints into lots along mapped `addr:*` nodes or party-wall
   heuristics (must be labelled as inferred).
 - Contribute fixes upstream to OpenStreetMap (building levels, heights, sidewalks, bridge

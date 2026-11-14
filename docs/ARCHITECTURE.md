@@ -40,6 +40,7 @@ OpenStreetMap (Overpass, one-time)   Copernicus GLO-30 DEM tile
 | Step | Script | Output |
 |---|---|---|
 | Fetch OSM | `extract-map-data/fetch-osm.ts` | `data-src/osm/kuching.json` (tiled Overpass queries, cached) |
+| Fetch Overture buildings (optional) | `extract-map-data/fetch-overture.ts` | `data-src/overture/buildings.geojsonl` + `buildings.meta.json` (via the `overturemaps` Python CLI, cached) |
 | Fetch DEM | `extract-map-data/fetch-dem.ts` | `data-src/dem/*.tif` |
 | Generate | `generate-world/build.ts` | chunks, height grid, landmarks, overview, manifest |
 | Routing graph | `generate-world/build-graph.ts` | pedestrian graph (see `NAVIGATION.md`) |
@@ -49,6 +50,10 @@ OpenStreetMap (Overpass, one-time)   Copernicus GLO-30 DEM tile
 
 1. **Classify** OSM elements into roads, buildings, water, land-use areas, trees, piers.
 2. **Water**: union all water polygons and clip to the prepared area.
+   Then (**2b**, only when the Overture extract is present) **building conflation**
+   (`generate-world/overture.ts`): machine-detected Microsoft / Google footprints are added where
+   OSM has no building; OSM buildings are never changed. Each added building is labelled with its
+   source (`s`) and gets an id of `2^52 +` 48 bits of its Overture UUID.
 3. **Height grid**: sample the DEM on a 16 m grid, estimate bare ground from the surface model
    (minimum filter + blur), and blend to a constant bank level near water.
 4. **Bridges**: group connected bridge ways, compute an inferred deck elevation profile.
@@ -71,7 +76,7 @@ relative to the chunk corner, which bounds the generation error at 7 mm (verifie
 | `world/CollisionWorld` | Simplified collision: building outlines, water polygons, bridge/pier decks, passages |
 | `world/TerrainBuilder` | Terrain mesh + small land-use ground texture per chunk |
 | `world/RoadBuilder` | Road ribbons draped on terrain, bridge decks, railings, piers, quay walls |
-| `world/BuildingBuilder` | Extruded mapped footprints, merged per chunk |
+| `world/BuildingBuilder` | Extruded footprints, merged per chunk; machine-detected footprints (`s` > 0) get a neutral palette and flat roofs only |
 | `world/WaterBuilder` | River surface from mapped polygons, animated shader |
 | `world/VegetationBuilder` | Instanced trees |
 | `world/LandmarkManager` + `world/landmarks/*` | Hand-made landmark models overriding generic buildings |
@@ -138,6 +143,8 @@ mapped footprint in `data`. See `LANDMARKS.md`.
 ## Testing
 
 - `npm test`: unit tests (projection, routing) on Node's built-in test runner.
-- `npm run data:validate`: generated assets against OSM source geometry.
+- `npm run data:validate`: generated assets against OSM source geometry, and machine-detected
+  footprints against the Overture extract (within the 0.3 m simplification tolerance, none centred
+  inside an OSM building).
 - `npm run test:e2e`: Playwright in a real GPU-backed browser: gameplay, layout at four viewport
   sizes, touch input, production build.
