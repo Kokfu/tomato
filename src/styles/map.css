@@ -1,0 +1,115 @@
+/* Minimap controls, full map and navigation hint (owned by src/ui/Minimap.ts). */
+
+/* --- Minimap extras --------------------------------------------------------------------- */
+#minimap-wrap { touch-action: none; }
+#minimap-ctl {
+  position: absolute; right: 198px; top: calc(12px + var(--safe-t)); display: flex; flex-direction: column; gap: 5px;
+}
+#minimap-ctl button {
+  width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); padding: 0;
+  font-size: 16px; font-weight: 700; line-height: 1; display: grid; place-items: center; backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px); touch-action: manipulation;
+}
+#minimap-ctl button:hover { border-color: var(--accent); }
+#minimap-ctl button.on { color: var(--accent); border-color: var(--accent); }
+#minimap-ctl .mm-mode { font-size: 11px; }
+
+/* --- Navigation hint (HUD) ---------------------------------------------------------------- */
+#nav-hint {
+  position: absolute; left: 50%; top: calc(46px + var(--safe-t)); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 10px; max-width: min(440px, calc(100vw - 24px));
+}
+#nav-hint .nav-arrow { flex: none; width: 34px; height: 34px; border-radius: 50%; background: #1a73e8; display: grid; place-items: center; }
+#nav-hint .nav-arrow svg { width: 22px; height: 22px; display: block; transition: transform 0.12s linear; }
+#nav-hint.nav-off .nav-arrow { background: #7a6a3a; }
+#nav-hint .nav-text { min-width: 0; }
+#nav-hint .nav-main { font-weight: 600; font-size: 14px; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#nav-hint .nav-sub { color: var(--muted); font-size: 12px; margin-top: 1px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#nav-hint .nav-clear {
+  flex: none; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06);
+  font-size: 14px; line-height: 1; padding: 0;
+}
+#nav-hint .nav-clear:hover { border-color: var(--accent); }
+
+/* --- Full map ----------------------------------------------------------------------------- */
+#fullmap { background: #22323b; touch-action: none; }
+#fullmap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#fullmap canvas.dragging { cursor: grabbing; }
+#fullmap .fm-panel {
+  position: absolute; background: rgba(13, 27, 36, 0.9); border: 1px solid var(--line); border-radius: 12px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+#fullmap button { touch-action: manipulation; }
+.fm-btn {
+  min-height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.07);
+  font-size: 13px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.fm-btn:hover { border-color: var(--accent); }
+.fm-btn.on { border-color: var(--accent); color: var(--accent); }
+.fm-btn:disabled { opacity: 0.5; cursor: default; }
+.fm-icon { width: 40px; min-width: 40px; height: 40px; padding: 0; font-size: 20px; }
+
+.fm-top {
+  left: 12px; right: 12px; top: calc(12px + var(--safe-t)); padding: 8px 8px 8px 14px; display: flex; align-items: center; gap: 10px;
+}
+.fm-title { font-weight: 700; font-size: 16px; letter-spacing: 0.02em; white-space: nowrap; }
+.fm-coords { flex: 1; min-width: 0; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1.35; }
+.fm-coords div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fm-coords b { color: var(--text); font-weight: 600; }
+.fm-actions { display: flex; gap: 6px; flex: none; }
+
+.fm-zoom { right: 12px; top: 50%; transform: translateY(-50%); padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+
+.fm-list { left: 12px; top: calc(78px + var(--safe-t)); bottom: calc(34px + var(--safe-b)); width: 280px; display: flex; flex-direction: column; overflow: hidden; }
+.fm-list-head { padding: 10px 12px 8px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); }
+.fm-list-head span { color: var(--muted); font-weight: 400; font-size: 12px; }
+.fm-list-items { overflow-y: auto; flex: 1; padding: 4px; touch-action: pan-y; overscroll-behavior: contain; }
+.fm-item {
+  width: 100%; display: flex; align-items: center; gap: 9px; padding: 8px 8px; border: 0; border-radius: 8px; background: none; text-align: left; min-height: 40px;
+}
+.fm-item:hover { background: rgba(255, 255, 255, 0.07); }
+.fm-item.sel { background: rgba(242, 193, 78, 0.16); }
+.fm-dot { flex: none; width: 11px; height: 11px; border-radius: 50%; border: 2px solid #fff; }
+.fm-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.fm-item-dist { flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.fm-info { left: 304px; bottom: calc(34px + var(--safe-b)); width: min(380px, calc(100vw - 328px)); padding: 12px 12px 12px 14px; }
+#fullmap.no-list .fm-info { left: 12px; width: min(380px, calc(100vw - 24px)); }
+.fm-info-head { display: flex; align-items: flex-start; gap: 8px; }
+.fm-info-name { flex: 1; font-weight: 700; font-size: 16px; line-height: 1.25; }
+.fm-info-close { flex: none; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); padding: 0; font-size: 14px; }
+.fm-info-kind { color: var(--muted); font-size: 12px; margin-top: 2px; text-transform: capitalize; }
+.fm-info-rows { margin: 8px 0 10px; font-size: 13px; line-height: 1.55; font-variant-numeric: tabular-nums; }
+.fm-info-rows span { color: var(--muted); }
+.fm-route { margin: 0 0 10px; padding: 7px 10px; border-radius: 8px; background: rgba(26, 115, 232, 0.22); border: 1px solid rgba(26, 115, 232, 0.55); font-size: 13px; line-height: 1.45; }
+.fm-route.none { background: rgba(242, 193, 78, 0.12); border-color: rgba(242, 193, 78, 0.45); }
+.fm-info-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.fm-btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+
+.fm-scale { position: absolute; right: 12px; bottom: calc(30px + var(--safe-b)); pointer-events: none; font-size: 11px; color: #eef3f5; text-shadow: 0 1px 2px #000; text-align: center; }
+.fm-scale i { display: block; height: 5px; border: 2px solid #eef3f5; border-top: 0; box-shadow: 0 1px 1px rgba(0, 0, 0, 0.5); margin-top: 2px; }
+.fm-attrib { position: absolute; right: 8px; bottom: calc(6px + var(--safe-b)); font-size: 11px; color: #e8eef1; background: rgba(13, 27, 36, 0.6); padding: 2px 7px; border-radius: 6px; pointer-events: none; }
+
+/* --- Small screens ------------------------------------------------------------------------- */
+@media (max-width: 720px), (max-height: 520px) {
+  #minimap-ctl { right: 52px; top: calc(126px + var(--safe-t)); }
+  #minimap-ctl button { width: 36px; height: 36px; }
+  #nav-hint { left: 8px; top: calc(62px + var(--safe-t)); transform: none; max-width: calc(100vw - 136px); gap: 7px; padding: 6px 6px 6px 7px; }
+  #nav-hint .nav-arrow { width: 28px; height: 28px; }
+  #nav-hint .nav-arrow svg { width: 18px; height: 18px; }
+  #nav-hint .nav-main { font-size: 13px; }
+  #nav-hint .nav-sub { font-size: 11px; }
+
+  .fm-top { left: 8px; right: 8px; top: calc(8px + var(--safe-t)); padding: 6px 6px 6px 10px; gap: 6px; flex-wrap: wrap; }
+  .fm-title { display: none; }
+  .fm-coords { font-size: 11px; }
+  .fm-actions { order: 3; width: 100%; }
+  .fm-actions .fm-btn { flex: 1; padding: 0 6px; font-size: 12px; min-height: 38px; }
+  .fm-zoom { right: 8px; top: auto; bottom: calc(40px + var(--safe-b)); transform: none; }
+  #fullmap.has-info .fm-zoom, #fullmap.has-info .fm-scale { display: none; }
+  .fm-list { left: 8px; right: 8px; width: auto; top: auto; bottom: calc(8px + var(--safe-b)); height: min(52vh, 420px); z-index: 2; }
+  .fm-info, #fullmap.no-list .fm-info { left: 8px; right: 8px; width: auto; bottom: calc(28px + var(--safe-b)); padding: 10px 10px 10px 12px; }
+  .fm-info-btns .fm-btn { flex: 1; }
+  .fm-scale { right: 64px; bottom: calc(44px + var(--safe-b)); }
+  .fm-attrib { font-size: 10px; right: 50%; transform: translateX(50%); white-space: nowrap; }
+}
