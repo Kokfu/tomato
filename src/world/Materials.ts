@@ -52,30 +52,29 @@ export class GeoBuf {
 }
 
 function facadeTexture(): THREE.CanvasTexture {
-  // One bay x one storey. Multiplied by the per-building vertex colour.
+  // One bay x one storey. Multiplied by the per-building vertex colour, so the wall stays white.
   const S = 128;
   const c = document.createElement('canvas');
   c.width = c.height = S;
   const g = c.getContext('2d')!;
   g.fillStyle = '#ffffff';
   g.fillRect(0, 0, S, S);
-  // floor band
-  g.fillStyle = '#d9d9d9';
-  g.fillRect(0, S - 10, S, 10);
-  // window recess
-  g.fillStyle = '#8f949a';
-  g.fillRect(26, 26, 76, 68);
-  const grad = g.createLinearGradient(0, 30, 0, 90);
-  grad.addColorStop(0, '#5d7387');
-  grad.addColorStop(1, '#2f3d4b');
+  // faint floor line
+  g.fillStyle = '#e4e4e2';
+  g.fillRect(0, S - 5, S, 5);
+  // window: frame, glass with sky tint, mullions, sill
+  g.fillStyle = '#b9bcbf';
+  g.fillRect(38, 30, 52, 62);
+  const grad = g.createLinearGradient(0, 33, 0, 89);
+  grad.addColorStop(0, '#8fa9bd');
+  grad.addColorStop(1, '#566b7c');
   g.fillStyle = grad;
-  g.fillRect(30, 30, 68, 60);
-  g.fillStyle = '#c9ccd0';
-  g.fillRect(62, 30, 4, 60);
-  g.fillRect(30, 58, 68, 3);
-  // sill
-  g.fillStyle = '#eeeeee';
-  g.fillRect(22, 94, 84, 5);
+  g.fillRect(41, 33, 46, 56);
+  g.fillStyle = '#c7cacd';
+  g.fillRect(63, 33, 2, 56);
+  g.fillRect(41, 58, 46, 2);
+  g.fillStyle = '#eceae6';
+  g.fillRect(34, 92, 60, 4);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.colorSpace = THREE.SRGBColorSpace;

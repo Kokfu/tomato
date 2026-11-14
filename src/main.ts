@@ -172,6 +172,7 @@ async function boot(): Promise<void> {
   let fpsAcc = 0, fpsFrames = 0, fps = 0;
   let spawnReady = false;
   let simulatedDt = 0; // test hook: fixed timestep when > 0
+  let stepsPerFrame = 1; // test hook: run the simulation faster than real time
 
   function frame(): void {
     requestAnimationFrame(frame);
@@ -189,7 +190,7 @@ async function boot(): Promise<void> {
     }
 
     input.poll();
-    if (spawnReady && !paused) player.update(dt, input, tpc.yaw);
+    if (spawnReady && !paused) for (let i = 0; i < stepsPerFrame; i++) player.update(dt, input, tpc.yaw);
     tpc.update(dt, player.position, input);
     input.endFrame();
 
@@ -239,6 +240,7 @@ async function boot(): Promise<void> {
     get fps() { return fps; },
     get ready() { return spawnReady; },
     setSimulatedDt: (v: number) => (simulatedDt = v),
+    setStepsPerFrame: (n: number) => (stepsPerFrame = Math.max(1, n | 0)),
     teleportGeo: (lat: number, lon: number) => {
       const [x, z] = geoToWorld(lat, lon);
       player.teleport(x, z);

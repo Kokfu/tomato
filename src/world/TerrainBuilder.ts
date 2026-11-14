@@ -24,6 +24,15 @@ function groundTexture(data: ChunkData, size: number): THREE.CanvasTexture {
     }
     g.fill('evenodd');
   }
+  // Subtle deterministic mottling so large open ground is not a flat colour (decorative only).
+  let seed = (data.cx * 73856093) ^ (data.cz * 19349663);
+  const rnd = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) | 0) >>> 0) / 4294967296;
+  const dots = size * 3;
+  for (let i = 0; i < dots; i++) {
+    g.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.035)';
+    const r = 1 + rnd() * (size / 90);
+    g.fillRect(rnd() * size, rnd() * size, r, r);
+  }
   const t = new THREE.CanvasTexture(c);
   t.flipY = false;
   t.colorSpace = THREE.SRGBColorSpace;
