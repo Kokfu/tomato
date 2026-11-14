@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-14T17:05:47.952Z",
+ "generatedAt": "2026-11-14T17:33:43.087Z",
  "osmTimestamp": "2026-11-14T16:38:21Z",
  "checks": [
   {
@@ -48,7 +48,7 @@
   {
    "name": "bridge collision decks emitted",
    "pass": true,
-   "detail": "200 traversable deck segments across all chunks"
+   "detail": "318 traversable deck segments across all chunks"
   },
   {
    "name": "spawn on dry open ground",

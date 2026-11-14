@@ -386,7 +386,17 @@ for (let i = 0; i < heights.length; i++) { heightI16[i] = Math.round(heights[i] 
     if (r.bridge || r.type === 'stream' || r.tunnel) continue;
     let wet = 0;
     for (const [x, z] of r.pts) if (inWater(x, z)) wet++;
-    if (wet >= 2 && wet >= r.pts.length * 0.5) {
+    // Foot paths: any stretch over the water polygon (boardwalks, promenades built over the bank)
+    // makes the way a low deck, so the mapped path stays continuous.
+    let footWet = false;
+    if (r.walk && ['footway', 'path', 'pedestrian', 'steps', 'cycleway'].includes(r.type)) {
+      for (let i = 1; i < r.pts.length && !footWet; i++) {
+        const a = r.pts[i - 1], c = r.pts[i];
+        const n = Math.max(1, Math.ceil(Math.hypot(c[0] - a[0], c[1] - a[1]) / 2));
+        for (let k = 0; k <= n; k++) if (inWater(a[0] + ((c[0] - a[0]) * k) / n, a[1] + ((c[1] - a[1]) * k) / n)) { footWet = true; break; }
+      }
+    }
+    if (footWet || (wet >= 2 && wet >= r.pts.length * 0.5)) {
       r.bridge = true;
       r.elev = r.pts.map(([x, z]) => groundH(x, z) + 0.3);
       stats.untaggedWaterCrossings = (stats.untaggedWaterCrossings ?? 0) + 1;

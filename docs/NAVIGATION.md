@@ -163,17 +163,15 @@ otherwise they are left out, so nothing is ever drawn through a building or acro
 
 - **Sparse footways.** Kuching has few mapped footways and almost no mapped sidewalks in OSM, so
   most routes follow road centre lines, and a route can be much longer than the walk a local would
-  take. Example: waterfront to Fort Margherita is 373 m in a straight line but 2.74 km by route:
-  across Darul Hana Bridge, north past the Astana and back down Jalan Fort, because the mapped
-  riverside promenade between the bridge landing and the fort runs inside the mapped river polygon
-  (see the next point) and nothing else mapped joins them.
-- **Untagged ways over water are never used.** 57 segments are dropped for this, mostly riverside
-  boardwalks and jetties that mappers drew inside the river polygon without a bridge tag. The main
-  build makes 12 such ways walkable decks in the 3D world, so the player can physically walk some
-  paths the router will not suggest. `build-graph.ts --decks` admits the segments of exactly those
-  ways (46 segments); it is off by default so that only bridge-tagged ways and piers ever cross
-  water, and with the current data it does not shorten the Fort Margherita route, because a 6 m
-  stretch of the promenade is in the water polygon without a generated deck.
+  take. Example: waterfront to Fort Margherita is 373 m in a straight line and 1.28 km by route
+  (across Darul Hana Bridge, then along the mapped riverside promenade).
+- **Mapped foot paths over water count as decks.** Mappers drew some riverside boardwalks and
+  jetties inside the river polygon without a bridge tag (57 segments). The main build turns every
+  mapped foot path that touches the water polygon into a low walkable deck, and `npm run data:graph`
+  runs `build-graph.ts --decks` so the router uses exactly those ways. Open water is still never
+  crossed: an edge over water exists only where a mapped bridge, pier or foot path does. Without
+  `--decks` only bridge-tagged ways and piers cross water, and the Fort Margherita route becomes a
+  2.74 km detour past the Astana.
 - **Connections exist only at shared OSM nodes.** Ways that touch visually but do not share a node
   are not connected; open plazas and car parks are not routable areas (the route follows their
   mapped edges or paths).

@@ -16,14 +16,14 @@
   "areas": 619,
   "demRiverLevelCm": 0,
   "terrainMaxCm": 3936,
-  "untaggedWaterCrossings": 12,
+  "untaggedWaterCrossings": 20,
   "buildingPassages": 32
  },
  "missingLandmarks": [
   "Satok Bridge"
  ],
  "chunkBytes": {
-  "total": 2505026,
+  "total": 2509620,
   "max": 25268
  }
 }
