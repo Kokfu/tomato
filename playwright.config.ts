@@ -21,7 +21,7 @@ export default defineConfig({
     timeout: 60_000,
   },
   projects: [
-    { name: 'desktop-1920', use: { viewport: { width: 1920, height: 1080 } }, testIgnore: /touch/ },
+    { name: 'desktop-1920', use: { viewport: { width: 1920, height: 1080 } }, testIgnore: /touch|production/ },
     { name: 'laptop-1366', use: { viewport: { width: 1366, height: 768 } }, testMatch: /layout|production/ },
     { name: 'mobile-390', use: { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 3 }, testMatch: /layout|touch/ },
     { name: 'mobile-360', use: { viewport: { width: 360, height: 800 }, hasTouch: true, isMobile: true, deviceScaleFactor: 3 }, testMatch: /layout|touch/ },
