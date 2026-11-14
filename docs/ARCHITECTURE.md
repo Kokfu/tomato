@@ -102,7 +102,8 @@ relative to the chunk corner, which bounds the generation error at 7 mm (verifie
 | Roads | all mapped ways, lane dashes | major roads and bridges only, coarser draping |
 | Buildings | textured facades | flat-shaded, same footprints |
 | Ground texture | 256-512 px per chunk | 128 px |
-| Trees, landmark models | yes | no |
+| Trees | yes | no |
+| Landmark models | yes | yes (so the DUN and bridge masts stay on the skyline) |
 
 Per chunk the scene uses: 1 terrain mesh, 0-1 water, up to 4 road layers, 0-1 markings,
 0-1 structure mesh, 2 building meshes, 2 instanced tree meshes. All layers share global materials.

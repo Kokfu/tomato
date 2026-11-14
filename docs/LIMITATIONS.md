@@ -43,7 +43,7 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 
 - Chunk meshes are generated on the main thread (up to about 20 ms per chunk on the test
   machine), one per frame. A worker-based builder would remove these small hitches.
-- Distant chunks omit trees, minor roads and landmark models, so far silhouettes are simplified.
+- Distant chunks omit trees and minor roads, so far silhouettes are simplified.
 - Ground textures are low resolution (0.5-1 m per pixel) by design; land-use edges are soft.
 - No texture compression is used because the app ships almost no textures (one 128 px facade
   tile plus per-chunk canvas ground textures generated at runtime).
