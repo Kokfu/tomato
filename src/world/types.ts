@@ -49,6 +49,19 @@ export interface BuildingData {
    * front a street (edge i runs from ring vertex i to i + 1), lv = storey count.
    */
   a?: { c: number; f: number[]; lv: number };
+  /**
+   * Architectural class: index into ARCH_CLASSES (absent = 'unknown'). Describes the BUILDING FORM
+   * only. It is derived from the footprint's own tags, the landmark registry and the streetscape
+   * pass; business points of interest (tenancy) never influence it. See src/world/arch/classify.ts.
+   */
+  ac?: number;
+  /** Basis of `ac`: index into ARCH_BASIS (absent = 'default'). */
+  ab?: number;
+  /**
+   * Landmark registry id (src/world/landmarks/registry.ts). A building carrying it is a PROTECTED
+   * landmark site: it is drawn by its dedicated model only and must never reach a generic renderer.
+   */
+  lm?: string;
 }
 
 export interface AreaData {
@@ -163,6 +176,22 @@ export const ROAD_STYLE: Record<RoadType, { color: number; group: number; width:
 };
 
 export const BUILDING_KINDS = ['generic', 'house', 'commercial', 'shophouse', 'religious', 'civic', 'industrial', 'roof', 'tower', 'hut'] as const;
+/**
+ * Explicit architectural classes (building form). Separate from BUILDING_KINDS (legacy render
+ * palette), from current use and from business tenancy.
+ */
+export const ARCH_CLASSES = [
+  'unknown', 'shophouse', 'heritage_shophouse', 'chinese_temple', 'mosque', 'church', 'other_worship', 'food_court',
+  'opera_stage', 'market', 'government', 'museum', 'fort', 'palace', 'bridge', 'monument', 'commercial', 'residential',
+  'industrial', 'civic', 'open_roof', 'utility',
+] as const;
+export type ArchClass = (typeof ARCH_CLASSES)[number];
+/** How an architectural class was established, weakest first. */
+export const ARCH_BASIS = ['default', 'inferred', 'tag', 'registry'] as const;
+export type ArchBasis = (typeof ARCH_BASIS)[number];
+/** Classes the shophouse-row generator may be applied to. Everything else is never given shopfronts. */
+export const SHOPFRONT_CLASSES: ReadonlySet<ArchClass> = new Set<ArchClass>(['unknown', 'shophouse', 'heritage_shophouse', 'commercial']);
+
 export const AREA_KINDS = ['park', 'grass', 'wood', 'sand', 'pitch', 'parking', 'plaza', 'cemetery', 'residential', 'commercial', 'industrial', 'scrub', 'school', 'construction'] as const;
 export const AREA_COLORS: Record<(typeof AREA_KINDS)[number], string> = {
   park: '#86a868', grass: '#8fae6c', wood: '#5f8a52', sand: '#d8c9a0', pitch: '#7fb06a', parking: '#8f8f8c',

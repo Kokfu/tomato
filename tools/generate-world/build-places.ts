@@ -30,6 +30,8 @@ const CELL = 32;
 const bldGrid = new Map<string, Bld[]>();
 const segGrid = new Map<string, Seg[]>();
 const chunkKeys = new Set<string>();
+/** Building records that are protected landmark sites: places inside them are kept, but never get a generic facade sign. */
+const landmarkSiteIds = new Set<number>();
 const STREET = new Set(['trunk', 'primary', 'secondary', 'tertiary', 'residential', 'pedestrian', 'service'].map((t) => ROAD_TYPES.indexOf(t as any)));
 function add<T>(grid: Map<string, T[]>, minX: number, minZ: number, maxX: number, maxZ: number, v: T): void {
   for (let gz = Math.floor(minZ / CELL); gz <= Math.floor(maxZ / CELL); gz++)
@@ -46,6 +48,7 @@ for (const f of readdirSync(`${ROOT}/chunks`)) {
   chunkKeys.add(key);
   for (const b of d.buildings) {
     if (BUILDING_KINDS[b.k] === 'roof' || b.s) continue; // only human-mapped footprints can carry a business
+    if (b.lm) landmarkSiteIds.add(b.id);
     const ring = b.r[0].map((v, i) => (i % 2 ? oz : ox) + v / QUANT);
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
     for (let i = 0; i < ring.length; i += 2) { minX = Math.min(minX, ring[i]); maxX = Math.max(maxX, ring[i]); minZ = Math.min(minZ, ring[i + 1]); maxZ = Math.max(maxZ, ring[i + 1]); }
@@ -78,7 +81,7 @@ function streetFacing(b: CandidateBuilding, e: number): boolean {
 
 // ---- collect places --------------------------------------------------------------------------------
 const places = new Map<string, Place>();
-const stats: Record<string, number> = { osm: 0, overture: 0, overtureDroppedLowConfidence: 0, overtureDroppedDuplicateOfOsm: 0, manual: 0, removedByOverride: 0, associatedInside: 0, associatedAdjacent: 0, unassociated: 0, signs: 0 };
+const stats: Record<string, number> = { osm: 0, overture: 0, overtureDroppedLowConfidence: 0, overtureDroppedDuplicateOfOsm: 0, manual: 0, removedByOverride: 0, associatedInside: 0, inLandmarkSites: 0, associatedAdjacent: 0, unassociated: 0, signs: 0 };
 const inBbox = (lat: number, lon: number) => lat >= DATA_BBOX.south && lat <= DATA_BBOX.north && lon >= DATA_BBOX.west && lon <= DATA_BBOX.east;
 const round = (v: number, d: number) => +v.toFixed(d);
 
@@ -152,6 +155,7 @@ for (const p of ordered) {
   const a = associate(p.x, p.z, near, streetFacing);
   let key = `${Math.floor(p.x / CHUNK_SIZE)}_${Math.floor(p.z / CHUNK_SIZE)}`;
   if (a) {
+    if (landmarkSiteIds.has(a.b)) { delete a.e; delete a.t; stats.inLandmarkSites++; }
     Object.assign(p, a);
     key = bldChunk.get(a.b) ?? key;
     if (a.how === 'inside') stats.associatedInside++; else stats.associatedAdjacent++;

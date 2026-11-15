@@ -1,0 +1,50 @@
+<!doctype html>
+<!-- Landmark model preview (dev only, never shipped). Open through the dev server:
+     /tools/landmarks/preview.html?m=<landmark-id>&lod=0&pos=x,y,z&tgt=x,y,z
+     Shows the GLB exactly as the game draws it (same material conversion), on a neutral ground,
+     with a 1.7 m figure for scale. Drag to orbit, wheel to zoom. -->
+<meta charset="utf-8"><title>Landmark preview</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#cfdde4}#i{position:fixed;left:8px;top:8px;font:12px sans-serif;background:#0009;color:#fff;padding:4px 8px}</style>
+<div id="i"></div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { prepareLandmarkModel, buildPlaques } from '/src/world/landmarks/modelMaterials.ts';
+const q = new URLSearchParams(location.search);
+const id = q.get('m') ?? 'hiang-thian-siang-ti-temple', lod = q.get('lod') ?? '0';
+const v3 = (s, d) => new THREE.Vector3(...(s ? s.split(',').map(Number) : d));
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xcfdde4);
+scene.add(new THREE.HemisphereLight(0xcfe0f2, 0x9a9078, 1.3));
+const sun = new THREE.DirectionalLight(0xfff1dc, 2.45); sun.position.set(q.get('sun') === 'back' ? -30 : 30, 45, 35); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, far: 150 }); sun.shadow.bias = -0.0005;
+scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshLambertMaterial({ color: 0x77787a })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const man = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 1.26, 4, 8), new THREE.MeshLambertMaterial({ color: 0x3355aa })); man.position.set(...(q.get('man') ?? '2.5,0.85,2').split(',').map(Number)); scene.add(man);
+const camera = new THREE.PerspectiveCamera(+(q.get('fov') ?? 55), innerWidth / innerHeight, 0.1, 500);
+camera.position.copy(v3(q.get('pos'), [0, 1.7, 14]));
+const ctl = new OrbitControls(camera, renderer.domElement); ctl.target.copy(v3(q.get('tgt'), [0, 3, -6])); ctl.update();
+const base = `/public/models/landmarks/${id}/`;
+const [gltf, meta] = await Promise.all([new GLTFLoader().loadAsync(`${base}lod${lod}.glb`), fetch(`${base}meta.json`).then((r) => r.json())]);
+const mats = { opaque: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }) };
+const info = prepareLandmarkModel(gltf.scene, mats);
+scene.add(gltf.scene);
+if (lod === '0' && meta.plaques?.length) scene.add(buildPlaques(meta.plaques));
+// &with=<id>:<z offset>[,<id>:<z offset>] shows further models in the same frame (e.g. the stage behind the hall).
+for (const w of (q.get('with') ?? '').split(',').filter(Boolean)) {
+  const [wid, wz] = w.split(':');
+  const wb = `/public/models/landmarks/${wid}/`;
+  const [g2, m2] = await Promise.all([new GLTFLoader().loadAsync(`${wb}lod${lod}.glb`), fetch(`${wb}meta.json`).then((r) => r.json())]);
+  prepareLandmarkModel(g2.scene, mats);
+  const grp = new THREE.Group(); grp.position.z = +wz; grp.add(g2.scene);
+  if (lod === '0' && m2.plaques?.length) grp.add(buildPlaques(m2.plaques));
+  scene.add(grp);
+}
+document.getElementById('i').textContent = `${id} lod${lod}: ${info.triangles} tris, ${info.meshes} meshes, ${(meta.lods[+lod].bytes / 1024).toFixed(0)} KB`;
+(function loop() { renderer.render(scene, camera); requestAnimationFrame(loop); })();
+window.__preview = { camera, ctl, scene, ready: true };
+</script>

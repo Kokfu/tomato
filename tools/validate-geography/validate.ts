@@ -98,8 +98,27 @@ const QTOL = 0.0075; // 0.5 cm quantisation per axis -> 0.71 cm worst case
       out.set(b.id, (out.get(b.id) ?? []).concat(list));
     }
   }
+  // Footprints that a registered landmark site was cut out of are emitted as several records (the
+  // site plus the remaining pieces, see build.ts 1b). For those, a source vertex must lie on the
+  // outline of one of the pieces: the mapped shape is preserved as a whole, only subdivided.
+  const sitesPath = `${OUT}/landmark-sites.json`;
+  const carved = new Set<number>(existsSync(sitesPath) ? JSON.parse(readFileSync(sitesPath, 'utf8')).sites.flatMap((x: { sources: { footprints: string[] } }) => x.sources.footprints.map((r) => Number(r.split('/')[1]))) : []);
+  const pieceRings: number[][] = [];
+  if (carved.size) for (const c of chunks.values()) {
+    const ox = c.cx * CHUNK_SIZE, oz = c.cz * CHUNK_SIZE;
+    for (const b of c.buildings) if (b.lm || b.id >= 8e15 || carved.has(b.id)) for (const r of b.r) pieceRings.push(r.map((v, i) => (i % 2 ? oz : ox) + v / QUANT));
+  }
+  const distToPieces = (x: number, z: number) => {
+    let best = Infinity;
+    for (const r of pieceRings) for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+      const vx = r[i] - r[j], vz = r[i + 1] - r[j + 1], l2 = vx * vx + vz * vz;
+      const t = l2 > 0 ? Math.max(0, Math.min(1, ((x - r[j]) * vx + (z - r[j + 1]) * vz) / l2)) : 0;
+      best = Math.min(best, Math.hypot(r[j] + vx * t - x, r[j + 1] + vz * t - z));
+    }
+    return best;
+  };
   const errs: number[] = [];
-  let n = 0, missing = 0;
+  let n = 0, missing = 0, carvedVerts = 0;
   for (const el of elements) {
     if (!el.tags?.building || el.tags.building === 'no' || el.type === 'node') continue;
     const polys = polygonsOf(el);
@@ -115,6 +134,7 @@ const QTOL = 0.0075; // 0.5 cm quantisation per axis -> 0.71 cm worst case
       for (const [x, z] of poly[0]) { bx0 = Math.min(bx0, x); bx1 = Math.max(bx1, x); bz0 = Math.min(bz0, z); bz1 = Math.max(bz1, z); }
       if (!has((bx0 + bx1) / 2, (bz0 + bz1) / 2)) continue;
       for (const ring of poly) for (const [x, z] of ring) {
+      if (carved.has(id)) { errs.push(distToPieces(x, z)); carvedVerts++; continue; }
       let best = Infinity;
       for (const p of list) { const d = Math.hypot(p[0] - x, p[1] - z); if (d < best) best = d; }
       errs.push(best);
@@ -122,7 +142,7 @@ const QTOL = 0.0075; // 0.5 cm quantisation per axis -> 0.71 cm worst case
     }
   }
   const s = stat(errs);
-  add('building footprints preserved', s.max <= QTOL + 0.011, `${n} buildings, ${s.n} vertices, max error ${(s.max * 1000).toFixed(2)} mm, rms ${(s.rms * 1000).toFixed(2)} mm; ${missing} source buildings near the area edge not emitted`, s.max, QTOL + 0.011);
+  add('building footprints preserved', s.max <= QTOL + 0.011, `${n} buildings, ${s.n} vertices, max error ${(s.max * 1000).toFixed(2)} mm, rms ${(s.rms * 1000).toFixed(2)} mm; ${missing} source buildings near the area edge not emitted; ${carved.size} footprints subdivided by landmark sites (${carvedVerts} vertices checked against the pieces' outlines)`, s.max, QTOL + 0.011);
 }
 
 // 3b. Machine-detected footprints (Overture Maps: Microsoft ML Buildings, Google Open Buildings) ----
@@ -281,7 +301,18 @@ function distToWaterEdge(x: number, z: number): number {
   for (const el of elements) byRef.set(`${el.type}/${el.id}`, el);
   let bad = 0;
   const rows: string[] = [];
+  // Registered landmark models are placed by derivation (landmark-sites.json), not at the centre of
+  // one mapped feature: their listed position must lie inside their derived site outline, and every
+  // cross-check of the derivation against independent mapped points must hold.
+  const siteFile = `${OUT}/landmark-sites.json`;
+  const siteList: { id: string; ring: number[]; checks: { ref: string; inside: boolean }[] }[] = existsSync(siteFile) ? JSON.parse(readFileSync(siteFile, 'utf8')).sites : [];
+  const inRing = (x: number, z: number, r: number[]) => { let c = false; for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) if (r[i + 1] > z !== r[j + 1] > z && x < ((r[j] - r[i]) * (z - r[i + 1])) / (r[j + 1] - r[i + 1]) + r[i]) c = !c; return c; };
   for (const l of landmarks) {
+    const site = siteList.find((s) => s.id === l.id);
+    if (site) {
+      if (!inRing(l.x, l.z, site.ring) || !site.checks.every((c) => c.inside)) { bad++; rows.push(`${l.name}: outside its derived landmark site, or a derivation cross-check failed`); }
+      continue;
+    }
     const el = l.osm ? byRef.get(l.osm) : undefined;
     if (!el) { bad++; rows.push(`${l.name}: source feature ${l.osm} not found`); continue; }
     const geo = el.type === 'node' ? [{ lat: el.lat!, lon: el.lon! }] : el.type === 'way' ? el.geometry ?? [] : (el.members ?? []).flatMap((m) => m.geometry ?? []);

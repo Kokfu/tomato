@@ -18,7 +18,7 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { CHUNK_SIZE, QUANT, DATA_ROOT } from '../../src/world/config.ts';
 import type { ChunkData, BuildingData } from '../../src/world/types.ts';
-import { BUILDING_KINDS, ROAD_TYPES, FURN } from '../../src/world/types.ts';
+import { BUILDING_KINDS, ROAD_TYPES, FURN, ARCH_CLASSES, ARCH_BASIS, SHOPFRONT_CLASSES } from '../../src/world/types.ts';
 import { ringArea2, edgeOutward, projectOnSegment, pointInRingFlat } from '../../src/world/arch/frontage.ts';
 import { geoToWorld } from '../../src/world/GeoProjection.ts';
 
@@ -105,7 +105,7 @@ const STREET_TYPES = new Set([T('trunk'), T('primary'), T('secondary'), T('terti
 const PROMENADE_TYPES = new Set([T('pedestrian'), T('footway'), T('path'), T('cycleway'), T('pier')]);
 
 // ---- 1. heritage shophouse frontages ----------------------------------------------------------------
-const stats = { heritageBuildings: 0, frontageEdges: 0, frontageMetres: 0, estimatedUnits: 0, lamps: 0, signals: 0, streetSigns: 0, benches: 0, bollards: 0, railMetres: 0 };
+const stats = { protectedFromShopfronts: 0, heritageBuildings: 0, frontageEdges: 0, frontageMetres: 0, estimatedUnits: 0, lamps: 0, signals: 0, streetSigns: 0, benches: 0, bollards: 0, railMetres: 0 };
 const OK_KINDS = new Set(['generic', 'commercial', 'shophouse']);
 // A named outline is normally an institution or landmark and is left alone. Rows that OSM names
 // after one of the businesses inside them (e.g. "328 Gallery Sdn. Bhd.") are still shophouse rows.
@@ -158,6 +158,9 @@ for (const d of chunks.values()) {
   const ox = d.cx * CHUNK_SIZE, oz = d.cz * CHUNK_SIZE;
   for (const b of d.buildings) {
     delete b.a;
+    // Protected landmark sites and every building whose own tags establish a non-shop form (temple,
+    // mosque, museum, market ...) are never turned into shophouse rows, whatever street they face.
+    if (b.lm || !SHOPFRONT_CLASSES.has(ARCH_CLASSES[b.ac ?? 0])) { stats.protectedFromShopfronts++; continue; }
     if (b.s || (b.n !== undefined && INSTITUTION.test(d.names[b.n])) || !OK_KINDS.has(BUILDING_KINDS[b.k]) || b.r.length !== 1) continue;
     const ring = b.r[0].map((v, i) => (i % 2 ? oz : ox) + v / QUANT);
     const area = Math.abs(ringArea2(ring)) / 2;
@@ -169,6 +172,7 @@ for (const d of chunks.values()) {
     else levels = Math.max(2, Math.min(4, Math.round((b.h / QUANT - 1) / 3.5)));
     b.k = BUILDING_KINDS.indexOf('shophouse');
     b.a = { c: 1, f: edges, lv: levels };
+    if ((b.ab ?? 0) < ARCH_BASIS.indexOf('tag')) { b.ac = ARCH_CLASSES.indexOf('heritage_shophouse'); b.ab = ARCH_BASIS.indexOf('inferred'); }
     stats.heritageBuildings++;
     stats.frontageEdges += edges.length;
     for (const i of edges) {

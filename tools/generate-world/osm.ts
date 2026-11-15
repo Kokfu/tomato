@@ -1,4 +1,6 @@
 // Shared helpers for reading the cached OSM extract and turning it into projected geometry.
+import { applyRoadAlignments } from './road-alignments.ts';
+import type { AlignmentResult } from './road-alignments.ts';
 import { readFileSync } from 'node:fs';
 import { geoToWorld } from '../../src/world/GeoProjection.ts';
 import type { RoadType } from '../../src/world/types.ts';
@@ -17,8 +19,13 @@ export interface OsmEl {
   members?: { type: string; ref: number; role: string; geometry?: LatLon[] }[];
 }
 
+/** What the last loadOsm() call re-aligned (for the build report). */
+export let roadAlignments: AlignmentResult[] = [];
+
 export function loadOsm(path = 'data-src/osm/kuching.json'): { elements: OsmEl[]; timestamp: string | null } {
   const json = JSON.parse(readFileSync(path, 'utf8'));
+  // Derived local corrections of street centre lines (see road-alignments.ts); junction nodes stay put.
+  roadAlignments = applyRoadAlignments(json.elements);
   return { elements: json.elements, timestamp: json.osm3s?.timestamp_osm_base ?? null };
 }
 

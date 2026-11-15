@@ -7,3 +7,4 @@ playwright-report/
 .claude/
 .env
 .env.local
+tools/landmarks/.survey.json

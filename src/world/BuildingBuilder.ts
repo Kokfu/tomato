@@ -9,6 +9,7 @@ import type { BuildContext } from './ChunkManager.ts';
 import { addShophouseRow, addRowRoof } from './arch/Shophouse.ts';
 import { addHeritageRow, addHeritageRoof } from './arch/HeritageRow.ts';
 import { inDistrict, isDistrictRow } from './district/mainBazaar.ts';
+import { assertGeneric, isProtectedLandmark, mayHaveShopfront } from './landmarks/protect.ts';
 
 type Kind = (typeof BUILDING_KINDS)[number];
 const WALLS: Record<Kind, number[]> = {
@@ -59,6 +60,7 @@ const BAY = 3.4;
 const STOREY = 3.3;
 
 function addBuilding(b: BuildingData, ox: number, oz: number, ctx: BuildContext, walls: GeoBuf, roofs: GeoBuf, skipWalls = false): void {
+  assertGeneric(b, 'extruded building');
   const kind = BUILDING_KINDS[b.k];
   const h = hashId(b.id);
   const ml = !!b.s;
@@ -309,7 +311,12 @@ export function buildBuildings(data: ChunkData, ctx: BuildContext): THREE.Object
   const herit = new GeoBuf(true);
   for (const b of data.buildings) {
     if (ctx.landmarks.replacesBuilding(b.id)) continue;
-    const row = !!b.a?.f.length;
+    // Registered landmark sites are drawn by their dedicated model (landmarks/LandmarkModels.ts) at
+    // every detail level: no generic geometry is ever generated beneath it.
+    if (isProtectedLandmark(b)) continue;
+    // Shopfronts only where the building's architectural class allows them (never on a temple,
+    // mosque, museum ... even if the streetscape data were to mark frontage edges on it).
+    const row = !!b.a?.f.length && mayHaveShopfront(b);
     if (row && isDistrictRow(b, ox, oz)) {
       const hr = addHeritageRow(b, ox, oz, ctx, herit);
       if (addHeritageRoof(b, hr, roofs, herit)) continue;

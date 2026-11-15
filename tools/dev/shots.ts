@@ -35,6 +35,7 @@ for (const v of views) {
     if (v.quality) (document.querySelector(`#quality-seg [data-q="${v.quality}"]`) as HTMLElement).click();
   }, v);
   await page.waitForFunction(() => (window as any).__k3d.world.chunks.progress() >= 0.999, null, { timeout: 60000 }).catch(() => errors.push('chunk load timeout'));
+  await page.waitForFunction(() => (window as any).__k3d.world.landmarkModels?.settled !== false, null, { timeout: 30000 }).catch(() => errors.push('landmark model load timeout'));
   await page.waitForTimeout(v.wait ?? 700);
   await page.screenshot({ path: `${outDir}/${v.name}.png` });
   const info = await page.evaluate(() => { const k = (window as any).__k3d; const r = k.renderer.info; return { fps: +k.fps.toFixed(1), calls: r.render.calls, tris: r.render.triangles, geo: r.memory.geometries, tex: r.memory.textures, chunks: k.world.chunks.loadedCount, pos: k.player.position.toArray().map((n: number) => +n.toFixed(1)) }; });

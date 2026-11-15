@@ -1,3 +1,4 @@
+import { assertGeneric } from '../landmarks/protect.ts';
 import * as THREE from 'three';
 import { QUANT } from '../config.ts';
 import type { BuildingData } from '../types.ts';
@@ -115,6 +116,7 @@ export function fasciaAt(fr: RowFrame, edge: number, t: number): { x: number; y:
 
 /** Full-detail shophouse row: five-foot way, columns, shopfronts, fascia, upper facades, plain side walls. */
 export function addShophouseRow(b: BuildingData, ox: number, oz: number, ctx: BuildContext, buf: GeoBuf): RowFrame {
+  assertGeneric(b, 'shophouse row');
   const fr = rowFrame(b, ox, oz, ctx);
   const { ring, inner, ground, top } = fr;
   const n = ring.length / 2;

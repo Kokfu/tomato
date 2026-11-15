@@ -175,3 +175,7 @@ roof data for Kuching):
 - Footprints, heights and collision are unchanged; walls and roofs are still one merged mesh each
   per chunk. The extract contains no `building=shophouse` tags, so the "narrow shophouse unit"
   ridge rule in the code is currently unused.
+
+## Registered landmark models (V4)
+
+Hiang Thian Siang Ti Temple, Lau Ya Keng Food Court and the Yang Choon Tai opera stage are drawn by dedicated glTF models through the landmark registry (`src/world/landmarks/registry.ts`), not by the builders described above. See [LANDMARK_RECONSTRUCTION.md](LANDMARK_RECONSTRUCTION.md) and [LANDMARK_AUDIT.md](LANDMARK_AUDIT.md).

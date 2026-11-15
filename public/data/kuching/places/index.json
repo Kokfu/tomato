@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-15T03:35:09.084Z",
+  "generatedAt": "2026-11-15T07:40:40.111Z",
   "chunks": [
     "-10_-2",
     "-10_-3",
@@ -401,11 +401,12 @@
     "manual": 0,
     "removedByOverride": 0,
     "associatedInside": 1785,
-    "associatedAdjacent": 410,
-    "unassociated": 1734,
-    "signs": 743,
+    "inLandmarkSites": 7,
+    "associatedAdjacent": 409,
+    "unassociated": 1735,
+    "signs": 740,
     "total": 3929,
     "files": 370,
-    "bytes": 969945
+    "bytes": 969828
   }
 }

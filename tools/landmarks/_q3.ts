@@ -1,0 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { geoToWorld } from '../../src/world/GeoProjection.ts';
+const d = JSON.parse(readFileSync('tools/landmarks/.survey.json','utf8'));
+const get = (ref: string) => d.osm.find((o: any) => o.ref === ref).pts.map((p: number[]) => geoToWorld(p[0], p[1]));
+const plot = get('way/1388134054'), north = get('way/233690735'), south = get('way/236495089');
+const f = (p: number[]) => `${p[0].toFixed(2)},${p[1].toFixed(2)}`;
+console.log('plot', plot.map(f).join(' '));
+console.log('north', north.map(f).join(' '));
+console.log('south', south.map(f).join(' '));
+for (let i=0;i<plot.length-1;i++) console.log('plot edge', i, Math.hypot(plot[i+1][0]-plot[i][0], plot[i+1][1]-plot[i][1]).toFixed(2));

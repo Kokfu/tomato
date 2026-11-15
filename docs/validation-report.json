@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-15T03:28:37.652Z",
+ "generatedAt": "2026-11-15T07:41:05.337Z",
  "osmTimestamp": "2026-11-14T16:38:21Z",
  "overtureRelease": "2026-10-21.0",
  "checks": [
@@ -13,7 +13,7 @@
   {
    "name": "road vertices preserved",
    "pass": true,
-   "detail": "7219 ways, 39319 source vertices; 0 unmatched (>5 cm), max error 7.04 mm, rms 4.07 mm",
+   "detail": "7219 ways, 39322 source vertices; 0 unmatched (>5 cm), max error 7.04 mm, rms 4.07 mm",
    "value": 0.0070398707721849255,
    "limit": 0.0075
   },
@@ -25,7 +25,7 @@
   {
    "name": "building footprints preserved",
    "pass": true,
-   "detail": "3602 buildings, 19763 vertices, max error 7.04 mm, rms 4.08 mm; 5 source buildings near the area edge not emitted",
+   "detail": "3601 buildings, 19759 vertices, max error 7.04 mm, rms 4.08 mm; 6 source buildings near the area edge not emitted; 3 footprints subdivided by landmark sites (17 vertices checked against the pieces' outlines)",
    "value": 0.007037819125848719,
    "limit": 0.0185
   },
@@ -53,7 +53,7 @@
   {
    "name": "landmark positions",
    "pass": true,
-   "detail": "29/29 landmarks lie within their mapped OSM feature"
+   "detail": "33/33 landmarks lie within their mapped OSM feature"
   },
   {
    "name": "Darul Hana Bridge spans the river",
