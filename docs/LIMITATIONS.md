@@ -41,6 +41,18 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   validation report measures only our own transformation error (max 7 mm; up to 0.3 m for the
   deliberately simplified machine-detected outlines), not the accuracy of OSM or of the detections.
 
+## Streetscape and shop identity (V2)
+
+- Shophouse rows are procedural approximations on real outlines: lot widths, colours, window
+  styles, shopfront types, two-storey height and roof form are estimates (`STREETSCAPE.md`).
+- Shop signs exist only where open data has a named business that can be tied to a wall; most
+  lots are blank. Records can be years old (`SHOP_IDENTITY.md`).
+- Lamp posts are procedurally spaced, not mapped. Zebra crossings, bus stops, vendors and parked
+  vehicles are not drawn.
+- The correction editor stores edits in the browser and exports a file; there is no hosted
+  database or login.
+- Driving is not implemented (`VEHICLES.md`).
+
 ## Gameplay
 
 - Collision uses building footprints as infinitely tall walls up to the roof line; interiors are

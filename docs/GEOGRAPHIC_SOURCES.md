@@ -82,6 +82,18 @@ The generated chunk files therefore contain data derived from two ODbL databases
 Overture buildings theme). If you redistribute them, keep the attribution lines from
 `manifest.json` and the ODbL notice.
 
+## 3b. Business and street-furniture points (V2)
+
+- **OpenStreetMap named POIs**: `tools/extract-map-data/fetch-pois.ts` (Overpass, one request,
+  `out center meta` so each record carries its last-edit date). 1,546 elements: 1,403 named shops /
+  amenities / tourism / offices, 113 traffic signals, 21 crossings, 5 benches, 3 bollards, 1 street
+  lamp. Licence ODbL 1.0. Cached in `data-src/osm/pois.json`.
+- **Overture Maps Places** (optional): `overturemaps download --type=place` for the same bbox,
+  7,702 features, mostly Meta-derived (CDLA-Permissive-2.0). Used only as unverified, inspect-only
+  records with confidence at least 0.75; never as signage. See `SHOP_IDENTITY.md`.
+- **Not used**: Google Maps / Google Places data or imagery of any kind. The app only links out to
+  Google Maps.
+
 ## 4. Reference material for landmark models
 
 Landmark models are original procedural geometry. Their positions and footprints come from OSM;

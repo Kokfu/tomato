@@ -75,12 +75,7 @@ export function buildTerrain(data: ChunkData, ctx: BuildContext): THREE.Mesh {
   geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   geo.setIndex(index);
   geo.computeVertexNormals();
-  const mat = new THREE.MeshLambertMaterial({
-    map: groundTexture(data, ctx.detail === 'high' ? ctx.quality.groundTex : 128),
-    polygonOffset: true,
-    polygonOffsetFactor: 1,
-    polygonOffsetUnits: 2,
-  });
+  const mat = ctx.mats.terrain(groundTexture(data, ctx.detail === 'high' ? ctx.quality.groundTex : 128));
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
   mesh.userData.ownMaterial = true;

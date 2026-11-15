@@ -28,8 +28,9 @@
         <button id="btn-pause" class="icon-btn" title="Pause (Esc)" aria-label="Pause">&#x23F8;</button>
       </div>
       <div id="help" class="panel">
-        <b>WASD</b> move &middot; <b>Shift</b> run &middot; <b>Space</b> jump &middot; <b>Mouse</b> look &middot; <b>Wheel</b> zoom &middot; <b>M</b> map &middot; <b>V</b> view &middot; <b>Esc</b> pause
+        <b>WASD</b> move &middot; <b>Shift</b> run &middot; <b>Space</b> jump &middot; <b>Mouse</b> look &middot; <b>Wheel</b> zoom &middot; <b>E</b> inspect shop &middot; <b>M</b> map &middot; <b>V</b> view &middot; <b>Esc</b> pause
       </div>
+      <button id="place-prompt" class="panel hidden" aria-label="Inspect place"></button>
       <div id="toast" class="panel hidden"></div>
       <div id="chunk-loading" class="panel hidden">Loading area&hellip;</div>
       <div id="stats" class="hidden"></div>
@@ -51,11 +52,42 @@
           <button data-q="medium">Medium</button>
           <button data-q="high">High</button>
         </div>
+        <label>Time of day</label>
+        <div class="seg" id="time-seg">
+          <button data-t="day" class="active">Day</button>
+          <button data-t="evening">Evening</button>
+        </div>
         <label class="row"><input type="checkbox" id="opt-adaptive" checked /> Adaptive resolution</label>
+        <label class="row"><input type="checkbox" id="opt-sound" checked /> Footstep sound</label>
         <label class="row"><input type="checkbox" id="opt-stats" /> Show performance stats</label>
         <label>Look sensitivity <input type="range" id="opt-sens" min="0.5" max="2" step="0.1" value="1" /></label>
         <p class="note">Quality settings change rendering only. Geography and collision are identical at every level.</p>
         <button id="settings-close" class="primary">Done</button>
+      </div>
+    </div>
+
+    <div id="place-panel" class="modal hidden" role="dialog" aria-label="Place information">
+      <div class="modal-card">
+        <div id="place-info"></div>
+        <div id="place-others"></div>
+        <div id="place-admin" class="hidden">
+          <div class="place-sub">Correct this place (stored on this device until exported)</div>
+          <label>Name <input id="pe-name" type="text" maxlength="80" /></label>
+          <label>Category <input id="pe-cat" type="text" maxlength="40" /></label>
+          <label>Address <input id="pe-addr" type="text" maxlength="120" /></label>
+          <div class="place-btns">
+            <button id="place-save" class="primary">Save correction</button>
+            <button id="place-add">Add as new place here</button>
+            <button id="place-remove">Mark as closed / wrong</button>
+          </div>
+          <div class="place-btns">
+            <button id="place-export">Export corrections (0)</button>
+            <button id="place-discard">Discard local edits</button>
+          </div>
+          <p class="note">Exported file: <code>data/places-overrides.json</code>, then run <code>npm run data:places</code>.</p>
+        </div>
+        <button id="place-close">Close</button>
+        <p class="note">Business names come from OpenStreetMap and Overture Maps open data, never from Google. Details may be out of date.</p>
       </div>
     </div>
 

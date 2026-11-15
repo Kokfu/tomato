@@ -25,7 +25,7 @@ test.describe('touch', () => {
     for (let i = 1; i <= 6; i++) await touch(cdp, 'touchMove', [{ x: cx, y: cy - i * 9, id: 1 }]);
     await page.waitForTimeout(1500);
     const b = await state(page);
-    expect(b.speed).toBeGreaterThan(1.5);
+    expect(b.speed).toBeGreaterThan(1.3);
     expect(Math.hypot(b.x - a.x, b.z - a.z)).toBeGreaterThan(1.5);
     expect(b.x).toBeLessThan(a.x - 1); // moved west = camera forward
 

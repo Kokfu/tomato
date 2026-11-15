@@ -6,11 +6,15 @@ import type { CharacterVisual } from './CharacterAnimator.ts';
 export const PLAYER = {
   radius: 0.35,
   height: 1.72,
-  walkSpeed: 2.0,
-  runSpeed: 6.0,
-  accel: 14,
-  decel: 18,
-  turnRate: 11,
+  /** Relaxed walking pace and a steady run (m/s); a sprint would be about 7. */
+  walkSpeed: 1.6,
+  runSpeed: 5.2,
+  /** Ground acceleration when speeding up / changing direction, and when letting go (m/s^2). */
+  accel: 9,
+  decel: 11,
+  /** Turn rate standing still and at full run (rad/s): a runner cannot spin on the spot. */
+  turnRate: 12,
+  turnRateRun: 6.5,
   gravity: 22,
   jumpSpeed: 5.6,
   /** A grounded character on a bridge/pier deck will not step off a drop larger than this. */
@@ -31,6 +35,10 @@ export class PlayerController {
   /** Why the last movement attempt was blocked (for HUD feedback). */
   blocked: BlockReason = '';
   visual: CharacterVisual;
+  /** Fired on every footfall (speed in m/s, whether the surface is a bridge / pier deck) and on landing. */
+  onFootstep: ((speed: number, deck: boolean, impact: number) => void) | null = null;
+  private stride = 0;
+  private speedSmooth = 0;
   /** Returns true where the map data exists (inside the prepared area). */
   hasData: (x: number, z: number) => boolean = () => true;
   private world: CollisionWorld;
@@ -106,20 +114,27 @@ export class PlayerController {
     const tz = wishLen > 1e-4 ? (wishZ / wishLen) * maxSpeed : 0;
     const dvx = tx - v.x, dvz = tz - v.z;
     const dv = Math.hypot(dvx, dvz);
-    const rate = (wishLen > 1e-4 ? PLAYER.accel : PLAYER.decel) * (this.grounded ? 1 : 0.35);
+    // Acceleration eases off as the target speed is approached (no abrupt snap to full speed), and
+    // stopping takes a few steps instead of freezing the character in place.
+    const speedNow = Math.hypot(v.x, v.z);
+    const base = wishLen > 1e-4 ? PLAYER.accel : PLAYER.decel;
+    const rate = base * (0.45 + 0.55 * Math.min(1, dv / 2.5)) * (this.grounded ? 1 : 0.3);
     if (dv > 1e-6) {
       const f = Math.min(1, (rate * dt) / dv);
       v.x += dvx * f;
       v.z += dvz * f;
     }
 
-    // Smooth turning toward the direction of travel.
+    // Turn toward the direction of travel; the faster the character moves, the wider the turn.
     if (wishLen > 1e-4) {
       const target = Math.atan2(wishX, wishZ);
       let d = target - this.heading;
       d = Math.atan2(Math.sin(d), Math.cos(d));
-      const maxTurn = PLAYER.turnRate * dt;
-      this.heading += Math.abs(d) < maxTurn ? d : Math.sign(d) * maxTurn;
+      const k = Math.min(1, speedNow / PLAYER.runSpeed);
+      const maxTurn = (PLAYER.turnRate + (PLAYER.turnRateRun - PLAYER.turnRate) * k) * dt;
+      // Ease into the final few degrees so the body does not snap to its heading.
+      const want = d * Math.min(1, dt * 14);
+      this.heading += Math.abs(want) < maxTurn ? want : Math.sign(d) * maxTurn;
     }
 
     // Horizontal move with building push-out, then walkability checks with axis sliding.
@@ -156,11 +171,26 @@ export class PlayerController {
       v.y -= PLAYER.gravity * dt;
       p.y += v.y * dt;
       if (p.y <= st.h && v.y <= 0) {
+        this.onFootstep?.(Math.hypot(v.x, v.z), st.deck, Math.min(2.2, 1.1 + -v.y * 0.12));
         p.y = st.h;
         v.y = 0;
         this.grounded = true;
+        this.stride = 0;
       }
     }
-    if (this.grounded) this.onDeck = st.deck;
+    if (this.grounded) {
+      this.onDeck = st.deck;
+      // Footfalls: one per step length, which grows with speed (0.78 m walking, about 1.25 m running).
+      const sp = Math.hypot(v.x, v.z);
+      this.speedSmooth += (sp - this.speedSmooth) * Math.min(1, dt * 8);
+      if (sp > 0.5) {
+        this.stride += sp * dt;
+        const stepLen = 0.56 + 0.135 * this.speedSmooth;
+        if (this.stride >= stepLen) {
+          this.stride -= stepLen;
+          this.onFootstep?.(sp, st.deck, 1);
+        }
+      } else this.stride = 0.3;
+    }
   }
 }

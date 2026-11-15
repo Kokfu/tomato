@@ -13,6 +13,8 @@ export interface MenuCallbacks {
   onSensitivity: (v: number) => void;
   onToggleView: () => void;
   onToggleMap: () => void;
+  onTimeOfDay?: (t: 'day' | 'evening') => void;
+  onSound?: (on: boolean) => void;
 }
 
 /** Start screen, pause menu, settings panel and HUD text. */
@@ -67,6 +69,13 @@ export class GameMenu {
       this.showStats = (e.target as HTMLInputElement).checked;
       $('stats').classList.toggle('hidden', !this.showStats);
     });
+    for (const b of Array.from($('time-seg').querySelectorAll('button'))) {
+      b.addEventListener('click', () => {
+        for (const o of Array.from($('time-seg').querySelectorAll('button'))) o.classList.toggle('active', o === b);
+        cb.onTimeOfDay?.(b.dataset.t as 'day' | 'evening');
+      });
+    }
+    ($('opt-sound') as HTMLInputElement).addEventListener('change', (e) => cb.onSound?.((e.target as HTMLInputElement).checked));
     ($('opt-sens') as HTMLInputElement).addEventListener('input', (e) => cb.onSensitivity(parseFloat((e.target as HTMLInputElement).value)));
   }
 

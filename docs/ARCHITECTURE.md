@@ -87,6 +87,21 @@ relative to the chunk corner, which bounds the generation error at 7 mm (verifie
 | `ui/Minimap`, routing | Minimap, full map, landmark selection, walking routes |
 | `ui/GameMenu`, `GraphicsSettings` | Start screen, pause, settings, quality presets, adaptive resolution |
 
+### V2 modules
+
+| Module | Responsibility |
+|---|---|
+| `world/arch/frontage` | Pure geometry shared by tools, collision and rendering: edge normals, `insetEdges` (five-foot-way line), deterministic `hash3`, lot subdivision |
+| `world/arch/Shophouse` | Shophouse rows on mapped outlines: arcade, columns, shopfronts, fascia, upper facades, ridge roofs |
+| `world/arch/FacadeAtlas` | One canvas-painted facade atlas (no image downloads) |
+| `world/StreetFurniture` | Lamp posts, signals, sign posts, benches, bollards merged per chunk |
+| `world/places/*` | Place model, association rules, per-chunk place streaming, sign atlas / mesh |
+| `ui/PlacePanel` | Inspect prompt and panel, admin correction editor |
+| `player/Footsteps` | Synthesised footstep audio |
+
+Offline: `tools/generate-world/build-streetscape.ts` annotates chunks (`a`, `furn`, `rail`),
+`build-places.ts` writes `places/<chunk>.json`. See `STREETSCAPE.md` and `SHOP_IDENTITY.md`.
+
 ### Streaming
 
 - Chunks within `lowRadius` of the player are wanted; those within `highRadius` at full detail.

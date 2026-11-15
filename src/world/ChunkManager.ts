@@ -11,6 +11,8 @@ import { buildRoads, buildShore } from './RoadBuilder.ts';
 import { buildBuildings } from './BuildingBuilder.ts';
 import { buildWater } from './WaterBuilder.ts';
 import { buildVegetation } from './VegetationBuilder.ts';
+import { buildFurniture } from './StreetFurniture.ts';
+import { PlaceIndex, buildChunkLabels } from './places/PlaceIndex.ts';
 
 export type Detail = 'high' | 'low';
 export interface BuildContext {
@@ -18,6 +20,7 @@ export interface BuildContext {
   collision: CollisionWorld;
   mats: Materials;
   landmarks: LandmarkManager;
+  places: PlaceIndex;
   quality: Quality;
   detail: Detail;
 }
@@ -60,11 +63,20 @@ export class ChunkManager {
   private frame = 0;
   private failures = new Map<string, number>();
   private warming: { group: THREE.Group; frame: number }[] = [];
+  readonly places: PlaceIndex;
+  /** Chunk meshes that may be built this frame (raised at vehicle speeds). */
+  private buildBudget = 1;
 
-  constructor(manifest: Manifest, height: HeightMap, collision: CollisionWorld, mats: Materials, landmarks: LandmarkManager, quality: Quality) {
+  constructor(manifest: Manifest, height: HeightMap, collision: CollisionWorld, mats: Materials, landmarks: LandmarkManager, places: PlaceIndex, quality: Quality) {
     this.manifest = manifest;
     this.available = new Set(manifest.chunks);
-    this.ctxBase = { height, collision, mats, landmarks };
+    this.ctxBase = { height, collision, mats, landmarks, places };
+    this.places = places;
+    // Local place corrections change signs: rebuild the affected chunk mesh.
+    places.onChanged = (key) => {
+      const c = this.chunks.get(key);
+      if (c?.built === 'high') this.disposeMesh(c);
+    };
     this.quality = quality;
     this.base = `${import.meta.env.BASE_URL}${DATA_ROOT}/chunks/`;
     this.group.name = 'chunks';
@@ -155,13 +167,15 @@ export class ChunkManager {
     this.prefetchKeys = [];
     const sp = Math.hypot(vx, vz);
     if (sp > 0.5) {
-      const reach = (this.quality.lowRadius + 1) * CHUNK_SIZE;
+      // Look further ahead at vehicle speeds so chunks are downloaded before they are needed.
+      const reach = (this.quality.lowRadius + 1 + Math.min(2, sp / 14)) * CHUNK_SIZE;
       const px = Math.floor((x + (vx / sp) * reach) / CHUNK_SIZE), pz = Math.floor((z + (vz / sp) * reach) / CHUNK_SIZE);
       for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
         const k = chunkKey(px + dx, pz + dz);
         if (this.available.has(k) && !this.chunks.has(k)) this.prefetchKeys.push(k);
       }
     }
+    this.buildBudget = sp > 9 ? 2 : 1;
     this.pump();
   }
 
@@ -176,7 +190,10 @@ export class ChunkManager {
         if (d > R + 0.5) continue;
         const k = chunkKey(cx + dx, cz + dz);
         if (!this.available.has(k)) continue;
-        this.want.set(k, Math.max(Math.abs(dx), Math.abs(dz)) <= H ? 'high' : 'low');
+        // Hysteresis: a chunk already built at high detail keeps it until it is two rings out, so
+        // crossing a chunk border does not trigger a burst of demote-and-rebuild work behind the player.
+        const ring = Math.max(Math.abs(dx), Math.abs(dz));
+        this.want.set(k, ring <= H || (ring === H + 1 && this.chunks.get(k)?.built === 'high') ? 'high' : 'low');
         list.push([k, d]);
       }
     list.sort((a, b) => a[1] - b[1]);
@@ -195,13 +212,14 @@ export class ChunkManager {
       if (this.inflight >= 6) break;
       if (!this.chunks.has(k)) this.fetchChunk(k);
     }
-    // 2. Build at most one chunk mesh per frame, nearest first, to avoid frame spikes.
+    // 2. Build at most one chunk mesh per frame (two at vehicle speeds), nearest first, to avoid frame spikes.
+    let budget = this.buildBudget;
     for (const k of this.order) {
       const c = this.chunks.get(k);
       const detail = this.want.get(k)!;
       if (c && c.state === 'loaded' && c.built !== detail) {
         this.build(c, detail);
-        break;
+        if (--budget <= 0) break;
       }
     }
   }
@@ -211,12 +229,16 @@ export class ChunkManager {
     const c: Chunk = { cx, cz, key, state: 'fetching' };
     this.chunks.set(key, c);
     this.inflight++;
-    fetch(`${this.base}${key}.json`)
-      .then((r) => {
+    // The chunk's place file (shop identities) is fetched alongside it, so signs are ready when the
+    // mesh is first built.
+    Promise.all([
+      fetch(`${this.base}${key}.json`).then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.text();
-      })
-      .then((text) => {
+      }),
+      this.places.fetchChunk(key),
+    ])
+      .then(([text]) => {
         this.stats.bytes += text.length;
         this.stats.fetched++;
         if (this.chunks.get(key) !== c) return; // unloaded while in flight
@@ -276,7 +298,12 @@ export class ChunkManager {
       g.add(m);
     }
     for (const o of buildBuildings(data, ctx)) g.add(o);
-    if (detail === 'high') for (const o of buildVegetation(data, ctx)) g.add(o);
+    if (detail === 'high') {
+      for (const o of buildVegetation(data, ctx)) g.add(o);
+      for (const o of buildFurniture(data, ctx)) g.add(o);
+      const labels = buildChunkLabels(data, ctx);
+      if (labels) g.add(labels);
+    }
     // Landmark models are cheap (a few thousand triangles, one draw call each) and their generic
     // extrusions are suppressed at every detail level, so they are built for low detail as well:
     // otherwise the bridge masts and the DUN roof would vanish from the distant skyline.
@@ -328,6 +355,7 @@ export class ChunkManager {
       this.ctxBase.collision.removeChunk(c.cx, c.cz);
       this.onChunkRemoved?.(c.cx, c.cz);
     }
+    this.places.dropChunk(c.key);
     this.chunks.delete(c.key);
   }
 }

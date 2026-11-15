@@ -1,0 +1,172 @@
+{
+  "before": {
+    "measuredAt": "2026-11-15T03:01:59.975Z",
+    "url": "http://localhost:4173/",
+    "machine": {
+      "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x0000A7A8) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "cpu": "13th Gen Intel(R) Core(TM) i5-13420H",
+      "cores": 12,
+      "ramGB": 16,
+      "os": "Windows_NT 10.0.26200"
+    },
+    "note": "vsync disabled; adaptive resolution off; mobile session is an emulated viewport on the desktop GPU, not a physical phone",
+    "results": [
+      {
+        "session": "desktop 1920x1080",
+        "quality": "high",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "deviceScaleFactor": 1,
+        "seconds": 60,
+        "frames": 4911,
+        "distanceM": 358,
+        "stuckRescues": 0,
+        "fpsAvg": 81.8,
+        "fpsP1Low": 23,
+        "frameMsAvg": 12.22,
+        "frameMsP95": 22.2,
+        "frameMsP99": 32.5,
+        "frameMsMax": 78,
+        "framesOver33ms": 45,
+        "framesOver50ms": 10,
+        "cpuFrameMsAvg": 9.87,
+        "cpuFrameMsP99": 27.3,
+        "gpuFrameMsAvg": 7.87,
+        "gpuFrameMsP99": 13.01,
+        "gpuTimer": "EXT_disjoint_timer_query_webgl2 (4644 samples)",
+        "drawCallsAvg": 206,
+        "drawCallsMax": 236,
+        "trianglesAvg": 95450,
+        "trianglesMax": 116632,
+        "heapPeakMB": 47.7,
+        "geometriesMax": 686,
+        "texturesMax": 122,
+        "pixelRatio": 1,
+        "initial": {
+          "timeToPlayableMs": 3508,
+          "requests": 68,
+          "bytesUncompressed": 2155083,
+          "bytesTransferred": 1151010,
+          "chunkRequests": 59
+        },
+        "streaming": {
+          "chunksFetched": 137,
+          "chunksBuilt": 136,
+          "chunkBuildMsMax": 46.8,
+          "chunkFetchMsAvg": 166.6,
+          "chunkFetchMsMax": 1036.7,
+          "framesWaitingOnChunk": 0,
+          "totalBytesUncompressed": 2976011,
+          "totalBytesTransferred": 1456649
+        },
+        "consoleErrors": []
+      },
+      {
+        "session": "desktop 1920x1080",
+        "quality": "medium",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "deviceScaleFactor": 1,
+        "seconds": 60,
+        "frames": 7235,
+        "distanceM": 353,
+        "stuckRescues": 0,
+        "fpsAvg": 120.6,
+        "fpsP1Low": 12.8,
+        "frameMsAvg": 8.29,
+        "frameMsP95": 18.6,
+        "frameMsP99": 44.4,
+        "frameMsMax": 509.4,
+        "framesOver33ms": 123,
+        "framesOver50ms": 56,
+        "cpuFrameMsAvg": 6.18,
+        "cpuFrameMsP99": 35.1,
+        "gpuFrameMsAvg": 5.75,
+        "gpuFrameMsP99": 8.25,
+        "gpuTimer": "EXT_disjoint_timer_query_webgl2 (4231 samples)",
+        "drawCallsAvg": 99,
+        "drawCallsMax": 123,
+        "trianglesAvg": 39574,
+        "trianglesMax": 58484,
+        "heapPeakMB": 40.2,
+        "geometriesMax": 312,
+        "texturesMax": 55,
+        "pixelRatio": 1,
+        "initial": {
+          "timeToPlayableMs": 2052,
+          "requests": 46,
+          "bytesUncompressed": 1891844,
+          "bytesTransferred": 1056413,
+          "chunkRequests": 37
+        },
+        "streaming": {
+          "chunksFetched": 72,
+          "chunksBuilt": 61,
+          "chunkBuildMsMax": 42.9,
+          "chunkFetchMsAvg": 99.3,
+          "chunkFetchMsMax": 921.4,
+          "framesWaitingOnChunk": 0,
+          "totalBytesUncompressed": 2240288,
+          "totalBytesTransferred": 1186380
+        },
+        "consoleErrors": []
+      },
+      {
+        "session": "mobile viewport 390x844 @3x (emulated on desktop GPU)",
+        "quality": "low",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "deviceScaleFactor": 3,
+        "seconds": 60,
+        "frames": 18263,
+        "distanceM": 358,
+        "stuckRescues": 0,
+        "fpsAvg": 304.4,
+        "fpsP1Low": 67.3,
+        "frameMsAvg": 3.29,
+        "frameMsP95": 6.8,
+        "frameMsP99": 10.3,
+        "frameMsMax": 64.8,
+        "framesOver33ms": 2,
+        "framesOver50ms": 1,
+        "cpuFrameMsAvg": 2.14,
+        "cpuFrameMsP99": 7.4,
+        "gpuFrameMsAvg": 1.06,
+        "gpuFrameMsP99": 1.53,
+        "gpuTimer": "EXT_disjoint_timer_query_webgl2 (18154 samples)",
+        "drawCallsAvg": 53,
+        "drawCallsMax": 67,
+        "trianglesAvg": 20606,
+        "trianglesMax": 30469,
+        "heapPeakMB": 30.1,
+        "geometriesMax": 208,
+        "texturesMax": 35,
+        "pixelRatio": 1.25,
+        "initial": {
+          "timeToPlayableMs": 1486,
+          "requests": 30,
+          "bytesUncompressed": 1690213,
+          "bytesTransferred": 983025,
+          "chunkRequests": 21
+        },
+        "streaming": {
+          "chunksFetched": 55,
+          "chunksBuilt": 42,
+          "chunkBuildMsMax": 41.6,
+          "chunkFetchMsAvg": 178.2,
+          "chunkFetchMsMax": 1034.1,
+          "framesWaitingOnChunk": 0,
+          "totalBytesUncompressed": 2043877,
+          "totalBytesTransferred": 1114521
+        },
+        "consoleErrors": []
+      }
+    ]
+  }
+}

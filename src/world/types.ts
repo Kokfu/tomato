@@ -42,6 +42,13 @@ export interface BuildingData {
   k: number;
   /** Index into ChunkData.names. */
   n?: number;
+  /**
+   * Architectural annotation written by tools/generate-world/build-streetscape.ts. Present only on
+   * old-town shophouse rows. Everything in it is an ESTIMATE derived from the mapped outline and
+   * the mapped streets: c = style class (1 = shophouse row), f = indices of the wall edges that
+   * front a street (edge i runs from ring vertex i to i + 1), lv = storey count.
+   */
+  a?: { c: number; f: number[]; lv: number };
 }
 
 export interface AreaData {
@@ -81,6 +88,14 @@ export interface ChunkData {
   pdecks: PolyDeck[];
   /** Mapped passages through buildings, 5 ints each: ax, az, bx, bz, halfWidth (cm). */
   pass?: number[];
+  /**
+   * Street furniture, 5 ints each: type (see FURN), x, z (cm, chunk-local), rotation (degrees about
+   * +Y), extra (street-name signs: index into names). Signals, benches and bollards are mapped OSM
+   * nodes; lamp posts are procedurally spaced (inferred).
+   */
+  furn?: number[];
+  /** River-bank polylines (cm, chunk-local) that get a promenade railing. */
+  rail?: number[][];
   names: string[];
 }
 
@@ -129,13 +144,13 @@ export type RoadType = (typeof ROAD_TYPES)[number];
 
 /** Draw group: 0 = waterways, 1 = foot paths, 2 = minor roads, 3 = major roads. */
 export const ROAD_STYLE: Record<RoadType, { color: number; group: number; width: number; walk: boolean; major: boolean }> = {
-  motorway: { color: 0x3a3c40, group: 3, width: 11, walk: false, major: true },
-  trunk: { color: 0x3a3c40, group: 3, width: 10, walk: true, major: true },
-  primary: { color: 0x3d3f43, group: 3, width: 9, walk: true, major: true },
-  secondary: { color: 0x404246, group: 3, width: 8, walk: true, major: true },
-  tertiary: { color: 0x434549, group: 3, width: 7, walk: true, major: true },
-  residential: { color: 0x4a4c50, group: 2, width: 6, walk: true, major: true },
-  service: { color: 0x55575a, group: 2, width: 4, walk: true, major: false },
+  motorway: { color: 0x5b5d60, group: 3, width: 11, walk: false, major: true },
+  trunk: { color: 0x5b5d60, group: 3, width: 10, walk: true, major: true },
+  primary: { color: 0x5e6062, group: 3, width: 9, walk: true, major: true },
+  secondary: { color: 0x606264, group: 3, width: 8, walk: true, major: true },
+  tertiary: { color: 0x636567, group: 3, width: 7, walk: true, major: true },
+  residential: { color: 0x696a6b, group: 2, width: 6, walk: true, major: true },
+  service: { color: 0x737372, group: 2, width: 4, walk: true, major: false },
   pedestrian: { color: 0xb9ab95, group: 1, width: 6, walk: true, major: false },
   footway: { color: 0xc4b8a4, group: 1, width: 2.2, walk: true, major: false },
   path: { color: 0xb5a58a, group: 1, width: 1.6, walk: true, major: false },
@@ -154,3 +169,6 @@ export const AREA_COLORS: Record<(typeof AREA_KINDS)[number], string> = {
   plaza: '#c2b6a2', cemetery: '#9aaa86', residential: '#a9a595', commercial: '#aaa49a', industrial: '#a09c98',
   scrub: '#7f9a62', school: '#b0aa94', construction: '#b5a487',
 };
+
+/** Street furniture type codes used in ChunkData.furn. */
+export const FURN = { lamp: 0, signal: 1, sign: 2, bench: 3, bollard: 4 } as const;

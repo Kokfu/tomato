@@ -6,6 +6,7 @@ import { GeoBuf } from './Materials.ts';
 import { toVec2 } from './RoadBuilder.ts';
 import { insetRing, pointInRing } from './landmarks/kit.ts';
 import type { BuildContext } from './ChunkManager.ts';
+import { addShophouseRow, addRowRoof } from './arch/Shophouse.ts';
 
 type Kind = (typeof BUILDING_KINDS)[number];
 const WALLS: Record<Kind, number[]> = {
@@ -51,10 +52,11 @@ function area2(r: number[]): number {
 
 const wallColor = new THREE.Color();
 const roofColor = new THREE.Color();
+const footColor = new THREE.Color();
 const BAY = 3.4;
 const STOREY = 3.3;
 
-function addBuilding(b: BuildingData, ox: number, oz: number, ctx: BuildContext, walls: GeoBuf, roofs: GeoBuf): void {
+function addBuilding(b: BuildingData, ox: number, oz: number, ctx: BuildContext, walls: GeoBuf, roofs: GeoBuf, skipWalls = false): void {
   const kind = BUILDING_KINDS[b.k];
   const h = hashId(b.id);
   const ml = !!b.s;
@@ -78,7 +80,7 @@ function addBuilding(b: BuildingData, ox: number, oz: number, ctx: BuildContext,
   const isRoof = kind === 'roof';
   const y0 = isRoof ? top - 0.35 : gMin - 0.3;
 
-  rings.forEach((r, ri) => {
+  if (!skipWalls) rings.forEach((r, ri) => {
     const ccw = area2(r) > 0 !== ri > 0; // holes face the other way
     let u = 0;
     for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
@@ -92,8 +94,10 @@ function addBuilding(b: BuildingData, ox: number, oz: number, ctx: BuildContext,
       const bays = Math.max(1, Math.round(len / BAY));
       const u0 = u, u1 = u + bays;
       const v0 = 0, v1 = isRoof ? 0.05 : Math.max(1, Math.round((top - y0 - 0.3) / STOREY));
-      const A = walls.vert(ax, y0, az, nx, 0, nz, wallColor, u0, v0);
-      const B = walls.vert(bx, y0, bz, nx, 0, nz, wallColor, u1, v0);
+      // Darker wall foot: a cheap ambient-occlusion gradient where the wall meets the ground.
+      footColor.copy(wallColor).multiplyScalar(isRoof ? 1 : 0.72);
+      const A = walls.vert(ax, y0, az, nx, 0, nz, footColor, u0, v0);
+      const B = walls.vert(bx, y0, bz, nx, 0, nz, footColor, u1, v0);
       const A2 = walls.vert(ax, top, az, nx, 0, nz, wallColor, u0, v1);
       const B2 = walls.vert(bx, top, bz, nx, 0, nz, wallColor, u1, v1);
       if (ccw) { walls.tri(B, A, A2); walls.tri(B, A2, B2); } else { walls.tri(A, B, B2); walls.tri(A, B2, A2); }
@@ -299,11 +303,23 @@ export function buildBuildings(data: ChunkData, ctx: BuildContext): THREE.Object
   const ox = data.cx * CHUNK_SIZE, oz = data.cz * CHUNK_SIZE;
   const walls = new GeoBuf(true);
   const roofs = new GeoBuf();
+  const arch = new GeoBuf(true);
   for (const b of data.buildings) {
     if (ctx.landmarks.replacesBuilding(b.id)) continue;
-    addBuilding(b, ox, oz, ctx, walls, roofs);
+    const row = !!b.a?.f.length;
+    if (row) {
+      const fr = addShophouseRow(b, ox, oz, ctx, arch);
+      if (addRowRoof(b, fr, roofs, arch)) continue;
+    }
+    addBuilding(b, ox, oz, ctx, walls, roofs, row);
   }
   const out: THREE.Object3D[] = [];
+  const ag = arch.build();
+  if (ag) {
+    const m = new THREE.Mesh(ag, ctx.mats.arch);
+    m.castShadow = m.receiveShadow = true;
+    out.push(m);
+  }
   const wg = walls.build();
   if (wg) {
     const m = new THREE.Mesh(wg, ctx.detail === 'high' ? ctx.mats.wallsTextured : ctx.mats.wallsPlain);

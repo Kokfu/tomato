@@ -10,6 +10,9 @@ const tmpColor = new THREE.Color();
 const RAIL = new THREE.Color(0xc9ccd0);
 const CONCRETE = new THREE.Color(0x9a968c);
 const QUAY = new THREE.Color(0x8b8578);
+const KERB = new THREE.Color(0xb4b0a4);
+const DRAIN = new THREE.Color(0x5d5c57);
+const RAIL_PAINT = new THREE.Color(0x3d4a52);
 
 interface Sample { x: number; z: number; y: number }
 
@@ -156,6 +159,25 @@ export function buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBuf
   const bufs = [new GeoBuf(), new GeoBuf(), new GeoBuf(), new GeoBuf()];
   const marks = new GeoBuf();
   const white = new THREE.Color(0xffffff);
+  // Carriageway segments of this chunk (chunk-local metres) for the kerb clearance test.
+  const lanes: number[] = [];
+  for (const r of data.roads) {
+    const st = ROAD_STYLE[ROAD_TYPES[r.t]];
+    if (!high || st.group < 2) continue;
+    for (let i = 2; i < r.p.length; i += 2) lanes.push(r.p[i - 2] / QUANT, r.p[i - 1] / QUANT, r.p[i] / QUANT, r.p[i + 1] / QUANT, r.w / QUANT / 2, r.id);
+  }
+  const onCarriageway = (x: number, z: number, own: number): boolean => {
+    for (let i = 0; i < lanes.length; i += 6) {
+      if (lanes[i + 5] === own) continue;
+      const ax = lanes[i], az = lanes[i + 1], vx = lanes[i + 2] - ax, vz = lanes[i + 3] - az, hw = lanes[i + 4];
+      const l2 = vx * vx + vz * vz;
+      let t = l2 > 0 ? ((x - ax) * vx + (z - az) * vz) / l2 : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const dx = ax + vx * t - x, dz = az + vz * t - z;
+      if (dx * dx + dz * dz < (hw + 0.05) * (hw + 0.05)) return true;
+    }
+    return false;
+  };
   for (const r of data.roads) {
     const type = ROAD_TYPES[r.t];
     const style = ROAD_STYLE[type];
@@ -168,6 +190,32 @@ export function buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBuf
     if (type === 'steps') tmpColor.multiplyScalar(0.92);
     ribbon(bufs[style.group], pts, hw, tmpColor, ox, oz, ctx, !bridge, yOff, true);
     if (bridge && !ctx.landmarks.replacesRoadStructure(r.id)) bridgeStructure(structure, pts, hw, ox, oz, ctx, type === 'pier');
+
+    // Kerb stones and the open roadside drain that lines Kuching streets (decorative, inferred from
+    // the carriageway edge; drawn below the road layers so junctions stay clean).
+    if (high && style.group >= 2 && style.major && !bridge && !(r.f & 2) && pts.length >= 2) {
+      const kerb = offsets(pts, hw + 0.11), drain = offsets(pts, hw + 0.36);
+      for (const sgn of [0, 1]) {
+        // Split into runs that are clear of every other carriageway (the second half of a dual
+        // road, side-street mouths), so no kerb is ever painted across asphalt.
+        let k: Sample[] = [], d: Sample[] = [];
+        const flush = () => {
+          if (k.length >= 2) {
+            ribbon(bufs[0], d, 0.13, DRAIN, ox, oz, ctx, true, 0.035, false);
+            ribbon(bufs[0], k, 0.12, KERB, ox, oz, ctx, true, 0.05, false);
+          }
+          k = []; d = [];
+        };
+        for (let i = 0; i < pts.length; i++) {
+          const ko = kerb[i], dr = drain[i];
+          const kx = sgn ? ko.rx : ko.lx, kz = sgn ? ko.rz : ko.lz;
+          if (onCarriageway(kx, kz, r.id)) { flush(); continue; }
+          k.push({ x: kx, z: kz, y: pts[i].y });
+          d.push({ x: sgn ? dr.rx : dr.lx, z: sgn ? dr.rz : dr.lz, y: pts[i].y });
+        }
+        flush();
+      }
+    }
 
     // Dashed centre line on two-way major roads (decorative, inferred - not mapped lane data).
     if (high && style.group === 3 && !(r.f & 8) && hw >= 3) {
@@ -222,6 +270,27 @@ export function buildShore(data: ChunkData, ctx: BuildContext, structure: GeoBuf
     for (let i = 2; i < line.length; i += 2) {
       const ax = line[i - 2] / QUANT, az = line[i - 1] / QUANT, bx = line[i] / QUANT, bz = line[i + 1] / QUANT;
       quad(structure, ax, WATER_LEVEL - 1.2, ctx.height.sample(ox + ax, oz + az), az, bx, WATER_LEVEL - 1.2, ctx.height.sample(ox + bx, oz + bz), bz, QUAY);
+    }
+  }
+  if (ctx.detail !== 'high') return;
+  // Promenade railing on the stretches of river bank flagged by the streetscape pass.
+  for (const line of data.rail ?? []) {
+    let acc = 0, next = 0;
+    for (let i = 2; i < line.length; i += 2) {
+      const ax = line[i - 2] / QUANT, az = line[i - 1] / QUANT, bx = line[i] / QUANT, bz = line[i + 1] / QUANT;
+      const len = Math.hypot(bx - ax, bz - az);
+      if (len < 1e-3) continue;
+      const ya = ctx.height.sample(ox + ax, oz + az), yb = ctx.height.sample(ox + bx, oz + bz);
+      for (const [lo, hi] of [[1.0, 1.07], [0.52, 0.56], [0.12, 0.16]]) quad(structure, ax, ya + lo, ya + hi, az, bx, yb + lo, yb + hi, bz, RAIL_PAINT);
+      const dx = (bx - ax) / len, dz = (bz - az) / len;
+      while (next <= acc + len) {
+        const t = (next - acc) / len;
+        const x = ax + (bx - ax) * t, z = az + (bz - az) * t, y = ya + (yb - ya) * t;
+        quad(structure, x - dx * 0.05, y, y + 1.1, z - dz * 0.05, x + dx * 0.05, y, y + 1.1, z + dz * 0.05, RAIL_PAINT);
+        quad(structure, x + dz * 0.05, y, y + 1.1, z - dx * 0.05, x - dz * 0.05, y, y + 1.1, z + dx * 0.05, RAIL_PAINT);
+        next += 2.4;
+      }
+      acc += len;
     }
   }
 }

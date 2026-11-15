@@ -26,6 +26,7 @@ under `public/data/kuching/`, so the app runs without fetching anything.
 | W A S D / arrow keys | Move (relative to the camera) |
 | Shift | Run |
 | Space | Jump |
+| E / Enter | Inspect the nearest known shop or place |
 | Mouse (click the view to capture, or drag) | Look around |
 | Mouse wheel | Camera distance |
 | V | First / third person |
@@ -59,6 +60,9 @@ use Playwright's browser instead.
 
 ## Refreshing the map data
 
+`npm run data:streetscape` (shophouse rows, street furniture) and `npm run data:places` (shop
+identities; reads `data/places-overrides.json`) can be run on their own after editing their inputs.
+
 ```bash
 node tools/extract-map-data/fetch-osm.ts --force
 node tools/extract-map-data/fetch-overture.ts --force
@@ -77,6 +81,15 @@ it can be hosted from any static host or sub-path (GitHub Pages, Netlify, Cloudf
 nginx). Serve with gzip or brotli enabled; the JSON chunk files compress about 4x.
 
 ## Documentation
+
+V2 (visual realism, shop identity, gameplay feel):
+
+- [docs/V2_REPORT.md](docs/V2_REPORT.md): audit, before / after screenshots, measured performance, limitations, files changed
+- [docs/STREETSCAPE.md](docs/STREETSCAPE.md): shophouse rows, materials, street furniture; what is mapped and what is inferred
+- [docs/SHOP_IDENTITY.md](docs/SHOP_IDENTITY.md): business data model, sources, association rules, the `?admin=1` correction editor
+- [docs/VEHICLES.md](docs/VEHICLES.md): integration points for future driving
+
+Earlier documents:
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Geographic sources and licences](docs/GEOGRAPHIC_SOURCES.md)

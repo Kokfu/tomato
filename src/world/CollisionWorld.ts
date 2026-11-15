@@ -2,6 +2,7 @@ import { CHUNK_SIZE, QUANT, chunkKey } from './config.ts';
 import type { ChunkData } from './types.ts';
 import { BUILDING_KINDS } from './types.ts';
 import type { HeightMap } from './HeightMap.ts';
+import { ARCADE_DEPTH, insetEdges } from './arch/frontage.ts';
 
 interface Wall {
   minX: number; maxX: number; minZ: number; maxZ: number;
@@ -74,6 +75,9 @@ export class CollisionWorld {
     for (const b of data.buildings) {
       if (b.k === roofKind) continue; // open-sided roofs do not block movement
       const rings = b.r.map((r) => toWorld(r, ox, oz));
+      // Shophouse rows: the five-foot way behind the street frontage is walkable, so the blocking
+      // outline is the recessed shopfront line (same geometry the facade builder draws).
+      if (b.a?.f.length) rings[0] = Float32Array.from(insetEdges(rings[0], b.a.f, ARCADE_DEPTH));
       const base = this.height.sample(rings[0][0], rings[0][1]);
       walls.push({ ...bbox(rings[0]), rings, top: base + b.h / QUANT });
     }

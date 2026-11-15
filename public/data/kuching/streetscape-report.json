@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-11-15T03:35:06.963Z",
+  "heritageStreets": [
+    "Jalan Main Bazaar",
+    "Jalan Gambier",
+    "Jalan Carpenter",
+    "Jalan Ewe Hai",
+    "Upper China Street",
+    "Jalan China",
+    "Jalan Bishopgate",
+    "Lebuh Wayang",
+    "Lebuh Temple",
+    "Jalan India",
+    "India Street",
+    "Lorong Kai Joo",
+    "Jalan Khoo Hun Yeang",
+    "Jalan Power",
+    "Jalan Market",
+    "Lebuh Jawa",
+    "Jalan Padungan",
+    "Jalan Green Hill"
+  ],
+  "shophouseHeightM": 8.2,
+  "stats": {
+    "heritageBuildings": 122,
+    "frontageEdges": 186,
+    "frontageMetres": 4740,
+    "estimatedUnits": 910,
+    "lamps": 7970,
+    "signals": 109,
+    "streetSigns": 1600,
+    "benches": 5,
+    "bollards": 3,
+    "railMetres": 5024
+  }
+}

@@ -41,8 +41,9 @@ test.describe('gameplay', () => {
     const w = await dir('KeyW', 900);
     expect(w.dz).toBeLessThan(-0.8);
     expect(Math.abs(w.dx)).toBeLessThan(0.4);
-    expect(w.speed).toBeGreaterThan(1.7);
-    expect(w.speed).toBeLessThan(2.3);
+    // V2 pacing: 1.6 m/s walk, 5.2 m/s run, with eased acceleration.
+    expect(w.speed).toBeGreaterThan(1.3);
+    expect(w.speed).toBeLessThan(1.8);
     const s = await dir('KeyS', 900);
     expect(s.dz).toBeGreaterThan(0.8);
     const a = await dir('KeyA', 900);
@@ -50,7 +51,8 @@ test.describe('gameplay', () => {
     const d = await dir('KeyD', 900);
     expect(d.dx).toBeGreaterThan(0.8);
     const run = await dir('KeyD', 1200, true);
-    expect(run.speed).toBeGreaterThan(5.2);
+    expect(run.speed).toBeGreaterThan(4.6);
+    expect(run.speed).toBeLessThan(5.4);
     expect(run.dx).toBeGreaterThan(d.dx * 2);
 
     // Jump: leaves the ground, comes back down to it.
@@ -237,7 +239,7 @@ test.describe('gameplay', () => {
     await teleport(page, pts[0][0], pts[0][1]);
     await waitChunks(page);
     const before = await page.evaluate(() => ({ ...(window as any).__k3d.world.chunks.stats, loaded: (window as any).__k3d.world.chunks.loadedCount }));
-    const r = await walk(page, pts, { run: true, speedup: 2, maxSeconds: 300, tolerance: 2.5 });
+    const r = await walk(page, pts, { run: true, speedup: 2, maxSeconds: 400, tolerance: 2.5 });
     const after = await page.evaluate(() => ({ ...(window as any).__k3d.world.chunks.stats, loaded: (window as any).__k3d.world.chunks.loadedCount, geo: (window as any).__k3d.renderer.info.memory.geometries }));
     console.log(`road length ${bestLen.toFixed(0)} m, reached=${r.reached}, fetched ${before.fetched}->${after.fetched}, disposed ${after.disposed}, loaded ${after.loaded}, max build ${after.maxBuildMs.toFixed(1)} ms`);
     expect(r.sawLoading, 'player ran into an unloaded chunk').toBe(false);

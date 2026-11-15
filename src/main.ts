@@ -12,6 +12,8 @@ import { Minimap } from './ui/Minimap.ts';
 import { MobileControls } from './ui/MobileControls.ts';
 import { QUALITY, defaultQuality, isTouchDevice, AdaptiveResolution } from './ui/GraphicsSettings.ts';
 import type { QualityName } from './ui/GraphicsSettings.ts';
+import { PlacePanel } from './ui/PlacePanel.ts';
+import { Footsteps } from './player/Footsteps.ts';
 
 async function boot(): Promise<void> {
   const canvas = document.getElementById('scene') as HTMLCanvasElement;
@@ -20,11 +22,12 @@ async function boot(): Promise<void> {
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isTouchDevice(), powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  // Khronos PBR Neutral keeps the pastel facade colours true; ACES visibly desaturated them.
+  renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const adaptive = new AdaptiveResolution();
-  const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 2000);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.3, 2000);
   const applyResolution = () => {
     const w = Math.max(1, window.innerWidth), h = Math.max(1, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, quality.maxPixelRatio) * adaptive.scale);
@@ -38,8 +41,10 @@ async function boot(): Promise<void> {
   let paused = false;
   let started = false;
   let mapOpen = false;
+  let placeOpen = false;
+  const steps = new Footsteps();
   const syncInput = () => {
-    input.enabled = started && !paused && !mapOpen;
+    input.enabled = started && !paused && !mapOpen && !placeOpen;
     if (!input.enabled) input.releasePointer();
   };
 
@@ -48,8 +53,14 @@ async function boot(): Promise<void> {
     {
       onStart: () => {
         started = true;
+        steps.unlock();
         syncInput();
       },
+      onTimeOfDay: (t) => {
+        world.setTimeOfDay(t);
+        renderer.toneMappingExposure = world.exposure;
+      },
+      onSound: (on) => (steps.enabled = on),
       onResume: () => {
         paused = false;
         syncInput();
@@ -94,9 +105,11 @@ async function boot(): Promise<void> {
   camera.far = world.viewDistance;
   camera.updateProjectionMatrix();
   applyResolution();
+  renderer.toneMappingExposure = world.exposure;
 
   const player = new PlayerController(world.collision, new ProceduralHumanoid());
   player.hasData = (x, z) => world.chunks.hasData(x, z);
+  player.onFootstep = (speed, deck, impact) => steps.step(speed, deck ? 'deck' : 'paving', impact);
   world.scene.add(player.visual.root);
   const tpc = new ThirdPersonCamera(camera, world.collision);
   const spawn = world.manifest.spawn;
@@ -109,6 +122,7 @@ async function boot(): Promise<void> {
     player.teleport(spawn.x, spawn.z);
     player.heading = Math.PI;
     tpc.yaw = 0;
+    tpc.snap();
   };
   const toggleView = () => {
     tpc.firstPerson = !tpc.firstPerson;
@@ -126,8 +140,22 @@ async function boot(): Promise<void> {
     onResetLocation: resetLocation,
   });
 
+  const placePanel = new PlacePanel({
+    places: world.places,
+    nearby: () => world.places.near(player.position.x, player.position.z, 7, (cx, cz) => world.chunks.dataAt(cx, cz)),
+    playerGeo: () => worldToGeo(player.position.x, player.position.z),
+    onOpenChange: (open) => {
+      placeOpen = open;
+      syncInput();
+    },
+  });
+  input.on('interact', () => {
+    if (started && !paused && !mapOpen) placePanel.toggle();
+  });
+
   input.on('pause', () => {
-    if (mapOpen) minimap.toggleFullMap();
+    if (placeOpen) placePanel.close();
+    else if (mapOpen) minimap.toggleFullMap();
     else if (started) menu.togglePause();
   });
   input.on('map', () => {
@@ -192,7 +220,7 @@ async function boot(): Promise<void> {
 
     input.poll();
     if (spawnReady && !paused) for (let i = 0; i < stepsPerFrame; i++) player.update(dt, input, tpc.yaw);
-    tpc.update(dt, player.position, input);
+    tpc.update(dt, player, input);
     input.endFrame();
 
     blob.visible = quality.shadowMap === 0 && !tpc.firstPerson;
@@ -207,6 +235,7 @@ async function boot(): Promise<void> {
       const road = world.chunks.nearestRoadName(player.position.x, player.position.z);
       menu.setLocation(road ?? 'Kuching, Sarawak', lat, lon);
       menu.setChunkLoading(world.chunks.progress() < 0.999);
+      placePanel.update();
       if (player.blocked === 'water') menu.toast('The river blocks the way – use a bridge');
       else if (player.blocked === 'edge') menu.toast('Edge of the mapped area');
       else if (player.blocked === 'loading') menu.toast('Loading the next area…');
@@ -236,7 +265,7 @@ async function boot(): Promise<void> {
 
   // Debug / automated-test hook.
   (window as any).__k3d = {
-    world, player, camera, tpc, input, renderer, minimap, menu,
+    world, player, camera, tpc, input, renderer, minimap, menu, placePanel, steps,
     geoToWorld, worldToGeo,
     get fps() { return fps; },
     get ready() { return spawnReady; },
@@ -245,6 +274,7 @@ async function boot(): Promise<void> {
     teleportGeo: (lat: number, lon: number) => {
       const [x, z] = geoToWorld(lat, lon);
       player.teleport(x, z);
+      tpc.snap();
     },
   };
 }

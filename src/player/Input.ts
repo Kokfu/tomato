@@ -10,6 +10,7 @@ export const KEY_BINDINGS = {
   jump: ['Space'],
   map: ['KeyM'],
   view: ['KeyV'],
+  interact: ['KeyE', 'Enter'],
   pause: ['Escape'],
 };
 export type Action = keyof typeof KEY_BINDINGS;
