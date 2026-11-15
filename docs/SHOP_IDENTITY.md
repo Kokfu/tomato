@@ -20,7 +20,7 @@ match within 80 m), and never produce signage. An owner can promote one by savin
 
 Current build (see `public/data/kuching/places/index.json` for the live numbers): 1,400 OSM places,
 2,529 Overture places kept (4,624 dropped for low confidence, 548 as duplicates of OSM),
-752 facade signs city-wide.
+743 facade signs city-wide.
 
 ## Record
 
@@ -52,8 +52,9 @@ editor. A place is tied to a building only on geometric evidence:
 
 A sign additionally needs a wall: on shophouse rows only street-frontage edges qualify; elsewhere
 the wall must have a street within 18 m in front of it. Places deeper than 16 m inside a block get
-no sign (their frontage is unknown). One building can hold many businesses; at most two signs share
-one ~5 m lot (fascia board plus one above it), ordered by trust then recency.
+no sign (their frontage is unknown). One building can hold many businesses; each ~4 m stretch of
+wall carries one sign, chosen by trust then recency, and the other businesses there remain
+inspectable (the panel lists them under "Also here").
 
 Unit tests: `tests/unit/streetscape.test.ts` (inside / adjacent / ambiguous / far cases, sign
 invariants over the generated files).
@@ -85,6 +86,6 @@ there is no server-side database or login. A hosted editor would need an authent
 
 - Coverage is what OSM mappers have recorded. Many shop units have no known business and keep a
   blank fascia; the app never invents names.
-- Positions are single points. Where several businesses map to the same lot, only two get signs.
+- Positions are single points. Where several businesses map to the same lot, only one gets a sign.
 - Unit (lot) boundaries are not mapped; a sign is centred on the estimated lot containing the point.
 - Source dates can be old (some OSM records here date from 2013 to 2019). The panel shows the date.

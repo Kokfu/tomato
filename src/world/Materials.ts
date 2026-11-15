@@ -142,9 +142,8 @@ const NOISE_GLSL = /* glsl */ `
  */
 const DETAIL = {
   asphalt: /* glsl */ `
-    float a = k3n(p.xz * 11.0) * 0.55 + k3n(p.xz * 2.1) * 0.45;
-    col *= mix(1.0, 0.8 + 0.34 * a, fade);
-    col *= 0.9 + 0.2 * k3n(p.xz * 0.11);`,
+    float a = k3n(p.xz * 9.0) * 0.6 + k3n(p.xz * 0.6) * 0.4;
+    col *= mix(1.0, 0.8 + 0.34 * a, fade) * (0.94 + 0.12 * a);`,
   paving: /* glsl */ `
     vec2 q = p.xz / 0.6;
     vec2 f = fract(q);
@@ -172,13 +171,14 @@ const DETAIL = {
     }`,
   ground: /* glsl */ `
     float green = smoothstep(0.02, 0.1, col.g - max(col.r, col.b));
-    float turf = k3n(p.xz * 3.0) * 0.5 + k3n(p.xz * 17.0) * 0.5;
+    float big = k3n(p.xz * 0.09);
     vec2 q = p.xz / 1.2;
     vec2 f = fract(q);
     float joint = step(0.025, f.x) * step(0.025, f.y);
     float paved = (0.88 + 0.12 * joint) * (0.93 + 0.12 * k3h(floor(q)));
-    col *= mix(1.0, mix(paved, 0.72 + 0.5 * turf, green), fade);
-    col *= 0.9 + 0.18 * k3n(p.xz * 0.09);`,
+    float turf = 0.72 + 0.5 * (k3n(p.xz * 5.0) * 0.6 + big * 0.4);
+    col *= mix(1.0, mix(paved, turf, green), fade);
+    col *= 0.9 + 0.18 * big;`,
   concrete: /* glsl */ `
     col *= 0.88 + 0.2 * k3n(p.xz * 0.9 + p.y * 1.7);`,
 };

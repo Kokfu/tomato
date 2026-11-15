@@ -21,20 +21,23 @@ OpenStreetMap maps the old-town blocks as plain outlines: no levels, no building
 lines. V1 extruded them as 10 to 12 m beige boxes with a repeated window, which read as four-storey
 office blocks.
 
-**Classification (estimate).** A human-mapped, unnamed, low-rise outline becomes a shophouse row
+**Classification (estimate).** A human-mapped, low-rise outline becomes a shophouse row
 when at least one wall fronts one of these streets: Jalan Main Bazaar, Jalan Gambier, Jalan
 Carpenter, Jalan Ewe Hai, Upper China Street, Jalan China, Jalan Bishopgate, Lebuh Wayang, Lebuh
 Temple, Jalan India, Lorong Kai Joo, Jalan Khoo Hun Yeang, Jalan Power, Jalan Market, Lebuh Jawa,
-Jalan Padungan, Jalan Green Hill. Named buildings (which include every custom landmark) and
-machine-detected footprints are never reclassified. Result: 120 buildings, 182 frontage walls,
-4.6 km of frontage, about 887 estimated lots.
+Jalan Padungan, Jalan Green Hill. Outlines named as institutions (court, museum, temple, hotel,
+office, car park and similar, which covers every custom landmark) and machine-detected footprints
+are never reclassified; a row that OSM names after a business inside it (for example "328 Gallery
+Sdn. Bhd." on Main Bazaar) still counts. Result: 122 buildings, 186 frontage walls, 4.7 km of
+frontage, about 910 estimated lots.
 
 **Frontage walls (derived from mapped geometry).** A wall edge is a frontage when a street
 centreline lies in front of it (within half the road width + 9 m), runs along it, and no other
 building stands between. Stored as `a.f` on the building.
 
 **Height (estimate).** Rows without a tagged height are set to 8.2 m eaves (two storeys:
-3.85 m ground floor with fascia, 3.7 m upper floor, parapet). Height source stays `2 = estimated`.
+3.75 m ground floor with fascia, upper floor, parapet). Height source stays `2 = estimated`.
+Rows with `building:levels` keep their tagged height and get one window band per upper storey.
 
 **Generated on the real outline** (`src/world/arch/Shophouse.ts`):
 
@@ -44,9 +47,9 @@ building stands between. Stored as `a.f` on the building.
 | Five-foot way, 2.3 m deep, behind every frontage | inferred position, typical dimension; it is walkable because the collision outline uses the same recessed line (`insetEdges`) |
 | Columns at lot boundaries, capitals, pilasters, cornice, string course | inferred |
 | Per-lot wall colour (14 Kuching pastels), upper-storey style (louvred shutters with fanlights, arched openings with brown shutters, glazed casements with hoods, French shutters behind railings) | inferred, deterministic from `hash3(building id, edge, lot)` |
-| Shopfront (roller shutter 55 %, timber folding doors 25 %, open shop 20 %), floor tile colour, roll-down blinds, air-conditioner units, parapet step | inferred, deterministic |
+| Shopfront (roller shutter 55 %, timber folding doors 25 %, open shop 20 %) and its paint, floor tile colour, roll-down blinds, air-conditioner units, parapet step | inferred, deterministic |
 | Sign text | **data only** (see `SHOP_IDENTITY.md`); lots without a known business keep a blank fascia |
-| Roof: clay-tile pitch with the ridge parallel to each frontage, flat roofing over the rear of the block | inferred form |
+| Roof: clay-tile pitch with the ridge parallel to each frontage, party walls rising through it at every lot boundary, flat roofing over the rear of the block | inferred form |
 
 The same building always gets the same details: every choice is a pure function of the OSM
 building id, the wall edge index and the lot index (`unitStyle`), covered by a unit test.
@@ -73,7 +76,7 @@ river-facing Main Bazaar fronts) and Evening.
 | Traffic signals | 109 | mapped OSM nodes; pole moved to the kerb of the nearest street |
 | Street-name plates | 1,600 | mapped names at mapped junction nodes; post position beside the road inferred; plate styling inferred |
 | Benches, bollards | 5, 3 | mapped OSM nodes |
-| Lamp posts | 7,970 | **inferred**: every 32 m on alternating sides of named streets, never in buildings, water or junction areas (OSM has one mapped street lamp) |
+| Lamp posts (6.2 m) | 7,970 | **inferred**: every 32 m on alternating sides of named streets, never in buildings, water or junction areas (OSM has one mapped street lamp) |
 | River-bank railing | 5.0 km | inferred where a mapped promenade / footway runs within 14 m of the mapped bank |
 | Kerbs and roadside drains | along major carriageways | inferred from the carriageway edge |
 | Trees | 19 mapped, rest in mapped parks / woods | positions as before; species not mapped, a 24 % palm mix is inferred |

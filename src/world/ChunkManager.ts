@@ -34,6 +34,8 @@ interface Chunk {
   group?: THREE.Group;
   /** Detail level of the current mesh, if built. */
   built?: Detail;
+  /** High-detail chunk whose decorations (trees, furniture, signs) are still to be added. */
+  decor?: boolean;
 }
 
 /**
@@ -47,6 +49,8 @@ export class ChunkManager {
   onChunkRemoved: ((cx: number, cz: number) => void) | null = null;
   quality: Quality;
   stats = { fetched: 0, built: 0, disposed: 0, bytes: 0, lastBuildMs: 0, maxBuildMs: 0 };
+  /** Cumulative milliseconds spent in each stage of chunk mesh building (profiling aid). */
+  buildProfile: Record<string, number> = {};
   /** When set, new chunk meshes are uploaded to the GPU as they are built instead of when first seen. */
   renderer: THREE.WebGLRenderer | null = null;
 
@@ -110,7 +114,7 @@ export class ChunkManager {
     let done = 0;
     for (const [k, d] of this.want) {
       const c = this.chunks.get(k);
-      if (c && (c.built === d || c.state === 'error')) done++;
+      if (c && ((c.built === d && !c.decor) || c.state === 'error')) done++;
     }
     return done / this.want.size;
   }
@@ -212,8 +216,16 @@ export class ChunkManager {
       if (this.inflight >= 6) break;
       if (!this.chunks.has(k)) this.fetchChunk(k);
     }
-    // 2. Build at most one chunk mesh per frame (two at vehicle speeds), nearest first, to avoid frame spikes.
+    // 2. Build at most one chunk mesh per frame (two at vehicle speeds), nearest first, to avoid frame
+    // spikes. A high-detail chunk is built in two frames: geometry first, decorations after.
     let budget = this.buildBudget;
+    for (const k of this.order) {
+      const c = this.chunks.get(k);
+      if (c?.decor && c.group) {
+        this.decorate(c);
+        if (--budget <= 0) return;
+      }
+    }
     for (const k of this.order) {
       const c = this.chunks.get(k);
       const detail = this.want.get(k)!;
@@ -271,8 +283,15 @@ export class ChunkManager {
     const data = c.data!;
     const ctx: BuildContext = { ...this.ctxBase, quality: this.quality, detail };
     const g = new THREE.Group();
+    let tp = t0;
+    const lap = (name: string) => {
+      const now = performance.now();
+      this.buildProfile[name] = (this.buildProfile[name] ?? 0) + now - tp;
+      tp = now;
+    };
     g.position.set(c.cx * CHUNK_SIZE, 0, c.cz * CHUNK_SIZE);
     g.add(buildTerrain(data, ctx));
+    lap('terrain');
     const water = buildWater(data, ctx);
     if (water) g.add(water);
     const structure = new GeoBuf();
@@ -289,6 +308,7 @@ export class ChunkManager {
       m.renderOrder = 6;
       g.add(m);
     }
+    lap('roads');
     buildShore(data, ctx, structure);
     const sg = structure.build();
     if (sg) {
@@ -297,13 +317,10 @@ export class ChunkManager {
       m.receiveShadow = true;
       g.add(m);
     }
+    lap('shore');
     for (const o of buildBuildings(data, ctx)) g.add(o);
-    if (detail === 'high') {
-      for (const o of buildVegetation(data, ctx)) g.add(o);
-      for (const o of buildFurniture(data, ctx)) g.add(o);
-      const labels = buildChunkLabels(data, ctx);
-      if (labels) g.add(labels);
-    }
+    lap('buildings');
+    c.decor = detail === 'high';
     // Landmark models are cheap (a few thousand triangles, one draw call each) and their generic
     // extrusions are suppressed at every detail level, so they are built for low detail as well:
     // otherwise the bridge masts and the DUN roof would vanish from the distant skyline.
@@ -321,6 +338,7 @@ export class ChunkManager {
       const map = (mesh.material as THREE.MeshLambertMaterial).map;
       if (map && mesh.userData.ownMaterial) this.renderer?.initTexture(map);
     });
+    lap('upload');
     this.warming.push({ group: g, frame: this.frame });
     c.group = g;
     c.built = detail;
@@ -328,6 +346,30 @@ export class ChunkManager {
     this.stats.built++;
     this.stats.lastBuildMs = performance.now() - t0;
     this.stats.maxBuildMs = Math.max(this.stats.maxBuildMs, this.stats.lastBuildMs);
+  }
+
+  /** Second build frame of a high-detail chunk: trees, street furniture and signs. */
+  private decorate(c: Chunk): void {
+    const t0 = performance.now();
+    c.decor = false;
+    const data = c.data!, g = c.group!;
+    const ctx: BuildContext = { ...this.ctxBase, quality: this.quality, detail: 'high' };
+    const added: THREE.Object3D[] = [...buildVegetation(data, ctx), ...buildFurniture(data, ctx)];
+    const labels = buildChunkLabels(data, ctx);
+    if (labels) added.push(labels);
+    for (const o of added) {
+      g.add(o);
+      o.updateMatrixWorld(true);
+      o.matrixAutoUpdate = false;
+      const mesh = o as THREE.Mesh;
+      mesh.frustumCulled = false;
+      const map = (mesh.material as THREE.MeshLambertMaterial).map;
+      if (map && mesh.userData.ownMaterial) this.renderer?.initTexture(map);
+    }
+    this.warming.push({ group: g, frame: this.frame });
+    const ms = performance.now() - t0;
+    this.buildProfile.decor = (this.buildProfile.decor ?? 0) + ms;
+    this.stats.maxBuildMs = Math.max(this.stats.maxBuildMs, ms);
   }
 
   private disposeMesh(c: Chunk): void {
@@ -346,6 +388,7 @@ export class ChunkManager {
     });
     c.group = undefined;
     c.built = undefined;
+    c.decor = false;
     this.stats.disposed++;
   }
 

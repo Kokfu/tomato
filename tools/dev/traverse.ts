@@ -4,7 +4,8 @@
 //   node tools/dev/traverse.ts <label> [--url=http://localhost:4173/] [--out=docs/perf-v2.json] [--seconds=60]
 // Run it against a production build (`npm run build && npm run preview`). Results are merged into
 // the output file under <label>, so "before" and "after" builds can be compared side by side.
-// Frame pacing is measured with vsync disabled (headroom above the display refresh rate).
+// Without --vsync the frame rate is uncapped (throughput / headroom); with --vsync it is capped
+// (real frame pacing).
 import { chromium } from '@playwright/test';
 import type { Browser } from '@playwright/test';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -16,6 +17,9 @@ const opt = (k: string, d: string) => args.find((a) => a.startsWith(`--${k}=`))?
 const url = opt('url', 'http://localhost:4173/');
 const out = opt('out', 'docs/perf-v2.json');
 const seconds = Number(opt('seconds', '60'));
+// --vsync: keep the display's refresh cap. Use it for frame pacing (1 % low, slow-frame counts);
+// the uncapped mode shows throughput but stalls periodically on some integrated GPUs.
+const vsync = args.includes('--vsync');
 
 /** Route in world metres (x east, z south), following mapped road centrelines. */
 const ROUTE: [number, number][] = [
@@ -167,7 +171,7 @@ async function run(browser: Browser, session: string, ctxOpts: any, quality: str
 
 const browser = await chromium.launch({
   channel: 'msedge',
-  args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-precise-memory-info', '--disable-gpu-vsync', '--disable-frame-rate-limit', '--enable-webgl-draft-extensions'],
+  args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-precise-memory-info', '--enable-webgl-draft-extensions', ...(vsync ? [] : ['--disable-gpu-vsync', '--disable-frame-rate-limit'])],
 });
 const probe = await browser.newPage();
 const gpuName = await probe.evaluate(() => {
@@ -186,7 +190,7 @@ const all = existsSync(out) ? JSON.parse(readFileSync(out, 'utf8')) : {};
 all[label] = {
   measuredAt: new Date().toISOString(), url,
   machine: { gpu: gpuName, cpu: os.cpus()[0]?.model, cores: os.cpus().length, ramGB: Math.round(os.totalmem() / 2 ** 30), os: `${os.type()} ${os.release()}` },
-  note: 'vsync disabled; adaptive resolution off; mobile session is an emulated viewport on the desktop GPU, not a physical phone',
+  note: `${vsync ? 'vsync on (frame rate capped at the display refresh)' : 'vsync disabled (uncapped)'}; adaptive resolution off; mobile session is an emulated viewport on the desktop GPU, not a physical phone`,
   results,
 };
 writeFileSync(out, JSON.stringify(all, null, 2));

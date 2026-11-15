@@ -37,9 +37,10 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
 function shared(): Kit {
   if (kit) return kit;
   const trunk = new THREE.CylinderGeometry(0.14, 0.24, 1, 6, 1, true).translate(0, 0.5, 0);
-  // Broad rain-tree style canopy: a few overlapping lobes instead of a single ball.
+  // Broad rain-tree style canopy: a few overlapping low-poly lobes (100 triangles in total; trees
+  // are the most numerous objects in view, so the budget per tree is small).
   const lobes: [number, number, number, number][] = [[0, 0, 0, 1], [0.62, -0.12, 0.2, 0.68], [-0.5, -0.08, 0.42, 0.72], [-0.15, -0.1, -0.66, 0.66], [0.1, 0.42, 0.05, 0.6]];
-  const crown = shade(merge(lobes.map(([x, y, z, r]) => new THREE.IcosahedronGeometry(r, 1).scale(1, 0.72, 1).translate(x, y, z))), -0.7, 0.8, 0.5);
+  const crown = shade(merge(lobes.map(([x, y, z, r]) => new THREE.IcosahedronGeometry(r, 0).scale(1, 0.72, 1).rotateY(x * 2.1 + z).translate(x, y, z))), -0.7, 0.8, 0.5);
   const palmTrunk = new THREE.CylinderGeometry(0.09, 0.16, 1, 5, 1, true).translate(0, 0.5, 0);
   // Coconut-palm crown: arching fronds, each a bent strip that droops toward the tip.
   const fr: THREE.BufferGeometry[] = [];

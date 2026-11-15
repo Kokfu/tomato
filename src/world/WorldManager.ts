@@ -90,6 +90,7 @@ export class WorldManager {
   private skyMat: THREE.ShaderMaterial;
   private quality: Quality;
   private time = 0;
+  private shadowTick = 0;
 
   static async load(quality: Quality): Promise<WorldManager> {
     const base = `${import.meta.env.BASE_URL}${DATA_ROOT}/`;
@@ -120,6 +121,7 @@ export class WorldManager {
     this.scene.fog = new THREE.FogExp2(0xffffff, 0.002);
     this.hemi = new THREE.HemisphereLight(0xffffff, 0xffffff, 1);
     this.sun = new THREE.DirectionalLight(0xffffff, 2);
+    this.sun.shadow.autoUpdate = false;
     this.scene.add(this.hemi, this.sun, this.sun.target);
 
     this.skyMat = new THREE.ShaderMaterial({
@@ -208,8 +210,14 @@ export class WorldManager {
     const texel = this.quality.shadowMap > 0 ? (this.quality.shadowRange * 2) / this.quality.shadowMap : 1;
     const snap = Math.max(texel * 4, 0.25);
     const fx = Math.round(focus.x / snap) * snap, fz = Math.round(focus.z / snap) * snap, fy = Math.round(focus.y);
-    this.sun.target.position.set(fx, fy, fz);
-    this.sun.position.set(fx, fy, fz).addScaledVector(this.sunDir, 300);
-    this.sun.target.updateMatrixWorld();
+    // The shadow map is re-rendered every other frame (the light only moves on those frames, so the
+    // map and its projection always agree). Halves the depth-pass cost; the only moving caster is
+    // the character, whose shadow trails by one frame.
+    if (this.shadowTick++ % 2 === 0) {
+      this.sun.target.position.set(fx, fy, fz);
+      this.sun.position.set(fx, fy, fz).addScaledVector(this.sunDir, 300);
+      this.sun.target.updateMatrixWorld();
+      this.sun.shadow.needsUpdate = true;
+    }
   }
 }
