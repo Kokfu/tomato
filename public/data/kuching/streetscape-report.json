@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-15T03:35:06.963Z",
+  "generatedAt": "2026-11-15T07:40:28.958Z",
   "heritageStreets": [
     "Jalan Main Bazaar",
     "Jalan Gambier",
@@ -22,11 +22,12 @@
   ],
   "shophouseHeightM": 8.2,
   "stats": {
-    "heritageBuildings": 122,
-    "frontageEdges": 186,
-    "frontageMetres": 4740,
-    "estimatedUnits": 910,
-    "lamps": 7970,
+    "protectedFromShopfronts": 1153,
+    "heritageBuildings": 123,
+    "frontageEdges": 185,
+    "frontageMetres": 4715,
+    "estimatedUnits": 905,
+    "lamps": 7972,
     "signals": 109,
     "streetSigns": 1600,
     "benches": 5,

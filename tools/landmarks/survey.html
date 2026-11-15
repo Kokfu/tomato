@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- Site survey viewer (dev only, never shipped): mapped outlines over aerial imagery, 1 px grid in
+     metres. Imagery is used to REVIEW layout and measure; no imagery is copied into the game.
+     Open through the dev server: /tools/landmarks/survey.html?z=20&img=1 -->
+<meta charset="utf-8"><title>Site survey</title>
+<style>body{margin:0;background:#222;font:12px sans-serif;color:#fff}#c{position:relative}canvas{position:absolute;left:0;top:0}#info{position:fixed;left:6px;top:6px;background:#000a;padding:4px 8px;z-index:5}</style>
+<div id="info"></div><div id="c"></div>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const Z = +(q.get('z') ?? 20), IMG = q.get('img') !== '0', SCALE = +(q.get('s') ?? 2), SPAN = +(q.get('span') ?? 2);
+const d = await (await fetch('./.survey.json')).json();
+const [lat0, lon0] = d.centre;
+const n = 2 ** Z;
+const tx = (lon) => ((lon + 180) / 360) * n;
+const ty = (lat) => ((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * n;
+const cx = Math.floor(tx(lon0)), cy = Math.floor(ty(lat0));
+const T = 256 * SCALE, W = (2 * SPAN + 1) * T;
+const c = document.getElementById('c');
+const px = (lat, lon) => [(tx(lon) - (cx - SPAN)) * T, (ty(lat) - (cy - SPAN)) * T];
+if (IMG) for (let j = -SPAN; j <= SPAN; j++) for (let i = -SPAN; i <= SPAN; i++) {
+  const im = new Image();
+  im.src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${Z}/${cy + j}/${cx + i}`;
+  im.style.cssText = `position:absolute;left:${(i + SPAN) * T}px;top:${(j + SPAN) * T}px;width:${T}px;height:${T}px`;
+  c.appendChild(im);
+}
+const cv = document.createElement('canvas'); cv.width = cv.height = W; c.appendChild(cv);
+const g = cv.getContext('2d');
+const mpp = (40075016.686 * Math.cos((lat0 * Math.PI) / 180)) / n / T; // metres per screen pixel
+const path = (pts, close) => { g.beginPath(); pts.forEach((p, i) => { const [x, y] = px(p[0], p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); }); if (close) g.closePath(); };
+const show = (q.get('show') ?? 'osm,ov,poi,grid').split(',');
+if (show.includes('ov')) for (const o of d.overture) { path(o.pts, true); g.strokeStyle = o.src?.startsWith('Google') ? '#ff0' : o.src?.startsWith('Micro') ? '#f80' : '#0000'; g.lineWidth = 1.5; g.setLineDash([5, 4]); g.stroke(); }
+g.setLineDash([]);
+if (show.includes('osm')) for (const o of d.osm) {
+  const hw = o.tags.highway; path(o.pts, !hw);
+  g.strokeStyle = hw ? '#4cf' : o.tags.building ? '#f33' : '#f0f'; g.lineWidth = hw ? 1.5 : 2.5; g.stroke();
+  if (!hw) { const [x, y] = px(o.pts[0][0], o.pts[0][1]); g.fillStyle = '#fff'; g.fillText(o.ref.replace('way/', 'w') + ' ' + (o.tags.name ?? ''), x + 3, y - 3); }
+}
+if (show.includes('poi')) for (const p of d.pois) { if (!p.tags.name) continue; const [x, y] = px(p.lat, p.lon); g.fillStyle = '#0f0'; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); g.fillStyle = '#fff'; g.fillText(p.tags.name.slice(0, 26), x + 6, y + 4); }
+if (show.includes('grid')) { // 10 m scale bar
+  g.fillStyle = '#fff'; g.fillRect(20, W - 30, 10 / mpp, 4); g.fillText('10 m', 20, W - 36);
+}
+document.getElementById('info').textContent = `z${Z} ${mpp.toFixed(3)} m/px, centre ${lat0}, ${lon0}`;
+const [sx, sy] = px(lat0, lon0); window.scrollTo(sx - innerWidth / 2, sy - innerHeight / 2);
+window.__survey = { px, mpp };
+</script>

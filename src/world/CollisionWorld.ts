@@ -6,6 +6,7 @@ import { ARCADE_DEPTH, insetEdges } from './arch/frontage.ts';
 import { isDistrictRow } from './district/mainBazaar.ts';
 import { frontFloors, frontObstacles } from './district/frontLayout.ts';
 import { districtFloors, propObstacles } from './district/props.ts';
+import type { LandmarkSite } from './landmarks/LandmarkModels.ts';
 
 interface Wall {
   minX: number; maxX: number; minZ: number; maxZ: number;
@@ -64,12 +65,23 @@ function pointInRings(x: number, z: number, rings: ArrayLike<number>[]): boolean
 /** Simplified collision world, independent of visual detail and graphics settings. */
 export class CollisionWorld {
   private chunks = new Map<string, ChunkCollision>();
+  private landmarkSites: LandmarkSite[] = [];
   readonly height: HeightMap;
   /** Step height the character can climb / snap to (metres). */
   static STEP = 0.6;
 
   constructor(height: HeightMap) {
     this.height = height;
+  }
+
+  /**
+   * Registered landmark sites: their simplified collision (authored with the model, placed by the
+   * data pipeline) replaces the footprint extrusion of the site's building record. Set before any
+   * chunk is added. Collision is registered with the chunk, so it works whether or not the visual
+   * model has loaded yet.
+   */
+  setLandmarkSites(sites: LandmarkSite[]): void {
+    this.landmarkSites = sites;
   }
 
   addChunk(data: ChunkData): void {
@@ -80,6 +92,7 @@ export class CollisionWorld {
     const floors: ChunkCollision['floors'] = [];
     for (const b of data.buildings) {
       if (b.k === roofKind) continue; // open-sided roofs do not block movement
+      if (b.lm !== undefined) continue; // landmark site: collision comes from its model (below), never both
       const rings = b.r.map((r) => toWorld(r, ox, oz));
       // Shophouse rows: the five-foot way behind the street frontage is walkable, so the blocking
       // outline is the recessed shopfront line (same geometry the facade builder draws).
@@ -106,6 +119,12 @@ export class CollisionWorld {
     for (const o of propObstacles(data)) {
       const ring = Float32Array.from(o.ring);
       walls.push({ ...bbox(ring), rings: [ring], top: this.height.sample(ring[0], ring[1]) + o.h });
+    }
+    const key = chunkKey(data.cx, data.cz);
+    for (const s of this.landmarkSites) {
+      if (!s.chunks.includes(key)) continue;
+      for (const w of s.collision.walls) { const ring = Float32Array.from(w.ring); walls.push({ ...bbox(ring), rings: [ring], top: w.top }); }
+      for (const f of s.collision.floors) { const ring = Float32Array.from(f.ring); floors.push({ ring, h: f.h, ...bbox(ring) }); }
     }
     const water: WaterPoly[] = data.water.map((poly) => {
       const rings = poly.map((r) => toWorld(r, ox, oz));

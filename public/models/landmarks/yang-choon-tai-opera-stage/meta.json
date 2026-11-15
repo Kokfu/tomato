@@ -1,0 +1,79 @@
+{
+ "id": "yang-choon-tai-opera-stage",
+ "version": 1,
+ "name": "Yang Choon Tai Opera Stage",
+ "lods": [
+  {
+   "file": "lod0.glb",
+   "triangles": 3921,
+   "vertices": 5255,
+   "bytes": 109032,
+   "gzipBytes": 38318
+  },
+  {
+   "file": "lod1.glb",
+   "triangles": 142,
+   "vertices": 236,
+   "bytes": 6036,
+   "gzipBytes": 2100
+  }
+ ],
+ "bounds": {
+  "min": [
+   -5.17,
+   -0.6,
+   -15
+  ],
+  "max": [
+   5.17,
+   10.53,
+   0.4
+  ]
+ },
+ "collision": {
+  "walls": [
+   {
+    "ring": [
+     -4.8,
+     -1,
+     4.8,
+     -1,
+     4.8,
+     -14.6,
+     -4.8,
+     -14.6
+    ],
+    "top": 10
+   }
+  ],
+  "floors": [
+   {
+    "ring": [
+     -4.8,
+     0,
+     4.8,
+     0,
+     4.8,
+     -1,
+     -4.8,
+     -1
+    ],
+    "h": 0.08
+   }
+  ]
+ },
+ "plaques": [
+  {
+   "text": "臺春陽",
+   "x": 0,
+   "y": 5.51,
+   "z": -1.41,
+   "w": 1.75,
+   "h": 0.52,
+   "ry": 0,
+   "fg": "#e9c35a",
+   "bg": "#18120f",
+   "basis": "OSM node 12779002958 (name 阳春台 / 陽春臺); board position from the iPackTravel interior photograph, read right to left as on the street sign"
+  }
+ ]
+}

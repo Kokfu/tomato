@@ -1,0 +1,116 @@
+{
+ "id": "carpenter-street-harmony-arch",
+ "version": 1,
+ "name": "Carpenter Street Harmony Arch",
+ "lods": [
+  {
+   "file": "lod0.glb",
+   "triangles": 5656,
+   "vertices": 7520,
+   "bytes": 155680,
+   "gzipBytes": 53558
+  },
+  {
+   "file": "lod1.glb",
+   "triangles": 1172,
+   "vertices": 1816,
+   "bytes": 37508,
+   "gzipBytes": 12688
+  }
+ ],
+ "bounds": {
+  "min": [
+   -6.29,
+   0,
+   -4.78
+  ],
+  "max": [
+   6.29,
+   9.08,
+   -0.1
+  ]
+ },
+ "collision": {
+  "walls": [
+   {
+    "ring": [
+     -3.6500000000000004,
+     -2.99,
+     -2.55,
+     -2.99,
+     -2.55,
+     -1.89,
+     -3.6500000000000004,
+     -1.89
+    ],
+    "top": 6.8
+   },
+   {
+    "ring": [
+     2.55,
+     -2.99,
+     3.6500000000000004,
+     -2.99,
+     3.6500000000000004,
+     -1.89,
+     2.55,
+     -1.89
+    ],
+    "top": 6.8
+   },
+   {
+    "ring": [
+     -5.5,
+     -2.7399999999999998,
+     -4.9,
+     -2.7399999999999998,
+     -4.9,
+     -2.14,
+     -5.5,
+     -2.14
+    ],
+    "top": 4
+   },
+   {
+    "ring": [
+     4.9,
+     -2.7399999999999998,
+     5.5,
+     -2.7399999999999998,
+     5.5,
+     -2.14,
+     4.9,
+     -2.14
+    ],
+    "top": 4
+   }
+  ],
+  "floors": []
+ },
+ "plaques": [
+  {
+   "text": "亞答街",
+   "x": 0,
+   "y": 6.42,
+   "z": -2.565,
+   "w": 2.8,
+   "h": 0.66,
+   "ry": 3.141592653589793,
+   "fg": "#f2d36b",
+   "bg": "#b3261e",
+   "basis": "Commons photograph of the east face: board reads 亞答街"
+  },
+  {
+   "text": "親善門",
+   "x": 0,
+   "y": 6.42,
+   "z": -2.315,
+   "w": 2.8,
+   "h": 0.66,
+   "ry": 0,
+   "fg": "#f2d36b",
+   "bg": "#b3261e",
+   "basis": "approximation: OSM official_name 亲善门 Harmony Arch; the west face was not seen in a reference"
+  }
+ ]
+}

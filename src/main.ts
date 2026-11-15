@@ -1,3 +1,4 @@
+import { guardViolations } from './world/landmarks/protect.ts';
 import * as THREE from 'three';
 import { WorldManager } from './world/WorldManager.ts';
 import { worldToGeo, geoToWorld } from './world/GeoProjection.ts';
@@ -267,6 +268,8 @@ async function boot(): Promise<void> {
   (window as any).__k3d = {
     world, player, camera, tpc, input, renderer, minimap, menu, placePanel, steps,
     geoToWorld, worldToGeo,
+    /** Protected landmarks that reached a generic building generator (must stay empty). */
+    landmarkGuard: guardViolations,
     get fps() { return fps; },
     get ready() { return spawnReady; },
     setSimulatedDt: (v: number) => (simulatedDt = v),

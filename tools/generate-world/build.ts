@@ -8,8 +8,12 @@ import earcut from 'earcut';
 import { fromArrayBuffer } from 'geotiff';
 import { geoToWorld, worldToGeo, ORIGIN_LAT, ORIGIN_LON } from '../../src/world/GeoProjection.ts';
 import { CHUNK_SIZE, CELL, QUANT, DATA_BBOX, SPAWN_GEO, BANK_LEVEL, chunkKey } from '../../src/world/config.ts';
-import { ROAD_TYPES, ROAD_STYLE, BUILDING_KINDS, AREA_KINDS } from '../../src/world/types.ts';
+import { ROAD_TYPES, ROAD_STYLE, BUILDING_KINDS, AREA_KINDS, ARCH_CLASSES, ARCH_BASIS } from '../../src/world/types.ts';
+import { classifyArchitecture } from '../../src/world/arch/classify.ts';
+import { SYNTHETIC_ID_BASE } from '../../src/world/landmarks/registry.ts';
+import { deriveSites, carve, siteToWorld } from './landmark-sites.ts';
 import type { ChunkData, RoadData, BuildingData, AreaData, Manifest, RoadType, Landmark } from '../../src/world/types.ts';
+import { roadAlignments } from './osm.ts';
 import { loadOsm, project, polygonsOf, cleanRing, ringArea, pointInPoly, roadTypeOf, roadWidth, isBridge, isTunnel, isWalkable, isClosedWay } from './osm.ts';
 import type { OsmEl, Pt } from './osm.ts';
 import { LANDMARK_DEFS } from './landmark-defs.ts';
@@ -27,6 +31,7 @@ type MultiPoly = Poly[];
 // ---------------------------------------------------------------------------------------------
 const { elements, timestamp } = loadOsm();
 log(`OSM elements: ${elements.length}, base timestamp ${timestamp}`);
+for (const r of roadAlignments) log(`  road alignment way/${r.way}: ${r.inserted} derived vertices on a ${r.lengthM} m segment, centre line moved up to ${r.maxShiftM} m`);
 
 // World-space extent: the largest chunk-aligned rectangle inside the projected bbox.
 const corners = [
@@ -45,7 +50,24 @@ interface Road {
   bridge: boolean; tunnel: boolean; elev?: number[]; walk: boolean;
 }
 /** s: footprint source, 0 = OpenStreetMap, 1 = Microsoft ML Buildings, 2 = Google Open Buildings (both via Overture). */
-interface Building { id: number; poly: Poly; h: number; hs: 0 | 1 | 2; k: number; name?: string; cx: number; cz: number; bb: number[]; s: 0 | 1 | 2 }
+interface Building {
+  id: number; poly: Poly; h: number; hs: 0 | 1 | 2; k: number; name?: string; cx: number; cz: number; bb: number[]; s: 0 | 1 | 2;
+  /** Architectural class / basis (indices into ARCH_CLASSES / ARCH_BASIS). */
+  ac: number; ab: number;
+  /** Landmark registry id: this record is a protected landmark site. */
+  lm?: string;
+  /** OSM id of the mapped footprint this record was cut out of (landmark sites and carved remainders). */
+  origin?: number;
+}
+const archOf = (tags: Record<string, string>, source: 0 | 1 | 2) => {
+  const r = classifyArchitecture({ tags, source });
+  return { ac: ARCH_CLASSES.indexOf(r.cls), ab: ARCH_BASIS.indexOf(r.basis) };
+};
+const bboxOf = (ring: Pt[]) => {
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const [x, z] of ring) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+  return { bb: [x0, z0, x1, z1], cx: Math.floor((x0 + x1) / 2 / CHUNK_SIZE), cz: Math.floor((z0 + z1) / 2 / CHUNK_SIZE) };
+};
 interface Area { k: number; poly: Poly }
 
 const roads: Road[] = [];
@@ -162,7 +184,7 @@ for (const el of elements) {
       let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
       for (const [x, z] of poly[0]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
       buildings.push({
-        id: el.type === 'relation' ? -el.id : el.id, poly, h, hs, k, name: t.name, s: 0,
+        id: el.type === 'relation' ? -el.id : el.id, poly, h, hs, k, name: t.name, s: 0, ...archOf(t, 0),
         cx: Math.floor((x0 + x1) / 2 / CHUNK_SIZE), cz: Math.floor((z0 + z1) / 2 / CHUNK_SIZE), bb: [x0, z0, x1, z1],
       });
     }
@@ -174,6 +196,44 @@ for (const el of elements) {
   const k = areaKind(t);
   if (k >= 0) for (const p of polygonsOf(el)) areas.push({ k, poly: p });
 }
+// ---------------------------------------------------------------------------------------------
+// 1b. Registered landmarks: derive each site from its mapped source features, cut it out of the
+//     host footprint(s) and add it as a protected building record (lm = registry id). The rest of
+//     the host stays an ordinary building. Without this, a landmark that OSM maps only as a plot or
+//     a point inside a larger block is rendered as part of that block (e.g. a temple as shophouses).
+// ---------------------------------------------------------------------------------------------
+const poiElements: OsmEl[] = existsSync('data-src/osm/pois.json') ? JSON.parse(readFileSync('data-src/osm/pois.json', 'utf8')).elements : [];
+const sites = deriveSites(elements, [...elements, ...poiElements]);
+{
+  let synth = SYNTHETIC_ID_BASE;
+  for (const site of sites) {
+    for (const hostId of site.hostIds) {
+      const pieces = buildings.filter((b) => !b.lm && (b.id === hostId || b.origin === hostId));
+      if (!pieces.length) throw new Error(`${site.def.id}: host footprint way/${hostId} is not a building in the extract`);
+      for (const piece of pieces) {
+        const rest = carve(piece.poly, site.cutter);
+        buildings.splice(buildings.indexOf(piece), 1);
+        rest.forEach((poly, i) => {
+          // The largest remainder keeps the mapped id; further pieces get synthetic ids.
+          buildings.push({ ...piece, poly, id: i === 0 ? piece.id : ++synth, origin: hostId, ...bboxOf(poly[0]) });
+        });
+      }
+    }
+    const cls = classifyArchitecture({ tags: {}, source: 0, registry: site.def.category });
+    buildings.push({
+      id: ++synth, poly: [site.ring], h: site.def.dimensions.height.m, hs: 2, // Open structures (gates) are recorded like open-sided roofs: roads and paths pass through them.
+      k: KIND(site.def.site.type === 'footprint' && site.def.site.open ? 'roof' : site.def.category === 'chinese_temple' ? 'religious' : 'civic'),
+      name: site.def.name, s: 0, ac: ARCH_CLASSES.indexOf(cls.cls), ab: ARCH_BASIS.indexOf(cls.basis), lm: site.def.id, origin: site.hostIds[0], ...bboxOf(site.ring),
+    });
+    stats.landmarkSites = (stats.landmarkSites ?? 0) + 1;
+    log(`  landmark site ${site.def.id}: ${site.width.toFixed(1)} x ${site.depth.toFixed(1)} m, ${Math.abs(ringArea(site.ring)).toFixed(0)} m2; ${site.notes[0]}`);
+    for (const c of site.checks) {
+      log(`    cross-check ${c.ref} ${c.name ?? ''}: ${c.inside ? 'inside the derived site' : `OUTSIDE by ${c.distanceM} m`}`);
+      if (!c.inside && c.distanceM > 4) throw new Error(`${site.def.id}: ${c.ref} lies ${c.distanceM} m outside the derived site - the placement rule no longer matches the map`);
+    }
+  }
+}
+
 // Approximation: plots of at most 700 m2 tagged amenity=place_of_worship that contain no mapped
 // building become a building of kind 'religious' with an estimated height (hs = 2). The outline is
 // the mapped plot, not a surveyed building footprint.
@@ -186,7 +246,7 @@ for (const el of worshipPlots) {
     if (buildings.some((b) => b.bb[0] < x1 && b.bb[2] > x0 && b.bb[1] < z1 && b.bb[3] > z0 && (pointInPoly((b.bb[0] + b.bb[2]) / 2, (b.bb[1] + b.bb[3]) / 2, poly) || pointInPoly((x0 + x1) / 2, (z0 + z1) / 2, b.poly)))) continue;
     const k = KIND('religious');
     const { h, hs } = buildingHeight(el.tags!, k, area);
-    buildings.push({ id: el.id, poly, h, hs, k, name: el.tags!.name, s: 0, cx: Math.floor((x0 + x1) / 2 / CHUNK_SIZE), cz: Math.floor((z0 + z1) / 2 / CHUNK_SIZE), bb: [x0, z0, x1, z1] });
+    buildings.push({ id: el.id, poly, h, hs, k, name: el.tags!.name, s: 0, ...archOf(el.tags!, 0), cx: Math.floor((x0 + x1) / 2 / CHUNK_SIZE), cz: Math.floor((z0 + z1) / 2 / CHUNK_SIZE), bb: [x0, z0, x1, z1] });
     stats.worshipPlotsAsBuildings = (stats.worshipPlotsAsBuildings ?? 0) + 1;
     log(`  worship plot used as approximate footprint: way ${el.id} ${el.tags!.name ?? ''} (${area.toFixed(0)} m2)`);
   }
@@ -267,7 +327,7 @@ const overtureReport: Record<string, unknown> = { used: false };
       if (f.floors !== undefined) t['building:levels'] = String(f.floors);
       const { h, hs } = buildingHeight(t, generic, f.area);
       if (hs === 0) hTag++; else if (hs === 1) hFloors++;
-      buildings.push({ id: f.id, poly: f.out, h, hs, k: generic, name: f.name, s: f.src, cx, cz, bb: f.bb });
+      buildings.push({ id: f.id, poly: f.out, h, hs, k: generic, name: f.name, s: f.src, cx, cz, bb: f.bb, ...archOf({}, f.src) });
       keptBySource[f.src]++;
     }
     stats.overtureInFile = ov.total;
@@ -827,6 +887,9 @@ for (let cz = CZ0; cz <= CZ1; cz++) for (let cx = CX0; cx <= CX1; cx++) {
       const n = nameOf(b, bd.name);
       if (n !== undefined) o.n = n;
       if (bd.s) o.s = bd.s;
+      if (bd.ac) o.ac = bd.ac;
+      if (bd.ab) o.ab = bd.ab;
+      if (bd.lm) o.lm = bd.lm;
       return o;
     }).filter((o) => o.r.length),
     areas: outAreas,
@@ -886,7 +949,51 @@ for (const def of LANDMARK_DEFS) {
   const [lat, lon] = worldToGeo(pos[0], pos[1]);
   landmarks.push({ id: def.id, name: def.name, kind: def.kind, lat: +lat.toFixed(7), lon: +lon.toFixed(7), x: +pos[0].toFixed(2), z: +pos[1].toFixed(2), osm: ref, priority: def.priority, approx: true });
 }
-log(`landmarks matched: ${landmarks.length}/${LANDMARK_DEFS.length}` + (missing.length ? `; not found in OSM extract: ${missing.join(', ')}` : ''));
+// Registered landmark models: listed too (position = centre of the derived site), and their runtime
+// placement record (anchor, orientation, collision, LODs) goes to landmark-sites.json.
+const siteRecords: unknown[] = [];
+const siteBase = new Map<string, number>();
+for (const site of sites) {
+  const def = site.def;
+  const metaPath = `public/${def.model.dir}/meta.json`;
+  if (!existsSync(metaPath)) throw new Error(`${def.id}: ${metaPath} is missing - run "npm run models:build" first`);
+  const meta = JSON.parse(readFileSync(metaPath, 'utf8'));
+  if (meta.version !== def.version) throw new Error(`${def.id}: model files are version ${meta.version}, registry says ${def.version} - run "npm run models:build"`);
+  // The model stands on a level base at the highest ground under the site (old-town sites are flat).
+  let gMax = -Infinity, gMin = Infinity;
+  for (const [x, z] of [...site.ring, site.front]) { const g = groundH(x, z); gMax = Math.max(gMax, g); gMin = Math.min(gMin, g); }
+  const levelWith = def.site.type === 'opposite' ? def.site.levelWith : undefined;
+  if (levelWith) { if (!siteBase.has(levelWith)) throw new Error(`${def.id}: levelWith "${levelWith}" must be defined earlier in the registry`); gMax = Math.max(gMax, siteBase.get(levelWith)!); }
+  siteBase.set(def.id, gMax);
+  const mid = siteToWorld(site, 0, -site.depth / 2);
+  const [lat, lon] = worldToGeo(site.front[0], site.front[1]);
+  const [mlat, mlon] = worldToGeo(mid[0], mid[1]);
+  const toWorldRing = (r: number[]) => { const o: number[] = []; for (let i = 0; i < r.length; i += 2) { const p = siteToWorld(site, r[i], r[i + 1]); o.push(+p[0].toFixed(2), +p[1].toFixed(2)); } return o; };
+  const own = buildings.filter((b) => b.lm === def.id);
+  siteRecords.push({
+    id: def.id, version: def.version, name: def.name, nameLocal: def.nameLocal, category: def.category,
+    anchor: { x: +site.front[0].toFixed(2), z: +site.front[1].toFixed(2), y: +gMax.toFixed(2), yaw: +(Math.atan2(site.normal[0], site.normal[1]) + (def.model.yawOffsetDeg * Math.PI) / 180).toFixed(5), lat: +lat.toFixed(7), lon: +lon.toFixed(7) },
+    scale: def.model.scale,
+    centre: { x: +mid[0].toFixed(2), z: +mid[1].toFixed(2) },
+    radius: +(Math.hypot(site.width, site.depth) / 2).toFixed(1),
+    widthM: +site.width.toFixed(2), depthM: +site.depth.toFixed(2), groundRangeM: +(gMax - gMin).toFixed(2),
+    ring: site.ring.flatMap(([x, z]) => [+x.toFixed(2), +z.toFixed(2)]),
+    buildingIds: own.map((b) => b.id), chunks: [...new Set(own.map((b) => chunkKey(b.cx, b.cz)))],
+    lods: def.model.lods.map((l, i) => ({ url: `${def.model.dir}/${l.file}`, maxDistance: l.maxDistance, triangles: meta.lods[i].triangles, bytes: meta.lods[i].bytes })),
+    collision: {
+      walls: meta.collision.walls.map((w: { ring: number[]; top: number }) => ({ ring: toWorldRing(w.ring), top: +(gMax + w.top).toFixed(2) })),
+      floors: meta.collision.floors.map((f: { ring: number[]; h: number }) => ({ ring: toWorldRing(f.ring), h: +(gMax + f.h).toFixed(2) })),
+    },
+    plaques: meta.plaques ?? [],
+    sources: def.sources, verification: def.verification.status,
+    derivation: site.notes, checks: site.checks,
+  });
+  landmarks.push({ id: def.id, name: def.name, kind: def.listKind, lat: +mlat.toFixed(7), lon: +mlon.toFixed(7), x: +mid[0].toFixed(2), z: +mid[1].toFixed(2), osm: def.sources.identity[0], priority: 2, approx: def.verification.status !== 'surveyed' });
+}
+writeFileSync(`${OUT}/landmark-sites.json`, JSON.stringify({ version: 1, sites: siteRecords }));
+const archCounts: Record<string, number> = {};
+for (const b of buildings) { const k = `${ARCH_CLASSES[b.ac]}:${ARCH_BASIS[b.ab]}`; archCounts[k] = (archCounts[k] ?? 0) + 1; }
+log(`landmarks matched: ${landmarks.length}/${LANDMARK_DEFS.length + sites.length}` + (missing.length ? `; not found in OSM extract: ${missing.join(', ')}` : ''));
 writeFileSync(`${OUT}/landmarks.json`, JSON.stringify(landmarks, null, 1));
 
 // Overview for the full-map view: simplified major roads + water (decimetre integers, world frame).
@@ -953,6 +1060,6 @@ const manifest: Manifest = {
   stats,
 };
 writeFileSync(`${OUT}/manifest.json`, JSON.stringify(manifest));
-writeFileSync(`${OUT}/build-report.json`, JSON.stringify({ stats, overture: overtureReport, missingLandmarks: missing, chunkBytes: { total: totalBytes, max: maxBytes } }, null, 1));
+writeFileSync(`${OUT}/build-report.json`, JSON.stringify({ stats, overture: overtureReport, missingLandmarks: missing, roadAlignments, architecture: archCounts, landmarkSites: sites.map((s) => ({ id: s.def.id, notes: s.notes, checks: s.checks })), chunkBytes: { total: totalBytes, max: maxBytes } }, null, 1));
 log('stats', JSON.stringify(stats));
 log('done');

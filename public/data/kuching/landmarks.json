@@ -99,10 +99,10 @@
   "id": "carpenter-street",
   "name": "Carpenter Street",
   "kind": "street",
-  "lat": 1.5581928,
-  "lon": 110.3460816,
-  "x": 176,
-  "z": 33.97,
+  "lat": 1.5582933,
+  "lon": 110.3459086,
+  "x": 156.75,
+  "z": 22.86,
   "osm": "way/196054157",
   "priority": 1,
   "approx": true
@@ -345,6 +345,54 @@
   "z": -861.82,
   "osm": "way/353343807",
   "priority": 3,
+  "approx": true
+ },
+ {
+  "id": "hiang-thian-siang-ti-temple",
+  "name": "Hiang Thian Siang Ti Temple",
+  "kind": "worship",
+  "lat": 1.5582916,
+  "lon": 110.3455501,
+  "x": 116.85,
+  "z": 23.04,
+  "osm": "way/1388134054",
+  "priority": 2,
+  "approx": true
+ },
+ {
+  "id": "lau-ya-keng-food-court",
+  "name": "Lau Ya Keng Food Court",
+  "kind": "landmark",
+  "lat": 1.5585224,
+  "lon": 110.3456909,
+  "x": 132.52,
+  "z": -2.48,
+  "osm": "node/4989957225",
+  "priority": 2,
+  "approx": true
+ },
+ {
+  "id": "yang-choon-tai-opera-stage",
+  "name": "Yang Choon Tai Opera Stage",
+  "kind": "landmark",
+  "lat": 1.5586324,
+  "lon": 110.3457614,
+  "x": 140.36,
+  "z": -14.64,
+  "osm": "node/12779002958",
+  "priority": 2,
+  "approx": true
+ },
+ {
+  "id": "carpenter-street-harmony-arch",
+  "name": "Carpenter Street Harmony Arch",
+  "kind": "landmark",
+  "lat": 1.5586458,
+  "lon": 110.3452798,
+  "x": 86.78,
+  "z": -16.12,
+  "osm": "way/1388134059",
+  "priority": 2,
   "approx": true
  }
 ]

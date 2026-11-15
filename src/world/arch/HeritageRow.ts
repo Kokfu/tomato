@@ -1,3 +1,4 @@
+import { assertGeneric } from '../landmarks/protect.ts';
 import * as THREE from 'three';
 import type { BuildingData } from '../types.ts';
 import type { GeoBuf } from '../Materials.ts';
@@ -339,6 +340,7 @@ export function heritageFascia(fr: RowFrame, buildingId: number, edge: number, t
 
 /** Full-detail district row. Returns the frame and the lot plans (needed by the roof). */
 export function addHeritageRow(b: BuildingData, ox: number, oz: number, ctx: BuildContext, buf: GeoBuf): HeritageRow {
+  assertGeneric(b, 'heritage shophouse row');
   const fr = rowFrame(b, ox, oz, ctx);
   const { ring, inner, ground } = fr;
   const n = ring.length / 2;

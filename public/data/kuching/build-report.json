@@ -3,13 +3,13 @@
   "roads": 7310,
   "roadKm": 723.1,
   "roadWidthTagged": 6,
-  "buildings": 29593,
-  "buildingsOsm": 3603,
+  "buildings": 29598,
+  "buildingsOsm": 3608,
   "buildingsMicrosoft": 17657,
   "buildingsGoogle": 8333,
   "bHeightTag": 3,
   "bLevelsTag": 51,
-  "bEstimated": 29539,
+  "bEstimated": 29544,
   "waterPolys": 14,
   "mappedTrees": 19,
   "proceduralTrees": 12917,
@@ -17,6 +17,7 @@
   "footwayKm": 25.1,
   "sidewalkKm": 0,
   "areas": 619,
+  "landmarkSites": 4,
   "worshipPlotsAsBuildings": 1,
   "overtureInFile": 32733,
   "overtureFromOsmSkipped": 3654,
@@ -80,8 +81,88 @@
  "missingLandmarks": [
   "Satok Bridge"
  ],
+ "roadAlignments": [
+  {
+   "way": 196054157,
+   "inserted": 3,
+   "maxShiftM": 4.33,
+   "lengthM": 108.1
+  }
+ ],
+ "architecture": {
+  "unknown:default": 28210,
+  "commercial:tag": 290,
+  "civic:tag": 129,
+  "residential:tag": 961,
+  "mosque:tag": 14,
+  "open_roof:tag": 17,
+  "market:tag": 2,
+  "utility:tag": 7,
+  "church:tag": 2,
+  "museum:tag": 7,
+  "government:tag": 10,
+  "chinese_temple:inferred": 3,
+  "other_worship:tag": 2,
+  "industrial:tag": 2,
+  "monument:tag": 1,
+  "palace:tag": 1,
+  "fort:tag": 1,
+  "chinese_temple:registry": 1,
+  "food_court:registry": 1,
+  "opera_stage:registry": 1,
+  "monument:registry": 1
+ },
+ "landmarkSites": [
+  {
+   "id": "hiang-thian-siang-ti-temple",
+   "notes": [
+    "front edge of way/1388134054 facing Jalan Carpenter (4.0 m from its centre line), mapped plot 8.87 x 29.66 m",
+    "LOCAL OVERRIDE width 10.4 m (mapped 8.87 m): Roof width measured on aerial imagery (10.2 to 10.8 m at 0.3 m/px) and three-bay facade proportions in photographs; the OSM plot is 8.9 m wide. Uncertainty about 1 m."
+   ],
+   "checks": []
+  },
+  {
+   "id": "lau-ya-keng-food-court",
+   "notes": [
+    "axis of hiang-thian-siang-ti-temple meets way/233690735 8.10 m from that landmark's front; site = 9.6 m wide, 0 m to 14 behind the street wall",
+    "LOCAL OVERRIDE width: Clear width of the roofed hall measured on aerial imagery (9.6 m at 0.3 m/px); its centre lies 8.8 m from the block corner, the temple axis meets the wall at 9.3 m. Uncertainty about 1 m.",
+    "LOCAL OVERRIDE depth: Street wall to the rear edge of the arched roof on aerial imagery (13.8 m)"
+   ],
+   "checks": [
+    {
+     "ref": "node/4989957225",
+     "name": "Lau Ya Keng Foodcourt",
+     "inside": true,
+     "distanceM": 0
+    }
+   ]
+  },
+  {
+   "id": "yang-choon-tai-opera-stage",
+   "notes": [
+    "axis of hiang-thian-siang-ti-temple meets way/233690735 8.10 m from that landmark's front; site = 9.6 m wide, 14 m to the back of the footprint behind the street wall",
+    "LOCAL OVERRIDE width: Same bay as the food court hall; the roof over the stage house is wider on aerial imagery (about 11 m) but its walls are not visible. Uncertainty about 1.5 m.",
+    "LOCAL OVERRIDE depth: From the rear edge of the arched hall roof to the back of the mapped block (large roof over the stage on aerial imagery)"
+   ],
+   "checks": [
+    {
+     "ref": "node/12779002958",
+     "name": "阳春台",
+     "inside": true,
+     "distanceM": 0
+    }
+   ]
+  },
+  {
+   "id": "carpenter-street-harmony-arch",
+   "notes": [
+    "mapped footprint way/1388134059 used as is (11.23 x 4.88 m); front = long side nearest Jalan Tun Abang Haji Openg (24.1 m from its centre line)"
+   ],
+   "checks": []
+  }
+ ],
  "chunkBytes": {
-  "total": 5423453,
-  "max": 29755
+  "total": 5445898,
+  "max": 30055
  }
 }

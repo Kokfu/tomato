@@ -166,7 +166,7 @@ export function buildChunkLabels(data: ChunkData, ctx: BuildContext): THREE.Obje
   for (const p of list) {
     if (!p.sign || p.b === undefined || p.e === undefined) continue;
     const b = data.buildings.find((q) => q.id === p.b);
-    if (!b || ctx.landmarks.replacesBuilding(b.id)) continue;
+    if (!b || b.lm !== undefined || ctx.landmarks.replacesBuilding(b.id)) continue;
     const style = hash3(p.id.length, p.name.charCodeAt(0) | 0, p.name.length * 31 + (p.name.charCodeAt(1) | 0)) % 7;
     if (b.a?.f.includes(p.e) && isDistrictRow(b, ox, oz)) {
       const fr = rowFrame(b, ox, oz, ctx);

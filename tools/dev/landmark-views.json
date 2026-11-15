@@ -1,0 +1,106 @@
+[
+ {
+  "name": "01-temple-from-carpenter-street",
+  "x": 127.38,
+  "z": 5.63,
+  "yaw": 2.598,
+  "pitch": 0.06,
+  "dist": 4.5,
+  "heading": -0.543,
+  "quality": "high",
+  "wait": 3000
+ },
+ {
+  "name": "02-temple-roof-elevated",
+  "x": 125.6,
+  "z": 8.6,
+  "yaw": 2.598,
+  "pitch": 0.62,
+  "dist": 30,
+  "heading": -0.543,
+  "wait": 1500
+ },
+ {
+  "name": "03-lau-ya-keng-exterior",
+  "x": 126.15,
+  "z": 7.69,
+  "yaw": -0.543,
+  "pitch": 0.04,
+  "dist": 5,
+  "heading": 2.598,
+  "wait": 1500
+ },
+ {
+  "name": "04-lau-ya-keng-dining-area",
+  "x": 131.47,
+  "z": 1.01,
+  "yaw": -0.573,
+  "pitch": 0.05,
+  "dist": 2.4,
+  "heading": 2.598,
+  "wait": 1500
+ },
+ {
+  "name": "05-opera-stage",
+  "x": 135.04,
+  "z": -4.53,
+  "yaw": -0.573,
+  "pitch": -0.1,
+  "dist": 3,
+  "heading": 2.598,
+  "wait": 1500
+ },
+ {
+  "name": "06-temple-foodcourt-relationship",
+  "x": 126.6,
+  "z": 6.9,
+  "yaw": -2.114,
+  "pitch": 0.7,
+  "dist": 45,
+  "heading": 2.598,
+  "wait": 1500
+ },
+ {
+  "name": "07-relationship-street-level",
+  "x": 114.6,
+  "z": -0.3,
+  "yaw": -2.114,
+  "pitch": 0.1,
+  "dist": 5,
+  "heading": 1.03,
+  "wait": 1500
+ },
+ {
+  "name": "08-harmony-arch-from-west",
+  "x": 76.77,
+  "z": -21.69,
+  "yaw": -2.123,
+  "pitch": 0,
+  "dist": 6,
+  "heading": 1.0185999999999997,
+  "quality": "high",
+  "wait": 2500
+ },
+ {
+  "name": "09-harmony-arch-from-carpenter-street",
+  "x": 96.03,
+  "z": -11.01,
+  "yaw": 1.019,
+  "pitch": -0.02,
+  "dist": 5,
+  "heading": 4.1606,
+  "quality": "high",
+  "wait": 2500
+ },
+ {
+  "name": "10-harmony-arch-elevated",
+  "x": 79.59,
+  "z": -20.54,
+  "yaw": -2.123,
+  "pitch": 0.45,
+  "dist": 26,
+  "heading": 1.0185999999999997,
+  "quality": "high",
+  "wait": 2500
+ }
+]

@@ -8,6 +8,8 @@ import { ChunkManager } from './ChunkManager.ts';
 import { LandmarkManager } from './LandmarkManager.ts';
 import type { Quality } from '../ui/GraphicsSettings.ts';
 import { PlaceIndex } from './places/PlaceIndex.ts';
+import { LandmarkModels } from './landmarks/LandmarkModels.ts';
+import type { LandmarkSite } from './landmarks/LandmarkModels.ts';
 
 export type TimeOfDay = 'day' | 'evening';
 
@@ -79,6 +81,8 @@ export class WorldManager {
   readonly materials: Materials;
   readonly chunks: ChunkManager;
   readonly landmarks: LandmarkManager;
+  /** Dedicated glTF models of registered landmarks (lazy-loaded, distance LOD). */
+  readonly landmarkModels: LandmarkModels;
   readonly places: PlaceIndex;
   readonly sun: THREE.DirectionalLight;
   readonly hemi: THREE.HemisphereLight;
@@ -95,16 +99,17 @@ export class WorldManager {
   static async load(quality: Quality): Promise<WorldManager> {
     const base = `${import.meta.env.BASE_URL}${DATA_ROOT}/`;
     const manifest = (await (await fetch(`${base}manifest.json`)).json()) as Manifest;
-    const [hbuf, landmarks] = await Promise.all([
+    const [hbuf, landmarks, sites] = await Promise.all([
       fetch(`${base}${manifest.height.file}`).then((r) => r.arrayBuffer()),
       fetch(`${base}landmarks.json`).then((r) => r.json() as Promise<Landmark[]>).catch(() => [] as Landmark[]),
+      fetch(`${base}landmark-sites.json`).then((r) => r.json() as Promise<{ sites: LandmarkSite[] }>).then((j) => j.sites).catch(() => [] as LandmarkSite[]),
     ]);
     const places = new PlaceIndex();
     await places.load();
-    return new WorldManager(manifest, new Int16Array(hbuf), landmarks, quality, places);
+    return new WorldManager(manifest, new Int16Array(hbuf), landmarks, quality, places, sites);
   }
 
-  constructor(manifest: Manifest, heights: Int16Array, landmarks: Landmark[], quality: Quality, places = new PlaceIndex()) {
+  constructor(manifest: Manifest, heights: Int16Array, landmarks: Landmark[], quality: Quality, places = new PlaceIndex(), sites: LandmarkSite[] = []) {
     this.manifest = manifest;
     this.quality = quality;
     this.height = new HeightMap(manifest.height, heights);
@@ -112,6 +117,10 @@ export class WorldManager {
     this.materials = new Materials(this.scene, this.sunDir, quality.name === 'low');
     this.landmarks = new LandmarkManager();
     this.landmarks.setLandmarks(landmarks);
+    this.collision.setLandmarkSites(sites);
+    this.landmarkModels = new LandmarkModels({ opaque: this.materials.landmark }, import.meta.env.BASE_URL);
+    this.landmarkModels.setSites(sites);
+    this.scene.add(this.landmarkModels.group);
     this.places = places;
     this.chunks = new ChunkManager(manifest, this.height, this.collision, this.materials, this.landmarks, places, quality);
     this.scene.add(this.chunks.group);
@@ -191,6 +200,7 @@ export class WorldManager {
       s.normalBias = 0.05;
       s.radius = 2.5;
     }
+    this.landmarkModels.viewDistance = this.viewDistance;
     if (this.chunks.quality !== q) this.chunks.setQuality(q);
   }
 
@@ -204,6 +214,7 @@ export class WorldManager {
     this.materials.update(this.time);
     this.skyMat.uniforms.uTime.value = this.time;
     this.chunks.update(focus.x, focus.z, velocity.x, velocity.z);
+    this.landmarkModels.update(focus.x, focus.z);
     this.sky.position.copy(camera.position);
     // Shadow frustum follows the player, snapped to whole shadow-map texels so that shadow edges do
     // not crawl while walking.
