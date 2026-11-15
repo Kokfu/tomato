@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 and press **Start Exploring**. The generated map data is committed
+Open http://localhost:3000 (or http://kuching.duckdns.org:3000 via port forwarding) and press **Start Exploring**. The generated map data is committed
 under `public/data/kuching/`, so the app runs without fetching anything.
 
 ## Controls
@@ -39,9 +39,9 @@ running, **JUMP** jumps. Key bindings live in `KEY_BINDINGS` in `src/player/Inpu
 
 | Command | What it does |
 |---|---|
-| `npm run dev` | Development server on port 5173 |
+| `npm run dev` | Development server on 0.0.0.0:3000 |
 | `npm run build` | Static production build in `dist/` |
-| `npm run preview` | Serve the production build on port 4173 |
+| `npm run preview` | Serve the production build on 0.0.0.0:3000 |
 | `npm run typecheck` | TypeScript check |
 | `npm test` | Unit tests (projection, routing) |
 | `npm run test:e2e` | Playwright browser tests (gameplay, layouts, touch, production build) |

@@ -1,6 +1,6 @@
 // Dev utility: list the worst frames during a 360-degree pan at the spawn point.
 import { chromium } from '@playwright/test';
-const url = process.argv[2] ?? 'http://localhost:5173/';
+const url = process.argv[2] ?? 'http://localhost:3000/';
 const q = process.argv[3] ?? 'medium';
 const browser = await chromium.launch({ channel: 'msedge', args: process.argv[4] === 'vsync' ? ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] : ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--disable-gpu-vsync', '--disable-frame-rate-limit'] });
 const page = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();

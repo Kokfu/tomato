@@ -1,12 +1,12 @@
 // Capture screenshots of the running app at given views (dev utility, also used for docs).
-// Usage: node tools/dev/shots.ts <outDir> '<json views>' [--url=http://localhost:5173/] [--size=1280x720] [--mobile]
+// Usage: node tools/dev/shots.ts <outDir> '<json views>' [--url=http://localhost:3000/] [--size=1280x720] [--mobile]
 // A view: { name, lm?: landmarkId, lat?, lon?, yaw?, pitch?, dist?, fp?: boolean, map?: boolean, wait?: ms }
 import { chromium } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 
 const [outDir, viewsJson, ...rest] = process.argv.slice(2);
 const opt = (k: string, d: string) => rest.find((a) => a.startsWith(`--${k}=`))?.split('=')[1] ?? d;
-const url = opt('url', 'http://localhost:5173/');
+const url = opt('url', 'http://localhost:3000/');
 const [w, h] = opt('size', '1280x720').split('x').map(Number);
 const mobile = rest.includes('--mobile');
 const views = JSON.parse(viewsJson);

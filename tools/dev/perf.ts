@@ -1,5 +1,5 @@
 // Performance measurement harness. Writes docs/perf-results.json.
-// Usage: node tools/dev/perf.ts [--url=http://localhost:4173/]   (run against `npm run preview` for production numbers)
+// Usage: node tools/dev/perf.ts [--url=http://localhost:3000/]   (run against `npm run preview` for production numbers)
 // Frame-rate numbers are taken with vsync disabled so they show headroom above the display refresh rate.
 import { chromium } from '@playwright/test';
 import type { Page, Browser } from '@playwright/test';
@@ -7,7 +7,7 @@ import { readFileSync, readdirSync, statSync, writeFileSync, existsSync } from '
 import { gzipSync } from 'node:zlib';
 import os from 'node:os';
 
-const url = process.argv.find((a) => a.startsWith('--url='))?.split('=')[1] ?? 'http://localhost:5173/';
+const url = process.argv.find((a) => a.startsWith('--url='))?.split('=')[1] ?? 'http://localhost:3000/';
 const DATA = 'public/data/kuching';
 const gz = (path: string) => gzipSync(readFileSync(path)).length;
 

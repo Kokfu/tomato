@@ -3,7 +3,7 @@ import { chromium } from '@playwright/test';
 const [nx, ny] = process.argv.slice(2).map(Number);
 const browser = await chromium.launch({ channel: 'msedge', args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const page = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
-await page.goto('http://localhost:5173/');
+await page.goto('http://localhost:3000/');
 await page.waitForFunction(() => (window as any).__k3d?.ready);
 await page.click('#btn-start');
 await page.waitForFunction(() => (window as any).__k3d.world.chunks.progress() >= 0.999);
