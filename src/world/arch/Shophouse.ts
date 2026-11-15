@@ -30,7 +30,7 @@ const cWall = new THREE.Color(), cTrim = new THREE.Color(), cTmp = new THREE.Col
 type P3 = [number, number, number];
 
 /** Quad a-b-c-d (a, b bottom; c above b; d above a) facing along n. uv = [u0, v0, u1, v1]. */
-function quad(buf: GeoBuf, a: P3, b: P3, c: P3, d: P3, nx: number, ny: number, nz: number, col: THREE.Color, uv: readonly number[] = WHITE_UV): void {
+export function quad(buf: GeoBuf, a: P3, b: P3, c: P3, d: P3, nx: number, ny: number, nz: number, col: THREE.Color, uv: readonly number[] = WHITE_UV): void {
   const i0 = buf.vert(a[0], a[1], a[2], nx, ny, nz, col, uv[0], uv[1]);
   const i1 = buf.vert(b[0], b[1], b[2], nx, ny, nz, col, uv[2], uv[1]);
   const i2 = buf.vert(c[0], c[1], c[2], nx, ny, nz, col, uv[2], uv[3]);
@@ -40,11 +40,11 @@ function quad(buf: GeoBuf, a: P3, b: P3, c: P3, d: P3, nx: number, ny: number, n
   if (f >= 0) { buf.tri(i0, i1, i2); buf.tri(i0, i2, i3); } else { buf.tri(i0, i2, i1); buf.tri(i0, i3, i2); }
 }
 /** Vertical wall strip from (ax, az) to (bx, bz) between y0 and y1, facing (nx, nz). */
-function wall(buf: GeoBuf, ax: number, az: number, bx: number, bz: number, y0: number, y1: number, nx: number, nz: number, col: THREE.Color, uv: readonly number[] = WHITE_UV): void {
+export function wall(buf: GeoBuf, ax: number, az: number, bx: number, bz: number, y0: number, y1: number, nx: number, nz: number, col: THREE.Color, uv: readonly number[] = WHITE_UV): void {
   quad(buf, [ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y1, az], nx, 0, nz, col, uv);
 }
 /** Axis-free box: centre line start (x, z), extents along (ex, ez) and outward (nx, nz). Draws the 3 visible sides + optional top/bottom. */
-function box(buf: GeoBuf, x: number, z: number, ex: number, ez: number, nx: number, nz: number, half: number, back: number, front: number, y0: number, y1: number, col: THREE.Color, caps = false): void {
+export function box(buf: GeoBuf, x: number, z: number, ex: number, ez: number, nx: number, nz: number, half: number, back: number, front: number, y0: number, y1: number, col: THREE.Color, caps = false): void {
   const ax = x - ex * half, az = z - ez * half, bx = x + ex * half, bz = z + ez * half;
   wall(buf, ax + nx * front, az + nz * front, bx + nx * front, bz + nz * front, y0, y1, nx, nz, col);
   wall(buf, ax + nx * back, az + nz * back, ax + nx * front, az + nz * front, y0, y1, -ex, -ez, col);

@@ -13,6 +13,8 @@ import { buildWater } from './WaterBuilder.ts';
 import { buildVegetation } from './VegetationBuilder.ts';
 import { buildFurniture } from './StreetFurniture.ts';
 import { PlaceIndex, buildChunkLabels } from './places/PlaceIndex.ts';
+import { buildDressing } from './district/Dressing.ts';
+import { ROAD_WIDTHS } from './district/mainBazaar.ts';
 
 export type Detail = 'high' | 'low';
 export interface BuildContext {
@@ -255,6 +257,8 @@ export class ChunkManager {
         this.stats.fetched++;
         if (this.chunks.get(key) !== c) return; // unloaded while in flight
         c.data = JSON.parse(text) as ChunkData;
+        // District carriageway widths estimated from photographs (see district/mainBazaar.ts).
+        for (const r of c.data.roads) if (ROAD_WIDTHS[r.id]) r.w = Math.round(ROAD_WIDTHS[r.id] * QUANT);
         c.state = 'loaded';
         this.ctxBase.collision.addChunk(c.data);
         this.onChunkData?.(c.data);
@@ -354,7 +358,7 @@ export class ChunkManager {
     c.decor = false;
     const data = c.data!, g = c.group!;
     const ctx: BuildContext = { ...this.ctxBase, quality: this.quality, detail: 'high' };
-    const added: THREE.Object3D[] = [...buildVegetation(data, ctx), ...buildFurniture(data, ctx)];
+    const added: THREE.Object3D[] = [...buildVegetation(data, ctx), ...buildFurniture(data, ctx), ...buildDressing(data, ctx)];
     const labels = buildChunkLabels(data, ctx);
     if (labels) added.push(labels);
     for (const o of added) {

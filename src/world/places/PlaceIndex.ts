@@ -10,6 +10,16 @@ import type { LabelSpec } from './Labels.ts';
 import { fasciaAt, rowFrame, SHOP } from '../arch/Shophouse.ts';
 import { edgeOutward, hash3, ringArea2, unitsAlong } from '../arch/frontage.ts';
 import { geoToWorld } from '../GeoProjection.ts';
+import { heritageFascia } from '../arch/HeritageRow.ts';
+import { isDistrictRow, pinPosition, PIN_DUPLICATES } from '../district/mainBazaar.ts';
+
+/** Attach district pins: a pinned business moves to its house-numbered lot and always gets a sign. */
+function applyPin(p: Place): Place {
+  if (PIN_DUPLICATES.has(p.id)) return { ...p, sign: false };
+  const a = pinPosition(p.id);
+  if (!a) return p;
+  return { ...p, b: a.b, e: a.e, t: a.t, how: p.how ?? 'adjacent', sign: true, pin: { no: a.no, span: a.span, evidence: a.pin.evidence, sign: a.pin.sign } };
+}
 
 const EDIT_KEY = 'k3d.placeEdits';
 
@@ -72,7 +82,7 @@ export class PlaceIndex {
     for (const p of this.byChunk.get(key) ?? []) {
       if (removed.has(p.id)) continue;
       const e = edited.get(p.id);
-      out.push(e ? ({ ...p, ...e, v: 2 } as Place) : p);
+      out.push(e ? ({ ...p, ...e, v: 2 } as Place) : applyPin(p));
       edited.delete(p.id);
     }
     // Places added locally: positioned by lat/lon, associated on the fly with this chunk's buildings.
@@ -151,12 +161,23 @@ export function buildChunkLabels(data: ChunkData, ctx: BuildContext): THREE.Obje
 
   // Storefront signs.
   const used = new Map<string, number>();
-  for (const p of ctx.places.inChunk(chunkKey(data.cx, data.cz), data)) {
+  // Pinned (house-numbered) businesses claim their lot first.
+  const list = ctx.places.inChunk(chunkKey(data.cx, data.cz), data).sort((a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0));
+  for (const p of list) {
     if (!p.sign || p.b === undefined || p.e === undefined) continue;
     const b = data.buildings.find((q) => q.id === p.b);
     if (!b || ctx.landmarks.replacesBuilding(b.id)) continue;
     const style = hash3(p.id.length, p.name.charCodeAt(0) | 0, p.name.length * 31 + (p.name.charCodeAt(1) | 0)) % 7;
-    if (b.a?.f.includes(p.e)) {
+    if (b.a?.f.includes(p.e) && isDistrictRow(b, ox, oz)) {
+      const fr = rowFrame(b, ox, oz, ctx);
+      const span = p.pin?.span ?? 1;
+      const f = heritageFascia(fr, b.id, p.e, p.t ?? 0.5, span);
+      let taken = false;
+      for (let k = 0; k < span; k++) if (used.has(`${b.id}:${p.e}:L${f.slot + k}`)) taken = true;
+      if (taken) continue;
+      for (let k = 0; k < span; k++) used.set(`${b.id}:${p.e}:L${f.slot + k}`, 1);
+      specs.push({ text: p.pin?.sign ?? p.name, style, x: f.x, y: f.y, z: f.z, ex: f.ex, ez: f.ez, nx: f.nx, nz: f.nz, maxW: Math.min(f.w - 0.5, 7), h: 0.66 });
+    } else if (b.a?.f.includes(p.e)) {
       const fr = rowFrame(b, ox, oz, ctx);
       const f = fasciaAt(fr, p.e, p.t ?? 0.5);
       const slot = `${b.id}:${p.e}:${f.unitCentreT.toFixed(3)}`;

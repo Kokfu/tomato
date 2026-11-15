@@ -89,6 +89,7 @@ export class PlacePanel {
         `<h2>${esc(place.name)}</h2>` +
         `<div class="place-cat">${esc(place.cat.replace(/_/g, ' '))}</div>` +
         (place.addr ? `<div class="place-row"><span>Address</span>${esc(place.addr)}</div>` : '') +
+        (place.pin ? `<div class="place-row"><span>Storefront</span>Lot No. ${place.pin.no}${place.pin.span > 1 ? `-${place.pin.no + place.pin.span - 1}` : ''} (${place.pin.evidence === 'address+position' ? 'house number and mapped position agree' : 'placed by house number; mapped position differs'})</div>` : '') +
         `<div class="place-row"><span>Position</span>${place.lat.toFixed(5)}&deg;N ${place.lon.toFixed(5)}&deg;E &middot; ${how}</div>` +
         `<div class="place-row"><span>Source</span>${SOURCE_LABEL[place.src]}${place.upd ? `, updated ${esc(place.upd)}` : ''}</div>` +
         `<div class="place-row"><span>Status</span><b class="v${place.v}">${VERIFY_LABEL[place.v]}</b>${place.conf !== undefined ? ` (source confidence ${Math.round(place.conf * 100)} %)` : ''}</div>` +

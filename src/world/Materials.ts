@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { facadeAtlas } from './arch/FacadeAtlas.ts';
+import { heritageAtlas } from './arch/HeritageAtlas.ts';
 
 /** Growable buffers for building merged geometry. */
 export class GeoBuf {
@@ -142,8 +143,8 @@ const NOISE_GLSL = /* glsl */ `
  */
 const DETAIL = {
   asphalt: /* glsl */ `
-    float a = k3n(p.xz * 9.0) * 0.6 + k3n(p.xz * 0.6) * 0.4;
-    col *= mix(1.0, 0.8 + 0.34 * a, fade) * (0.94 + 0.12 * a);`,
+    float a = k3n(p.xz * 17.0) * 0.5 + k3n(p.xz * 4.0) * 0.3 + k3n(p.xz * 0.3) * 0.2;
+    col *= mix(1.0, 0.84 + 0.3 * a, fade) * (0.95 + 0.1 * k3n(p.xz * 0.3));`,
   paving: /* glsl */ `
     vec2 q = p.xz / 0.6;
     vec2 f = fract(q);
@@ -152,7 +153,7 @@ const DETAIL = {
     col *= 0.92 + 0.14 * k3n(p.xz * 0.35);`,
   plaster: /* glsl */ `
     float grime = k3n(vec2(dot(p.xz, vec2(0.71, 0.71)) * 1.4, p.y * 0.3));
-    col *= 0.86 + 0.18 * grime;
+    col *= 0.9 + 0.12 * grime;
     col *= mix(1.0, 0.95 + 0.1 * k3n(vec2(dot(p.xz, vec2(0.71, -0.71)), p.y) * 9.0), fade);`,
   roof: /* glsl */ `
     float slope = length(n.xz);
@@ -179,6 +180,10 @@ const DETAIL = {
     float turf = 0.72 + 0.5 * (k3n(p.xz * 5.0) * 0.6 + big * 0.4);
     col *= mix(1.0, mix(paved, turf, green), fade);
     col *= 0.9 + 0.18 * big;`,
+  foliage: /* glsl */ `
+    float lf = k3n(p.xz * 1.7 + p.y * 2.3) * 0.6 + k3n(p.xz * 5.5 - p.y * 4.1) * 0.4;
+    col *= 0.62 + 0.8 * lf;
+    col = mix(col, col * vec3(1.15, 1.2, 0.8), smoothstep(0.55, 0.85, lf) * 0.5);`,
   concrete: /* glsl */ `
     col *= 0.88 + 0.2 * k3n(p.xz * 0.9 + p.y * 1.7);`,
 };
@@ -205,11 +210,16 @@ export class Materials {
   readonly wallsPlain: THREE.MeshLambertMaterial;
   /** Shophouse rows: vertex colour x procedural facade atlas. */
   readonly arch: THREE.MeshLambertMaterial;
+  /** District (high-fidelity) facades: vertex colour x heritage atlas. Created on first use. */
+  private heritageMat: THREE.MeshLambertMaterial | null = null;
+  private smallTextures: boolean;
   readonly roofs: THREE.MeshLambertMaterial;
   readonly structure: THREE.MeshLambertMaterial;
   readonly trunk: THREE.MeshLambertMaterial;
   readonly crown: THREE.MeshLambertMaterial;
   readonly frond: THREE.MeshLambertMaterial;
+  /** District tree canopies and shrubs: vertex colour with dappled leaf noise. */
+  readonly foliage: THREE.MeshLambertMaterial;
   readonly water: THREE.ShaderMaterial;
   readonly landmark: THREE.MeshLambertMaterial;
   /** Street furniture (instanced, vertex colours). */
@@ -218,6 +228,7 @@ export class Materials {
   readonly lampGlow: THREE.MeshBasicMaterial;
 
   constructor(scene: THREE.Scene, sunDir: THREE.Vector3, smallTextures = false) {
+    this.smallTextures = smallTextures;
     this.roads = [0, 1, 2, 3].map((g) =>
       withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -(g + 1), polygonOffsetUnits: -(g + 1) * 4 }), g === 1 ? 'paving' : g === 0 ? 'concrete' : 'asphalt'),
     );
@@ -231,6 +242,7 @@ export class Materials {
     this.trunk = new THREE.MeshLambertMaterial({ color: 0x6b4f3a });
     this.crown = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true });
     this.frond = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true, side: THREE.DoubleSide });
+    this.foliage = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true }), 'foliage');
     this.furniture = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
     this.lampGlow = new THREE.MeshBasicMaterial({ color: 0x9a9a96, vertexColors: true, side: THREE.DoubleSide });
     this.water = new THREE.ShaderMaterial({
@@ -243,6 +255,11 @@ export class Materials {
       fog: true,
     });
     void scene;
+  }
+
+  get heritage(): THREE.MeshLambertMaterial {
+    if (!this.heritageMat) this.heritageMat = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, map: heritageAtlas(this.smallTextures ? 256 : 512), side: THREE.DoubleSide }), 'plaster');
+    return this.heritageMat;
   }
 
   /** Terrain material (one per chunk because each chunk owns its land-use texture). */

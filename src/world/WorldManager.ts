@@ -18,7 +18,7 @@ const TIMES: Record<TimeOfDay, {
 }> = {
   // Mid-morning: the sun stands in the north-east, so the river-facing Main Bazaar fronts are lit.
   day: {
-    sunDir: [0.52, 0.7, -0.49], sun: 0xfff1dc, sunIntensity: 2.6, skyLight: 0xcfe0f2, groundLight: 0x8f876e, hemiIntensity: 1.0,
+    sunDir: [0.52, 0.7, -0.49], sun: 0xfff1dc, sunIntensity: 2.45, skyLight: 0xcfe0f2, groundLight: 0x9a9078, hemiIntensity: 1.3,
     horizon: 0xcfdde4, zenith: 0x3f82c8, fog: 0xc9d8e0, exposure: 1.0, cloud: 0xffffff, water: 0xa9c4d6, lampGlow: 0x9a9a96,
   },
   // Shortly before sunset: low warm sun in the west, long shadows, lamps lit.

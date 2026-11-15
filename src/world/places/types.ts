@@ -33,6 +33,11 @@ export interface Place {
   t?: number;
   /** True when a facade sign is rendered for this place. */
   sign?: boolean;
+  /**
+   * District pin (runtime only, see district/mainBazaar.ts): the house-numbered lot this business
+   * is attached to and the evidence class behind it.
+   */
+  pin?: { no: number; span: number; evidence: string; sign?: string };
 }
 
 /** File format of public/data/kuching/places/<cx>_<cz>.json. */

@@ -4,6 +4,7 @@ import type { ChunkData } from './types.ts';
 import { FURN } from './types.ts';
 import { GeoBuf } from './Materials.ts';
 import type { BuildContext } from './ChunkManager.ts';
+import { stationOf } from './district/mainBazaar.ts';
 
 // Lamp posts, traffic signals, street-sign posts, benches and bollards, merged into one mesh per
 // chunk (plus one tiny unlit mesh for lamp heads and signal lenses). Positions come from
@@ -48,6 +49,8 @@ export function buildFurniture(data: ChunkData, ctx: BuildContext): THREE.Object
     const y = ctx.height.sample(ox + x, oz + z);
     switch (furn[i]) {
       case FURN.lamp: {
+        // The district draws its own median and promenade lamps (district/Dressing.ts).
+        if (stationOf(ox + x, oz + z).d < 16) break;
         // Tapered steel column with a single arm reaching over the carriageway (local +Z).
         box(solid, x, y - 0.2, y + 0.5, z, a, -0.11, 0.11, -0.11, 0.11, POLE);
         box(solid, x, y + 0.5, y + 6.2, z, a, -0.06, 0.06, -0.06, 0.06, POLE_LIGHT);

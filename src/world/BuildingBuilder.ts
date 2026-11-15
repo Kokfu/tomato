@@ -7,6 +7,8 @@ import { toVec2 } from './RoadBuilder.ts';
 import { insetRing, pointInRing } from './landmarks/kit.ts';
 import type { BuildContext } from './ChunkManager.ts';
 import { addShophouseRow, addRowRoof } from './arch/Shophouse.ts';
+import { addHeritageRow, addHeritageRoof } from './arch/HeritageRow.ts';
+import { inDistrict, isDistrictRow } from './district/mainBazaar.ts';
 
 type Kind = (typeof BUILDING_KINDS)[number];
 const WALLS: Record<Kind, number[]> = {
@@ -304,12 +306,31 @@ export function buildBuildings(data: ChunkData, ctx: BuildContext): THREE.Object
   const walls = new GeoBuf(true);
   const roofs = new GeoBuf();
   const arch = new GeoBuf(true);
+  const herit = new GeoBuf(true);
   for (const b of data.buildings) {
     if (ctx.landmarks.replacesBuilding(b.id)) continue;
     const row = !!b.a?.f.length;
+    if (row && isDistrictRow(b, ox, oz)) {
+      const hr = addHeritageRow(b, ox, oz, ctx, herit);
+      if (addHeritageRoof(b, hr, roofs, herit)) continue;
+      addBuilding(b, ox, oz, ctx, walls, roofs, true);
+      continue;
+    }
     if (row) {
       const fr = addShophouseRow(b, ox, oz, ctx, arch);
       if (addRowRoof(b, fr, roofs, arch)) continue;
+    }
+    // Small unclassified / machine-detected footprints on the district waterfront are the promenade's
+    // kiosks and pavilions: drawn with cream walls and a pitched tile roof (appearance approximate).
+    if (!row && (b.s || BUILDING_KINDS[b.k] === 'generic') && b.r.length === 1 && b.r[0].length <= 12 && b.n === undefined) {
+      const r = b.r[0];
+      let cx = 0, cz = 0;
+      for (let i = 0; i < r.length; i += 2) { cx += r[i]; cz += r[i + 1]; }
+      cx = ox + cx / (r.length / 2) / QUANT; cz = oz + cz / (r.length / 2) / QUANT;
+      if (inDistrict(cx, cz) && Math.abs(area2(r)) / 2 / QUANT / QUANT < 320) {
+        addBuilding({ ...b, s: 0, k: BUILDING_KINDS.indexOf('house'), h: Math.min(b.h, 420) }, ox, oz, ctx, walls, roofs, false);
+        continue;
+      }
     }
     addBuilding(b, ox, oz, ctx, walls, roofs, row);
   }
@@ -317,6 +338,12 @@ export function buildBuildings(data: ChunkData, ctx: BuildContext): THREE.Object
   const ag = arch.build();
   if (ag) {
     const m = new THREE.Mesh(ag, ctx.mats.arch);
+    m.castShadow = m.receiveShadow = true;
+    out.push(m);
+  }
+  const hg = herit.build();
+  if (hg) {
+    const m = new THREE.Mesh(hg, ctx.mats.heritage);
     m.castShadow = m.receiveShadow = true;
     out.push(m);
   }

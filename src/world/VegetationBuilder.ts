@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CHUNK_SIZE, QUANT } from './config.ts';
 import type { ChunkData } from './types.ts';
 import type { BuildContext } from './ChunkManager.ts';
+import { inDistrict } from './district/mainBazaar.ts';
 
 interface Kit { trunk: THREE.BufferGeometry; crown: THREE.BufferGeometry; palmTrunk: THREE.BufferGeometry; fronds: THREE.BufferGeometry }
 let kit: Kit | null = null;
@@ -75,7 +76,12 @@ function hash(x: number, z: number): number {
 export function buildVegetation(data: ChunkData, ctx: BuildContext): THREE.Object3D[] {
   const density = ctx.quality.treeDensity;
   const pts: number[] = [];
-  for (let i = 0; i < data.trees.length; i += 2) pts.push(data.trees[i], data.trees[i + 1]);
+  const dox = data.cx * CHUNK_SIZE, doz = data.cz * CHUNK_SIZE;
+  for (let i = 0; i < data.trees.length; i += 2) {
+    // Mapped trees inside the test district are drawn as rain trees by district/Dressing.ts.
+    if (inDistrict(dox + data.trees[i] / QUANT, doz + data.trees[i + 1] / QUANT)) continue;
+    pts.push(data.trees[i], data.trees[i + 1]);
+  }
   for (let i = 0; i < data.ptrees.length; i += 2) {
     if (density < 1 && hash(data.ptrees[i], data.ptrees[i + 1]) > density) continue;
     pts.push(data.ptrees[i], data.ptrees[i + 1]);

@@ -118,3 +118,7 @@ Earlier documents:
 
 Building heights are estimates unless tagged in the source, plain grey buildings are
 machine-detected outlines of lower accuracy, and landmark models are approximations. See the limitations document before relying on any dimension.
+
+## V3: Main Bazaar test district
+
+A single high-fidelity district (Jalan Main Bazaar and the Waterfront) is described in `docs/V3_REPORT.md`: diagnosis, Google 3D Tiles feasibility, before/after screenshots, shop identity coverage, tests and measured performance.

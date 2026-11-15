@@ -3,6 +3,9 @@ import type { ChunkData } from './types.ts';
 import { BUILDING_KINDS } from './types.ts';
 import type { HeightMap } from './HeightMap.ts';
 import { ARCADE_DEPTH, insetEdges } from './arch/frontage.ts';
+import { isDistrictRow } from './district/mainBazaar.ts';
+import { frontFloors, frontObstacles } from './district/frontLayout.ts';
+import { districtFloors, propObstacles } from './district/props.ts';
 
 interface Wall {
   minX: number; maxX: number; minZ: number; maxZ: number;
@@ -17,6 +20,8 @@ interface ChunkCollision {
   /** 7 floats per deck segment: ax, az, ah, bx, bz, bh, halfWidth (world metres). */
   decks: Float32Array;
   pdecks: { ring: Float32Array; h: number; minX: number; maxX: number; minZ: number; maxZ: number }[];
+  /** Raised paving (district five-foot ways): stood on like a deck, but it is ordinary ground. */
+  floors: { ring: Float32Array; h: number; minX: number; maxX: number; minZ: number; maxZ: number }[];
   /** 5 floats per mapped building passage segment: ax, az, bx, bz, halfWidth. */
   pass: Float32Array;
 }
@@ -72,6 +77,7 @@ export class CollisionWorld {
     const oz = data.cz * CHUNK_SIZE;
     const roofKind = BUILDING_KINDS.indexOf('roof');
     const walls: Wall[] = [];
+    const floors: ChunkCollision['floors'] = [];
     for (const b of data.buildings) {
       if (b.k === roofKind) continue; // open-sided roofs do not block movement
       const rings = b.r.map((r) => toWorld(r, ox, oz));
@@ -80,6 +86,26 @@ export class CollisionWorld {
       if (b.a?.f.length) rings[0] = Float32Array.from(insetEdges(rings[0], b.a.f, ARCADE_DEPTH));
       const base = this.height.sample(rings[0][0], rings[0][1]);
       walls.push({ ...bbox(rings[0]), rings, top: base + b.h / QUANT });
+      // District rows: piers and the goods standing in the five-foot way block movement too.
+      if (isDistrictRow(b, ox, oz)) {
+        for (const fl of frontFloors(b.id, toWorld(b.r[0], ox, oz), b.a!.f, (x, z) => this.height.sample(x, z))) {
+          const ring = Float32Array.from(fl.ring);
+          floors.push({ ring, h: fl.h, ...bbox(ring) });
+        }
+        for (const o of frontObstacles(b.id, toWorld(b.r[0], ox, oz), b.a!.f)) {
+          const ring = Float32Array.from(o.ring);
+          walls.push({ ...bbox(ring), rings: [ring], top: base + o.h });
+        }
+      }
+    }
+    for (const fl of districtFloors(data)) {
+      const ring = Float32Array.from(fl.ring);
+      floors.push({ ring, h: this.height.sample((ring[0] + ring[4]) / 2, (ring[1] + ring[5]) / 2) + fl.rise, ...bbox(ring) });
+    }
+    // District street dressing (parked cars, tree trunks, planters, lamp posts, benches).
+    for (const o of propObstacles(data)) {
+      const ring = Float32Array.from(o.ring);
+      walls.push({ ...bbox(ring), rings: [ring], top: this.height.sample(ring[0], ring[1]) + o.h });
     }
     const water: WaterPoly[] = data.water.map((poly) => {
       const rings = poly.map((r) => toWorld(r, ox, oz));
@@ -108,7 +134,7 @@ export class CollisionWorld {
       pass[i + 3] = oz + src[i + 3] / QUANT;
       pass[i + 4] = src[i + 4] / QUANT;
     }
-    this.chunks.set(chunkKey(data.cx, data.cz), { walls, water, decks, pdecks, pass });
+    this.chunks.set(chunkKey(data.cx, data.cz), { walls, water, decks, pdecks, pass, floors });
   }
 
   removeChunk(cx: number, cz: number): void {
@@ -147,6 +173,10 @@ export class CollisionWorld {
       if (dh <= lim && (dh > h || !deck)) {
         if (dh >= h - 0.05) { h = Math.max(h, dh); deck = true; }
       }
+    }
+    for (const p of c.floors) {
+      if (x < p.minX || x > p.maxX || z < p.minZ || z > p.maxZ) continue;
+      if (p.h <= lim && p.h > h && pointInRing(x, z, p.ring)) h = p.h;
     }
     for (const p of c.pdecks) {
       if (x < p.minX || x > p.maxX || z < p.minZ || z > p.maxZ) continue;

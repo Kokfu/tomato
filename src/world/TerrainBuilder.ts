@@ -3,6 +3,8 @@ import { CHUNK_SIZE, CELL, QUANT } from './config.ts';
 import type { ChunkData } from './types.ts';
 import { AREA_KINDS, AREA_COLORS } from './types.ts';
 import type { BuildContext } from './ChunkManager.ts';
+import { MB_LINE, MB_NORTH } from './district/mainBazaar.ts';
+import { stationOfChunk } from './district/props.ts';
 
 const BASE_GROUND = '#a9a694';
 
@@ -24,6 +26,7 @@ function groundTexture(data: ChunkData, size: number): THREE.CanvasTexture {
     }
     g.fill('evenodd');
   }
+  if (stationOfChunk(data)) paintDistrict(g, data, size);
   // Subtle deterministic mottling so large open ground is not a flat colour (decorative only).
   let seed = (data.cx * 73856093) ^ (data.cz * 19349663);
   const rnd = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) | 0) >>> 0) / 4294967296;
@@ -38,6 +41,33 @@ function groundTexture(data: ChunkData, size: number): THREE.CanvasTexture {
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
   return t;
+}
+
+/**
+ * Ground surfaces of the Main Bazaar district, painted by stroking the mapped river bank and the
+ * mapped carriageways: promenade paving along the bank, a planted verge behind it, red-brick
+ * footpaths beside the street (the carriageways themselves are drawn over this as road meshes).
+ * Surface types follow the reference photographs; exact extents are approximate.
+ */
+function paintDistrict(g: CanvasRenderingContext2D, data: ChunkData, size: number): void {
+  const s = size / CHUNK_SIZE, ox = data.cx * CHUNK_SIZE, oz = data.cz * CHUNK_SIZE;
+  g.save();
+  g.lineJoin = 'round';
+  g.lineCap = 'butt';
+  const stroke = (pts: [number, number][], width: number, colour: string) => {
+    g.strokeStyle = colour;
+    g.lineWidth = width * s;
+    g.beginPath();
+    pts.forEach(([x, z], i) => (i ? g.lineTo((x - ox) * s, (z - oz) * s) : g.moveTo((x - ox) * s, (z - oz) * s)));
+    g.stroke();
+  };
+  const rails = (data.rail ?? []).map((r) => { const p: [number, number][] = []; for (let i = 0; i < r.length; i += 2) p.push([ox + r[i] / QUANT, oz + r[i + 1] / QUANT]); return p; });
+  const near = (p: [number, number][]) => p.filter(([x, z]) => x > 40 && x < 470 && z > -280 && z < 110);
+  for (const r of rails) if (near(r).length > 1) stroke(near(r), 58, '#6f9258');
+  for (const r of rails) if (near(r).length > 1) stroke(near(r), 21, '#a99f8f');
+  stroke(MB_NORTH, 5.4 + 6.2, '#a39c8f');
+  stroke(MB_LINE, 5.4 + 5.6, '#a39c8f');
+  g.restore();
 }
 
 /** Terrain mesh for a chunk. Vertex heights come from the global height grid. */

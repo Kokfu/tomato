@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { CharacterState, CharacterVisual } from './CharacterAnimator.ts';
 
 /** The parts of a loaded glTF that the character needs (matches three's GLTF result). */
@@ -102,6 +103,9 @@ export class GlbCharacter implements CharacterVisual {
       // The bind-pose bounds do not follow the animation; one character is never worth culling.
       mesh.frustumCulled = false;
       mesh.material = Array.isArray(mesh.material) ? mesh.material.map(toLambert) : toLambert(mesh.material);
+      // The model ships flat-shaded (every facet visible). Smooth the normals across edges shallower
+      // than 70 degrees so limbs and torso read as rounded forms; hard edges (soles, hair) stay crisp.
+      try { mesh.geometry = toCreasedNormals(mesh.geometry, (70 * Math.PI) / 180); } catch { /* keep the authored normals */ }
       if (mesh.isSkinnedMesh) skinned.push(mesh);
     });
     if (!skinned.length) throw new Error('character model has no skinned mesh');
