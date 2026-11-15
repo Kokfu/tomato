@@ -28,6 +28,8 @@ export default defineConfig(({ mode }) => {
       watch: { ignored: ['**/.claude/**', '**/data-src/**', '**/test-results/**'] },
     },
     preview: common,
+    // Pre-bundle the lazily imported three.js add-ons, so the dev server never re-optimises and reloads the page mid-session.
+    optimizeDeps: { include: ['three/addons/loaders/GLTFLoader.js', 'three/addons/libs/meshopt_decoder.module.js', 'three/addons/postprocessing/EffectComposer.js', 'three/addons/postprocessing/RenderPass.js', 'three/addons/postprocessing/GTAOPass.js', 'three/addons/postprocessing/OutputPass.js', 'three/addons/postprocessing/ShaderPass.js', 'three/addons/shaders/FXAAShader.js'] },
     build: { target: 'es2020', chunkSizeWarningLimit: 900 },
   };
 });

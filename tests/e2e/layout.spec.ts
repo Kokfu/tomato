@@ -9,7 +9,9 @@ test.describe('layout', () => {
     await expect(page.locator('.tagline')).toHaveText('Explore the real streets of Kuching, Sarawak.');
     await expect(page.locator('#btn-start')).toHaveText('Start Exploring');
     await page.screenshot({ path: `docs/screenshots/${info.project.name}-start.png` });
-    await start(page);
+    // Already on the page: navigating again would abort the downloads the first load still has in flight,
+    // and those aborted requests would be reported as errors.
+    await start(page, { navigate: false });
     await waitChunks(page);
     const vp = page.viewportSize()!;
 

@@ -1,0 +1,64 @@
+{
+ "temple.lod0.glb": {
+  "triangles": 23877,
+  "vertices": 17789,
+  "bytes": 162712,
+  "gzip": 55248,
+  "brotli": 48510,
+  "quantisedOnlyBytes": 513144,
+  "float32Bytes": 925978
+ },
+ "temple.lod1.glb": {
+  "triangles": 4126,
+  "vertices": 4059,
+  "bytes": 51608,
+  "gzip": 21793,
+  "brotli": 19223,
+  "quantisedOnlyBytes": 116292,
+  "float32Bytes": 203352
+ },
+ "foodcourt.lod0.glb": {
+  "triangles": 12747,
+  "vertices": 17658,
+  "bytes": 144996,
+  "gzip": 41012,
+  "brotli": 35342,
+  "quantisedOnlyBytes": 439376,
+  "float32Bytes": 853434
+ },
+ "foodcourt.lod1.glb": {
+  "triangles": 3365,
+  "vertices": 3925,
+  "bytes": 45380,
+  "gzip": 11244,
+  "brotli": 9362,
+  "quantisedOnlyBytes": 108000,
+  "float32Bytes": 192890
+ },
+ "stage.lod0.glb": {
+  "triangles": 1266,
+  "vertices": 1563,
+  "bytes": 27836,
+  "gzip": 7901,
+  "brotli": 6665,
+  "quantisedOnlyBytes": 48924,
+  "float32Bytes": 76368
+ },
+ "stage.lod1.glb": {
+  "triangles": 356,
+  "vertices": 554,
+  "bytes": 18520,
+  "gzip": 4725,
+  "brotli": 3911,
+  "quantisedOnlyBytes": 21260,
+  "float32Bytes": 26512
+ },
+ "atlas.webp": {
+  "bytes": 126158,
+  "size": 1024,
+  "gpuBytesWithMips": 5591007
+ },
+ "atlas.png (not shipped)": {
+  "bytes": 539245
+ }
+}

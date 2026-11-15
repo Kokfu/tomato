@@ -1,0 +1,367 @@
+// Assembles the V5 Carpenter Street section in one of two ways:
+//
+//  Approach A "procedural": everything is generated in the browser from the mapped geography and
+//    rules. Lots are hashed variations, landmarks come from generic class grammars fitted to their
+//    mapped sites, signs are drawn at run time. No asset downloads at all.
+//  Approach B "hybrid": the same geography and the same procedural street shell, plus authored
+//    content: a per-lot facade table, reconstructed landmark models loaded as meshopt-compressed
+//    GLB files, a small painted texture atlas, and reference-specific street dressing.
+//
+// Both use the same V5 materials, lighting and post-processing, so the comparison isolates what
+// authored content adds on top of procedural generation.
+import * as THREE from 'three';
+import { Kit, hex, rnd } from './kit.ts';
+import type { Buf } from './kit.ts';
+import { createMaterials } from './materials.ts';
+import type { KuchingMaterials, MaterialName } from './materials.ts';
+import { autoLot, buildLot, eaveY, ARCADE } from './shophouse.ts';
+import type { LotSpec, SignSource } from './shophouse.ts';
+import { ROWS, BLOCKS, rowFrame, V5_LANDMARK_IDS } from './geo.ts';
+import type { RowDef } from './geo.ts';
+import { LOT_OVERRIDES } from './lots.ts';
+import { buildRoad, buildApron, lampPost, cables, car, pushcart, streetLanterns } from './street.ts';
+import { buildTemple, buildGenericTemple } from './landmarks/temple.ts';
+import { buildFoodCourt, buildGenericFoodCourt, buildOperaStage, buildGenericStage } from './landmarks/foodcourt.ts';
+import { paintAtlas, ATLAS_SIZE } from './landmarks/atlas.ts';
+
+export type V5Mode = 'a' | 'b';
+
+interface SiteLike { id: string; anchor: { x: number; z: number; y: number; yaw: number }; widthM?: number; depthM?: number }
+interface PlaceLike { name: string; cat: string; x: number; z: number; b?: number; sign?: boolean }
+
+export interface V5Host {
+  height(x: number, z: number): number;
+  sites: SiteLike[];
+  baseUrl: string;
+  low: boolean;
+  renderer: THREE.WebGLRenderer;
+  /** Walkable raised floors (five-foot ways) are registered with the collision world while V5 is shown. */
+  setFloors(floors: { ring: number[]; h: number }[]): void;
+}
+
+/** One canvas that holds all run-time sign text (shop names from the mapped place data). */
+class SignAtlas implements SignSource {
+  readonly canvas = document.createElement('canvas');
+  readonly texture: THREE.CanvasTexture;
+  private g: CanvasRenderingContext2D;
+  private x = 0; private y = 0; private rowH = 0;
+  private cache = new Map<string, [number, number, number, number]>();
+  constructor(size = 1024) {
+    this.canvas.width = this.canvas.height = size;
+    this.g = this.canvas.getContext('2d')!;
+    this.g.fillStyle = '#222'; this.g.fillRect(0, 0, size, size);
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    this.texture.colorSpace = THREE.SRGBColorSpace;
+    this.texture.anisotropy = 8;
+  }
+  rect(text: string, fg: string, bg: string, aspect: number, vertical = false): [number, number, number, number] {
+    const key = `${text}|${fg}|${bg}|${vertical}`;
+    const hit = this.cache.get(key);
+    if (hit) return hit;
+    const S = this.canvas.width, g = this.g;
+    const h = vertical ? Math.min(320, Math.round(72 / aspect)) : 72, w = vertical ? 72 : Math.min(S, Math.round(72 * aspect));
+    if (this.x + w > S) { this.x = 0; this.y += this.rowH + 2; this.rowH = 0; }
+    const x = this.x, y = this.y;
+    this.x += w + 2; this.rowH = Math.max(this.rowH, h);
+    g.fillStyle = bg; g.fillRect(x, y, w, h);
+    g.strokeStyle = fg; g.globalAlpha = 0.6; g.lineWidth = 2; g.strokeRect(x + 3, y + 3, w - 6, h - 6); g.globalAlpha = 1;
+    g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const font = '"Segoe UI", "Microsoft YaHei", "Noto Sans", Arial, sans-serif';
+    if (vertical) {
+      const ch = [...text].slice(0, 9), step = (h - 16) / ch.length, size = Math.min(44, step * 0.9);
+      g.font = `700 ${size}px ${font}`;
+      ch.forEach((c, i) => g.fillText(c, x + w / 2, y + 8 + (i + 0.5) * step));
+    } else {
+      let size = 40;
+      g.font = `700 ${size}px ${font}`;
+      const tw = g.measureText(text).width;
+      if (tw > w - 20) { size = Math.max(14, (size * (w - 20)) / tw); g.font = `700 ${size}px ${font}`; }
+      g.fillText(text, x + w / 2, y + h / 2 + 1);
+    }
+    const r: [number, number, number, number] = [(x + 1) / S, 1 - (y + h - 1) / S, (x + w - 1) / S, 1 - (y + 1) / S];
+    this.cache.set(key, r);
+    this.texture.needsUpdate = true;
+    return r;
+  }
+}
+
+function bufGeometry(b: Buf): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(b.nor, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(b.col, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2));
+  g.setIndex(b.count > 65535 ? new THREE.Uint32BufferAttribute(b.idx, 1) : new THREE.Uint16BufferAttribute(b.idx, 1));
+  g.computeBoundingSphere();
+  return g;
+}
+
+const NO_SHADOW = new Set<string>(['poly', 'glow', 'glass', 'wire']);
+const NO_RECEIVE = new Set<string>(['poly', 'glow', 'wire']);
+/** Trade words for hanging signboards, by mapped category (a description of the trade, not a claimed shop name). */
+const TRADE: Record<string, string> = { jewelry: '金铺', watches: '钟表', restaurant: '饭店', cafe: '茶室', convenience: '便利店' };
+const SIGN_STYLES: [string, string][] = [['#f6efe0', '#8c1c15'], ['#f3d98a', '#1f3f6a'], ['#ffffff', '#1f6a45'], ['#f6e7b0', '#3a2a1e'], ['#b3261e', '#f4efe2'], ['#f2c53d', '#7a1612']];
+
+export class V5Scene {
+  readonly group = new THREE.Group();
+  readonly materials: KuchingMaterials;
+  mode: V5Mode | null = null;
+  stats = { triangles: 0, drawCalls: 0, buildMs: 0, assetBytes: 0, glb: false, lots: 0, geometryBytes: 0, textureBytes: 0 };
+  private host: V5Host;
+  private signs = new SignAtlas();
+  private atlas: THREE.Texture | null = null;
+  private places: PlaceLike[] | null = null;
+  private token = 0;
+
+  constructor(host: V5Host) {
+    this.host = host;
+    this.group.name = 'v5-scene';
+    this.materials = createMaterials({ low: host.low, sign: this.signs.texture });
+  }
+
+  private async loadPlaces(): Promise<PlaceLike[]> {
+    if (this.places) return this.places;
+    const out: PlaceLike[] = [];
+    for (const k of ['0_0', '0_-1']) {
+      try { const j = await (await fetch(`${this.host.baseUrl}data/kuching/places/${k}.json`)).json(); out.push(...(j.places as PlaceLike[])); } catch { /* signs stay empty */ }
+    }
+    return (this.places = out);
+  }
+
+  /** Painted atlas: the shipped WebP if present, otherwise painted now with this device's fonts. */
+  private async loadAtlas(): Promise<THREE.Texture> {
+    if (this.atlas) return this.atlas;
+    let tex: THREE.Texture | null = null;
+    try {
+      const r = await fetch(`${this.host.baseUrl}models/v5/atlas.webp`);
+      if (r.ok && (r.headers.get('content-type') ?? '').startsWith('image/')) {
+        const blob = await r.blob();
+        this.stats.assetBytes += blob.size;
+        tex = new THREE.Texture(await createImageBitmap(blob, { imageOrientation: 'flipY' }));
+        tex.flipY = false;
+      }
+    } catch { /* fall through */ }
+    if (!tex) {
+      const c = document.createElement('canvas');
+      c.width = c.height = ATLAS_SIZE;
+      paintAtlas(c.getContext('2d')!);
+      tex = new THREE.CanvasTexture(c);
+    }
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.needsUpdate = true;
+    (this.materials.byName.atlas as THREE.MeshStandardMaterial).map = tex;
+    this.materials.byName.atlas.needsUpdate = true;
+    return (this.atlas = tex);
+  }
+
+  private lotSpecs(row: RowDef, mode: V5Mode, places: PlaceLike[], len: number, fr: ReturnType<typeof rowFrame>): LotSpec[] {
+    const w = len / row.lots, specs: LotSpec[] = [];
+    const openEnds: Record<string, [boolean, boolean]> = { N2: [true, false], N3: [false, true] };
+    const [eL, eR] = openEnds[row.id] ?? [true, true];
+    for (let i = 0; i < row.lots; i++) {
+      let s = autoLot(Math.floor(rnd(row.building % 100000, i, row.id.charCodeAt(1)) * 1e6), w, row.depth);
+      if (mode === 'b' && LOT_OVERRIDES[row.id]?.[i]) s = { ...s, ...LOT_OVERRIDES[row.id][i] };
+      s.exposedL = i === 0 && eL; s.exposedR = i === row.lots - 1 && eR;
+      if (row.lod === 1) { s.blinds = false; s.plants = 0; s.bin = false; }
+      specs.push(s);
+    }
+    // A lot that stands taller than its neighbour shows its side wall above the neighbour's roof.
+    specs.forEach((s, i) => { if (i > 0 && specs[i - 1].storeys < s.storeys) s.exposedL = true; if (i < specs.length - 1 && specs[i + 1].storeys < s.storeys) s.exposedR = true; });
+    // Shop names: mapped places of this building, assigned to the lot they fall in front of.
+    if (row.lod === 0) for (const p of places) {
+      // Only businesses with a shop name: mapped notes such as "... - pushcart in front of temple" are not signboards.
+      if (p.b !== row.building || !p.sign || p.name.length > 30 || p.name.includes(' - ')) continue;
+      const t = (p.x - fr.ox) * fr.dx + (p.z - fr.oz) * fr.dz, d = (p.x - fr.ox) * fr.nx + (p.z - fr.oz) * fr.nz;
+      if (t < 0 || t > len || d < -row.depth || d > 3) continue;
+      const s = specs[Math.min(row.lots - 1, Math.floor(t / w))];
+      const st = SIGN_STYLES[Math.floor(rnd(p.name.length, p.name.charCodeAt(0)) * SIGN_STYLES.length)];
+      if (!s.sign) s.sign = { text: p.name, fg: st[0], bg: st[1] };
+      if (!s.hang && TRADE[p.cat]) s.hang = { text: TRADE[p.cat], fg: '#f6e2a0', bg: p.cat === 'jewelry' ? '#8c1c15' : '#1f3f6a' };
+      // The mapped category decides the kind of shopfront (a rule, used by both approaches).
+      if (p.cat === 'convenience') s.shop = 'glass';
+      else if (p.cat === 'jewelry' || p.cat === 'watches') s.shop = 'grille';
+      else if (p.cat === 'restaurant' || p.cat === 'cafe') s.shop = 'open';
+    }
+    return specs;
+  }
+
+  /** (Re)build the scene for a mode. Resolves when meshes are in the group. */
+  async build(mode: V5Mode): Promise<void> {
+    const token = ++this.token, t0 = performance.now();
+    const places = await this.loadPlaces();
+    if (mode === 'b') await this.loadAtlas();
+    if (token !== this.token) return;
+    const h = this.host.height;
+    const kit = new Kit(0);
+    const floors: { ring: number[]; h: number }[] = [];
+    let lots = 0;
+
+    buildRoad(kit, h);
+    for (const def of ROWS) {
+      // apply the corner skip, then frame the frontage
+      let row = def;
+      if (def.skip) { const l = Math.hypot(def.b[0] - def.a[0], def.b[1] - def.a[1]); row = { ...def, a: [def.a[0] + ((def.b[0] - def.a[0]) * def.skip) / l, def.a[1] + ((def.b[1] - def.a[1]) * def.skip) / l] }; }
+      const fr = rowFrame(row);
+      const specs = this.lotSpecs(row, mode, places, fr.len, fr);
+      const w = fr.len / row.lots;
+      kit.lod = row.lod;
+      const mid = h(fr.ox + fr.dx * fr.len / 2 + fr.nx * 2, fr.oz + fr.dz * fr.len / 2 + fr.nz * 2);
+      specs.forEach((s, i) => {
+        const x = fr.ox + fr.dx * i * w, z = fr.oz + fr.dz * i * w;
+        const base = Math.max(mid - 0.1, Math.min(mid + 0.1, h(x + fr.dx * w / 2 + fr.nx * 1.5, z + fr.dz * w / 2 + fr.nz * 1.5))) + 0.03;
+        kit.at({ x, y: base, z, ry: fr.ry }, () => { buildLot(kit, s, row.lod === 0 ? this.signs : null); if (row.lod === 0) buildApron(kit, s.w, s.seed); });
+        // walkable five-foot way
+        const c = (u: number, v: number) => [x + fr.dx * u + fr.nx * v, z + fr.dz * u + fr.nz * v];
+        floors.push({ ring: [...c(0, 0.24), ...c(w, 0.24), ...c(w, -ARCADE), ...c(0, -ARCADE)], h: base + 0.14 });
+        lots++;
+      });
+      kit.lod = 0;
+      if (row.lod === 0) {
+        // utility cables along the facade under the eave
+        const y = mid + Math.min(...specs.map(eaveY)) - 0.9;
+        cables(kit, [fr.ox + fr.nx * 0.16, y, fr.oz + fr.nz * 0.16], [fr.ox + fr.dx * fr.len + fr.nx * 0.16, y, fr.oz + fr.dz * fr.len + fr.nz * 0.16], 3, row.lots);
+      }
+    }
+    this.yards(kit, h);
+
+    // street lamps on the south side at lot boundaries
+    for (const [rid, idx] of [['S1', 3], ['S2', 2], ['N1', 5]] as [string, number][]) {
+      const row = ROWS.find((r) => r.id === rid)!, fr = rowFrame(row), w = fr.len / row.lots;
+      const x = fr.ox + fr.dx * idx * w + fr.nx * 1.0, z = fr.oz + fr.dz * idx * w + fr.nz * 1.0;
+      kit.at({ x, y: h(x, z) + 0.03, z, ry: fr.ry }, () => lampPost(kit));
+    }
+
+    // landmarks
+    const site = (id: string) => this.host.sites.find((s) => s.id === id);
+    const temple = site(V5_LANDMARK_IDS[0]), court = site(V5_LANDMARK_IDS[1]), stage = site(V5_LANDMARK_IDS[2]);
+    const lm = new Kit(0);
+    const place = (s: SiteLike | undefined, fn: () => void, k = lm) => { if (s) k.at({ x: s.anchor.x, y: s.anchor.y, z: s.anchor.z, ry: s.anchor.yaw }, fn); };
+    let glbs: THREE.Object3D[] = [];
+    if (mode === 'a') {
+      place(temple, () => buildGenericTemple(lm, temple!.widthM ?? 10.4, temple!.depthM ?? 29.4));
+      place(court, () => buildGenericFoodCourt(lm));
+      place(stage, () => buildGenericStage(lm));
+    } else {
+      glbs = await this.loadGlbs([temple, court, stage]);
+      if (token !== this.token) return;
+      if (!glbs.length) {
+        // GLB assets not built yet: run the authored generators in the browser instead.
+        place(temple, () => buildTemple(lm)); place(court, () => buildFoodCourt(lm)); place(stage, () => buildOperaStage(lm));
+      }
+      // reference-specific street dressing
+      const tf = temple!.anchor, nx = Math.sin(tf.yaw), nz = Math.cos(tf.yaw), rx = Math.cos(tf.yaw), rz = -Math.sin(tf.yaw);
+      const at = (u: number, v: number, ry: number, fn: () => void) => { const x = tf.x + rx * u + nx * v, z = tf.z + rz * u + nz * v; kit.at({ x, y: h(x, z) + 0.04, z, ry: tf.yaw + ry }, fn); };
+      at(-6.6, 0.9, 0.2, () => pushcart(kit));                                   // mapped banana-fritter pushcart beside the forecourt
+      // cars at the kerb either side of the food court mouth (iPackTravel street-front photograph)
+      at(-7.4, 6.7, 0.03, () => car(kit, hex(0xc9cdd0)));
+      at(7.6, 6.7, Math.PI - 0.02, () => car(kit, hex(0xe9e9e6)));
+      at(-21, 1.75, Math.PI, () => car(kit, hex(0x7a1f1c)));
+      at(24, 6.6, 0, () => car(kit, hex(0x2c3e55)));
+      streetLanterns(kit, h, [0.16, 0.3, 0.72, 0.86]);
+    }
+
+    // kits -> meshes
+    this.disposeMeshes();
+    let tris = 0, calls = 0, gbytes = 0;
+    for (const k of [kit, lm]) for (const [name, buf] of k.bufs) {
+      if (!buf.idx.length) continue;
+      const mesh = new THREE.Mesh(bufGeometry(buf), this.materials.byName[name as MaterialName]);
+      mesh.castShadow = !NO_SHADOW.has(name); mesh.receiveShadow = !NO_RECEIVE.has(name);
+      mesh.renderOrder = name === 'poly' ? 5 : 0;
+      mesh.matrixAutoUpdate = false;
+      this.group.add(mesh);
+      tris += buf.idx.length / 3; calls++; gbytes += buf.count * 44 + buf.idx.length * (buf.count > 65535 ? 4 : 2);
+    }
+    for (const o of glbs) {
+      this.group.add(o);
+      o.traverse((m) => { const mesh = m as THREE.Mesh; if (!mesh.isMesh) return; calls++; tris += (mesh.geometry.index?.count ?? 0) / 3; for (const a of Object.values(mesh.geometry.attributes)) gbytes += (a as THREE.BufferAttribute).array.byteLength; gbytes += mesh.geometry.index?.array.byteLength ?? 0; });
+    }
+    this.host.setFloors(floors);
+    this.mode = mode;
+    const S = this.signs.canvas.width, det = (this.materials.uniforms.uDetail.value.image as { width: number }).width;
+    this.stats = { ...this.stats, triangles: Math.round(tris), drawCalls: calls, buildMs: Math.round(performance.now() - t0), glb: glbs.length > 0, lots, geometryBytes: gbytes,
+      textureBytes: Math.round((S * S * 4 + det * det * 4 + (mode === 'b' ? ATLAS_SIZE * ATLAS_SIZE * 4 : 0)) * 1.333) };
+  }
+
+  /** Low zinc back-of-lot roofs over each replaced block and plain yard walls on edges without a row. */
+  private yards(kit: Kit, h: (x: number, z: number) => number): void {
+    for (const ring of BLOCKS) {
+      const n = ring.length / 2;
+      let cx = 0, cz = 0;
+      for (let i = 0; i < n; i++) { cx += ring[i * 2] / n; cz += ring[i * 2 + 1] / n; }
+      const base = h(cx, cz), top = base + 5.6;
+      // inset the outline slightly so these never coincide with lot walls
+      const P = (i: number): [number, number] => { const x = ring[(i % n) * 2], z = ring[(i % n) * 2 + 1], l = Math.hypot(cx - x, cz - z); return [x + ((cx - x) / l) * 0.35, z + ((cz - z) / l) * 0.35]; };
+      const tris = THREE.ShapeUtils.triangulateShape(Array.from({ length: n }, (_, i) => new THREE.Vector2(...P(i))), []);
+      kit.use('zinc');
+      for (const t of tris) {
+        const p = t.map((i) => [P(i)[0], top, P(i)[1]] as [number, number, number]);
+        const up = (p[1][2] - p[0][2]) * (p[2][0] - p[0][0]) - (p[1][0] - p[0][0]) * (p[2][2] - p[0][2]) > 0;
+        kit.poly(up ? p : [p[0], p[2], p[1]], hex(0x8f9496, 0.75));
+      }
+      kit.use('plaster');
+      const ccw = (() => { let a = 0; for (let i = 0; i < n; i++) { const p = P(i), q = P(i + 1); a += p[0] * q[1] - q[0] * p[1]; } return a > 0; })();
+      for (let i = 0; i < n; i++) {
+        const a = P(i), b = P(i + 1);
+        if (ROWS.some((r) => (Math.hypot(r.a[0] - ring[(i % n) * 2], r.a[1] - ring[(i % n) * 2 + 1]) < 0.6 && Math.hypot(r.b[0] - ring[((i + 1) % n) * 2], r.b[1] - ring[((i + 1) % n) * 2 + 1]) < 0.6) || (Math.hypot(r.b[0] - ring[(i % n) * 2], r.b[1] - ring[(i % n) * 2 + 1]) < 0.6 && Math.hypot(r.a[0] - ring[((i + 1) % n) * 2], r.a[1] - ring[((i + 1) % n) * 2 + 1]) < 0.6))) continue;
+        const c = hex(0xcfc9ba, 0.85 + rnd(i, n) * 0.15), lo = hex(0xcfc9ba, 0.6);
+        const q: [number, number, number][] = [[a[0], base - 0.3, a[1]], [b[0], base - 0.3, b[1]], [b[0], top, b[1]], [a[0], top, a[1]]];
+        // outward = away from the centroid
+        kit.poly(ccw ? [q[1], q[0], q[3], q[2]] : q, ccw ? [lo, lo, c, c] : [lo, lo, c, c]);
+      }
+    }
+  }
+
+  private async loadGlbs(sites: (SiteLike | undefined)[]): Promise<THREE.Object3D[]> {
+    const out: THREE.Object3D[] = [];
+    try {
+      const [{ GLTFLoader }, { MeshoptDecoder }] = await Promise.all([import('three/addons/loaders/GLTFLoader.js'), import('three/addons/libs/meshopt_decoder.module.js')]);
+      const loader = new GLTFLoader();
+      loader.setMeshoptDecoder(MeshoptDecoder);
+      const names = ['temple', 'foodcourt', 'stage'];
+      for (let i = 0; i < 3; i++) {
+        const s = sites[i];
+        if (!s) continue;
+        const url = `${this.host.baseUrl}models/v5/${names[i]}.lod0.glb`;
+        const head = await fetch(url);
+        if (!head.ok || (head.headers.get('content-type') ?? '').includes('text/html')) return [];
+        const bytes = await head.arrayBuffer();
+        this.stats.assetBytes += bytes.byteLength;
+        const gltf = await loader.parseAsync(bytes, '');
+        const root = new THREE.Group();
+        root.add(gltf.scene);
+        gltf.scene.traverse((o) => {
+          const mesh = o as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          const name = (mesh.material as THREE.Material).name as MaterialName;
+          (mesh.material as THREE.Material).dispose();
+          mesh.material = this.materials.byName[name] ?? this.materials.byName.paint;
+          mesh.castShadow = !NO_SHADOW.has(name); mesh.receiveShadow = !NO_RECEIVE.has(name);
+          mesh.renderOrder = name === 'poly' ? 5 : 0;
+        });
+        root.position.set(s.anchor.x, s.anchor.y, s.anchor.z);
+        root.rotation.y = s.anchor.yaw;
+        root.updateMatrixWorld(true);
+        out.push(root);
+      }
+    } catch (e) {
+      console.warn('V5 landmark GLB unavailable, using in-browser generation:', e);
+      return [];
+    }
+    return out;
+  }
+
+  update(time: number): void { this.materials.uniforms.uTime.value = time; }
+
+  private disposeMeshes(): void {
+    for (const o of [...this.group.children]) {
+      this.group.remove(o);
+      o.traverse((m) => { const mesh = m as THREE.Mesh; if (mesh.isMesh) mesh.geometry.dispose(); });
+    }
+  }
+
+  dispose(): void { this.token++; this.disposeMeshes(); this.host.setFloors([]); this.mode = null; }
+}

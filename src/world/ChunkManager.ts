@@ -128,6 +128,11 @@ export class ChunkManager {
     this.centre = { cx: 1e9, cz: 1e9 };
   }
 
+  /** Drop the meshes of the given chunks so they are rebuilt (data stays loaded). Used by the V5 A/B switch. */
+  invalidate(keys: string[]): void {
+    for (const k of keys) { const c = this.chunks.get(k); if (c) this.disposeMesh(c); }
+  }
+
   /** Name of the nearest named road within `maxDist` metres. */
   nearestRoadName(x: number, z: number, maxDist = 40): string | null {
     const cx = Math.floor(x / CHUNK_SIZE), cz = Math.floor(z / CHUNK_SIZE);

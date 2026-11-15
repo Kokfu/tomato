@@ -10,6 +10,7 @@ import { addShophouseRow, addRowRoof } from './arch/Shophouse.ts';
 import { addHeritageRow, addHeritageRoof } from './arch/HeritageRow.ts';
 import { inDistrict, isDistrictRow } from './district/mainBazaar.ts';
 import { assertGeneric, isProtectedLandmark, mayHaveShopfront } from './landmarks/protect.ts';
+import { v5Exclusion } from '../v5/geo.ts';
 
 type Kind = (typeof BUILDING_KINDS)[number];
 const WALLS: Record<Kind, number[]> = {
@@ -311,6 +312,8 @@ export function buildBuildings(data: ChunkData, ctx: BuildContext): THREE.Object
   const herit = new GeoBuf(true);
   for (const b of data.buildings) {
     if (ctx.landmarks.replacesBuilding(b.id)) continue;
+    // V5 rendering experiment: these blocks are drawn by the V5 scene while it is shown.
+    if (v5Exclusion.active && v5Exclusion.ids.has(b.id)) continue;
     // Registered landmark sites are drawn by their dedicated model (landmarks/LandmarkModels.ts) at
     // every detail level: no generic geometry is ever generated beneath it.
     if (isProtectedLandmark(b)) continue;

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { watch, start, state, walk, teleport, waitChunks, chainOfWays, manifest, overview, landmarks } from './helpers.ts';
+import { watch, start, state, walk, teleport, waitChunks, frames, chainOfWays, manifest, overview, landmarks } from './helpers.ts';
 
 const SPAWN = manifest.spawn as { x: number; z: number };
 // Mapped OSM ways of the Darul Hana pedestrian bridge: south approach, ramp, main span.
@@ -25,13 +25,17 @@ test.describe('gameplay', () => {
     const mb = landmarks().find((l) => l.id === 'main-bazaar')!;
     await teleport(page, mb.x, mb.z);
     await waitChunks(page);
+    // Real key presses, but simulated time: every rendered frame advances the game by exactly 1/60 s and
+    // the waits count frames, so a slow or hitching frame cannot shorten the measured distance. (With
+    // wall-clock waits this test failed about one run in four on an integrated GPU, before and after V5.)
+    await page.evaluate(() => (window as any).__k3d.setSimulatedDt(1 / 60));
     const dir = async (code: string, ms: number, shift = false) => {
       await teleport(page, mb.x, mb.z);
       await page.evaluate(() => { const k = (window as any).__k3d; k.tpc.yaw = 0; k.player.velocity.set(0, 0, 0); });
       const a = await state(page);
       if (shift) await page.keyboard.down('ShiftLeft');
       await page.keyboard.down(code);
-      await page.waitForTimeout(ms);
+      await frames(page, Math.round((ms / 1000) * 60));
       const mid = await state(page);
       await page.keyboard.up(code);
       if (shift) await page.keyboard.up('ShiftLeft');
@@ -59,11 +63,11 @@ test.describe('gameplay', () => {
     await teleport(page, mb.x, mb.z);
     const g0 = await state(page);
     await page.keyboard.press('Space');
-    await page.waitForTimeout(220);
+    await frames(page, 13);
     const up = await state(page);
     expect(up.y).toBeGreaterThan(g0.y + 0.3);
     expect(up.grounded).toBe(false);
-    await page.waitForTimeout(900);
+    await frames(page, 54);
     const down = await state(page);
     expect(down.grounded).toBe(true);
     expect(Math.abs(down.y - down.ground)).toBeLessThan(0.05);
@@ -221,6 +225,9 @@ test.describe('gameplay', () => {
   });
 
   test('chunks stream in ahead of the player and old ones are released', async ({ page }) => {
+    // The walk alone is 1686 m at 2 x 5.2 m/s: about 162 s at a steady 60 fps (164-172 s measured), which
+    // leaves almost nothing of the default 180 s for loading the page.
+    test.setTimeout(300_000);
     const issues = watch(page);
     await start(page);
     // Follow the longest mapped major road for well over a kilometre at running speed.

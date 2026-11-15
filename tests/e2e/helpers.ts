@@ -21,16 +21,32 @@ export function watch(page: Page): Issues {
   return issues;
 }
 
-export async function start(page: Page): Promise<void> {
-  await page.goto('./');
+/** Load the app and press Start. `navigate: false` when the test has already opened the page. */
+export async function start(page: Page, opts: { navigate?: boolean } = {}): Promise<void> {
+  if (opts.navigate !== false) await page.goto('./');
   await page.waitForFunction(() => (window as any).__k3d?.ready === true, null, { timeout: 90_000 });
   await expect(page.locator('#btn-start')).toBeEnabled();
   await page.locator('#btn-start').click();
   await expect(page.locator('#start')).toBeHidden();
 }
 
+/** Wait for `n` rendered frames of the game loop. */
+export function frames(page: Page, n: number): Promise<void> {
+  return page.evaluate((n) => new Promise<void>((resolve) => {
+    const tick = () => (n-- <= 0 ? resolve() : requestAnimationFrame(tick));
+    requestAnimationFrame(tick);
+  }), n);
+}
+
+/** Wait until every chunk wanted around the player's current position is built. */
 export async function waitChunks(page: Page): Promise<void> {
-  await page.waitForFunction(() => (window as any).__k3d.world.chunks.progress() >= 0.999, null, { timeout: 90_000 });
+  // The wanted set is recomputed by the next game frame after a teleport: until then progress() still
+  // describes the previous position (and reads 1), so let the game loop run before asking.
+  await frames(page, 2);
+  await page.waitForFunction(() => {
+    const k = (window as any).__k3d, p = k.player.position;
+    return k.world.chunks.isReady(p.x, p.z) && k.world.chunks.progress() >= 0.999;
+  }, null, { timeout: 90_000 });
 }
 
 export interface State { x: number; y: number; z: number; speed: number; grounded: boolean; onDeck: boolean; blocked: string; inWater: boolean; inBuilding: boolean; ground: number }

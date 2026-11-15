@@ -80,6 +80,12 @@ export class CollisionWorld {
    * chunk is added. Collision is registered with the chunk, so it works whether or not the visual
    * model has loaded yet.
    */
+  /** Extra walkable floors that are not part of any chunk (set by the V5 scene while it is shown). */
+  private extraFloors: { ring: Float32Array; h: number; minX: number; maxX: number; minZ: number; maxZ: number }[] = [];
+  setExtraFloors(floors: { ring: number[]; h: number }[]): void {
+    this.extraFloors = floors.map((f) => { const ring = Float32Array.from(f.ring); return { ring, h: f.h, ...bbox(ring) }; });
+  }
+
   setLandmarkSites(sites: LandmarkSite[]): void {
     this.landmarkSites = sites;
   }
@@ -176,9 +182,13 @@ export class CollisionWorld {
   groundAt(x: number, z: number, y: number): Ground {
     let h = this.height.sample(x, z);
     let deck = false;
+    const lim = y + CollisionWorld.STEP;
+    for (const p of this.extraFloors) {
+      if (x < p.minX || x > p.maxX || z < p.minZ || z > p.maxZ) continue;
+      if (p.h <= lim && p.h > h && pointInRing(x, z, p.ring)) h = p.h;
+    }
     const c = this.at(x, z);
     if (!c) return { h, deck };
-    const lim = y + CollisionWorld.STEP;
     const d = c.decks;
     for (let i = 0; i < d.length; i += 7) {
       const ax = d[i], az = d[i + 1], bx = d[i + 3], bz = d[i + 4], hw = d[i + 6];

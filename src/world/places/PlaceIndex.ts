@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { v5Exclusion } from '../../v5/geo.ts';
 import { CHUNK_SIZE, QUANT, DATA_ROOT, chunkKey } from '../config.ts';
 import type { ChunkData } from '../types.ts';
 import { FURN } from '../types.ts';
@@ -165,6 +166,7 @@ export function buildChunkLabels(data: ChunkData, ctx: BuildContext): THREE.Obje
   const list = ctx.places.inChunk(chunkKey(data.cx, data.cz), data).sort((a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0));
   for (const p of list) {
     if (!p.sign || p.b === undefined || p.e === undefined) continue;
+    if (v5Exclusion.active && v5Exclusion.ids.has(p.b)) continue;
     const b = data.buildings.find((q) => q.id === p.b);
     if (!b || b.lm !== undefined || ctx.landmarks.replacesBuilding(b.id)) continue;
     const style = hash3(p.id.length, p.name.charCodeAt(0) | 0, p.name.length * 31 + (p.name.charCodeAt(1) | 0)) % 7;

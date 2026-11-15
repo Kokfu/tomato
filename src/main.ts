@@ -15,6 +15,7 @@ import { QUALITY, defaultQuality, isTouchDevice, AdaptiveResolution } from './ui
 import type { QualityName } from './ui/GraphicsSettings.ts';
 import { PlacePanel } from './ui/PlacePanel.ts';
 import { Footsteps } from './player/Footsteps.ts';
+import type { V5Controller, RenderMode } from './v5/controller.ts';
 
 async function boot(): Promise<void> {
   const canvas = document.getElementById('scene') as HTMLCanvasElement;
@@ -27,6 +28,8 @@ async function boot(): Promise<void> {
   renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // Counted per frame (not per render call) so multi-pass rendering reports true totals.
+  renderer.info.autoReset = false;
   const adaptive = new AdaptiveResolution();
   const camera = new THREE.PerspectiveCamera(60, 1, 0.3, 2000);
   const applyResolution = () => {
@@ -36,6 +39,7 @@ async function boot(): Promise<void> {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.shadowMap.enabled = quality.shadowMap > 0;
+    v5?.setSize(w, h, renderer.getPixelRatio());
   };
 
   const input = new Input(canvas);
@@ -50,6 +54,8 @@ async function boot(): Promise<void> {
   };
 
   let world: WorldManager;
+  // V5 rendering experiment (A/B comparison of the Carpenter Street section); created once the world is loaded.
+  let v5: V5Controller | null = null;
   const menu = new GameMenu(
     {
       onStart: () => {
@@ -58,10 +64,14 @@ async function boot(): Promise<void> {
         syncInput();
       },
       onTimeOfDay: (t) => {
+        const m = v5?.mode ?? 'v4';
+        // The V5 lighting is defined for daytime only: time-of-day changes go through V4 lighting first.
+        if (v5?.usesPipeline) v5.pipeline.disable();
         world.setTimeOfDay(t);
         renderer.toneMappingExposure = world.exposure;
+        if (m !== 'v4' && t === 'day') v5!.pipeline.enable();
       },
-      onSound: (on) => (steps.enabled = on),
+      onSound: (on) => { steps.enabled = on; v5?.ambience.setEnabled(on); if (on && v5 && v5.mode !== 'v4') v5.ambience.start(); },
       onResume: () => {
         paused = false;
         syncInput();
@@ -75,7 +85,11 @@ async function boot(): Promise<void> {
         qualityName = q;
         quality = QUALITY[q];
         adaptive.scale = 1;
+        const v5on = !!v5?.usesPipeline;
+        if (v5on) v5!.pipeline.disable();
         world.applyQuality(quality);
+        v5?.setTier(q);
+        if (v5on) v5!.pipeline.enable();
         camera.far = world.viewDistance;
         camera.updateProjectionMatrix();
         applyResolution();
@@ -103,6 +117,13 @@ async function boot(): Promise<void> {
   }
   registerLandmarks(world.landmarks);
   world.chunks.renderer = renderer;
+  // The V5 code (generators, materials, post-processing) is a separate chunk: it does not add to the first download.
+  const v5Ready = import('./v5/controller.ts').then((m) => {
+    v5 = new m.V5Controller(world, renderer, camera, qualityName);
+    (window as any).__k3d.v5 = v5;
+    applyResolution();
+    return v5;
+  });
   camera.far = world.viewDistance;
   camera.updateProjectionMatrix();
   applyResolution();
@@ -210,6 +231,7 @@ async function boot(): Promise<void> {
     const dt = simulatedDt > 0 ? simulatedDt : Math.min(rawDt, 0.1);
 
     world.update(dt, player.position, player.velocity, camera);
+    v5?.update(dt, rawDt, player.position.x, player.position.z);
 
     if (!spawnReady) {
       // Never let the player move before ground + collision at the spawn point exist.
@@ -251,7 +273,9 @@ async function boot(): Promise<void> {
       }
     }
 
-    renderer.render(world.scene, camera);
+    renderer.info.reset();
+    if (v5?.usesPipeline) v5.pipeline.render();
+    else renderer.render(world.scene, camera);
 
     fpsAcc += rawDt;
     fpsFrames++;
@@ -264,9 +288,22 @@ async function boot(): Promise<void> {
   }
   frame();
 
+  // ?render=a|b starts in a V5 mode (after the spawn area has loaded); ?at=carpenter starts at the test section.
+  const qs = new URLSearchParams(location.search);
+  const wantMode = qs.get('render') as RenderMode | null;
+  if (qs.get('at') === 'carpenter' || wantMode === 'a' || wantMode === 'b') {
+    const wait = window.setInterval(() => {
+      if (!spawnReady) return;
+      window.clearInterval(wait);
+      player.teleport(114.6, -0.9);
+      player.heading = 1.03; tpc.yaw = -2.114; tpc.snap();
+      if (wantMode === 'a' || wantMode === 'b') void v5Ready.then((c) => c.setMode(wantMode));
+    }, 200);
+  }
+
   // Debug / automated-test hook.
   (window as any).__k3d = {
-    world, player, camera, tpc, input, renderer, minimap, menu, placePanel, steps,
+    world, player, camera, tpc, input, renderer, minimap, menu, placePanel, steps, v5,
     geoToWorld, worldToGeo,
     /** Protected landmarks that reached a generic building generator (must stay empty). */
     landmarkGuard: guardViolations,

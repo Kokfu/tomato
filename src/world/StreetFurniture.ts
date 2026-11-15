@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { v5Exclusion } from '../v5/geo.ts';
 import { CHUNK_SIZE, QUANT } from './config.ts';
 import type { ChunkData } from './types.ts';
 import { FURN } from './types.ts';
@@ -46,6 +47,7 @@ export function buildFurniture(data: ChunkData, ctx: BuildContext): THREE.Object
   const solid = new GeoBuf(), glow = new GeoBuf();
   for (let i = 0; i < furn.length; i += 5) {
     const x = furn[i + 1] / QUANT, z = furn[i + 2] / QUANT, a = (furn[i + 3] * Math.PI) / 180;
+    if (v5Exclusion.active && v5Exclusion.inCorridor(data.cx * CHUNK_SIZE + x, data.cz * CHUNK_SIZE + z)) continue;
     const y = ctx.height.sample(ox + x, oz + z);
     switch (furn[i]) {
       case FURN.lamp: {

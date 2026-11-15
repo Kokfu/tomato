@@ -54,6 +54,8 @@ export class LandmarkModels {
   /** Upper bound for the distant LOD (the fogged view distance of the current preset). */
   viewDistance = 900;
   stats = { loads: 0, disposed: 0, bytes: 0, errors: 0 };
+  /** Sites not drawn for now (the V5 rendering experiment draws its own versions). */
+  readonly hidden = new Set<string>();
   private state = new Map<string, SiteState>();
   private loader: Promise<GLTFLoader> | null = null;
   private mats: LandmarkMaterials;
@@ -87,6 +89,7 @@ export class LandmarkModels {
         if (st.want === i) lim *= HYSTERESIS; // keep the current level a little longer
         if (d <= lim) { want = i; break; }
       }
+      if (this.hidden.has(s.id)) want = -1;
       if (want === st.want) continue;
       st.want = want;
       st.token++;

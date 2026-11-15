@@ -90,7 +90,8 @@ export class WorldManager {
   timeOfDay: TimeOfDay = 'day';
   /** Tone-mapping exposure wanted by the current time of day (applied by the renderer owner). */
   exposure = 1;
-  private sky: THREE.Mesh;
+  /** Sky dome (public so the V5 pipeline can reuse it for its environment map). */
+  readonly sky: THREE.Mesh;
   private skyMat: THREE.ShaderMaterial;
   private quality: Quality;
   private time = 0;
