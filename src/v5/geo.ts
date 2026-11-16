@@ -76,12 +76,65 @@ export function clipRoadOutsideSection(p: number[]): number[] | null {
   return out.length >= 4 ? out : null;
 }
 
-/** Shared switch read by the V4 chunk builders: when active, they leave the V5 section to the V5 scene. */
+// ---------------------------------------------------------------------------------------------
+// Jalan China (China Street) section, V7: the 88 m between Jalan Carpenter and Jalan Main Bazaar.
+// Both frontages are mapped block edges (OSM ways 233690739 and 236495396). The street frame runs
+// along the middle between them: s = metres from the Carpenter Street end, o = metres to the east.
+// ---------------------------------------------------------------------------------------------
+export const CHINA_WEST: RowDef = { id: 'CW', building: 233690739, a: [152, 18.4], b: [200.8, -54.7], lots: 16, depth: 13, lod: 0 };
+export const CHINA_EAST: RowDef = { id: 'CE', building: 236495396, a: [158.7, 22.9], b: [207.3, -49.6], lots: 16, depth: 15, lod: 0 };
+/** Block east of the street (the west block is shared with the Carpenter Street section). */
+export const CHINA_BUILDING_IDS = [236495396];
+export const CHINA_BLOCK = [207.3, -49.6, 158.7, 22.9, 171.8, 31, 182.6, 14.9, 187.6, 16.5, 190.6, 12.2, 194.2, 8.9, 212.8, -23.1, 218.7, -34.7, 213, -41, 214.8, -43.3];
+/** OSM way of Jalan China. */
+export const CHINA_ROAD_ID = 124545031;
+export const CHINA = (() => {
+  const ex = CHINA_WEST.b[0] - CHINA_WEST.a[0], ez = CHINA_WEST.b[1] - CHINA_WEST.a[1], len = Math.hypot(ex, ez);
+  const dx = ex / len, dz = ez / len, nx = -dz, nz = dx; // n points east
+  const half = ((CHINA_EAST.a[0] - CHINA_WEST.a[0]) * nx + (CHINA_EAST.a[1] - CHINA_WEST.a[1]) * nz) / 2;
+  const ox = CHINA_WEST.a[0] + nx * half, oz = CHINA_WEST.a[1] + nz * half;
+  return {
+    ox, oz, dx, dz, nx, nz, len, half,
+    /** Heading (rotation about +Y) of the street frame: local +x along the street northward, local +z to the... see china.ts. */
+    toStreet(x: number, z: number): [number, number] { return [(x - ox) * dx + (z - oz) * dz, (x - ox) * nx + (z - oz) * nz]; },
+    toWorld(s: number, o: number): [number, number] { return [ox + dx * s + nx * o, oz + dz * s + nz * o]; },
+  };
+})();
+const inChina = (x: number, z: number, pad = 0): boolean => { const [s, o] = CHINA.toStreet(x, z); return s > -3 - pad && s < CHINA.len + 4 + pad && Math.abs(o) < CHINA.half + 3; };
+
+/** Part of a polyline outside a region (crossings found by bisection), or null if nothing is left. */
+function clipOutside(p: number[], inside: (x: number, z: number) => boolean): number[] | null {
+  const out: number[] = [];
+  for (let i = 0; i < p.length; i += 2) {
+    const x = p[i], z = p[i + 1];
+    if (i > 0) {
+      const px = p[i - 2], pz = p[i - 1];
+      if (inside(px, pz) !== inside(x, z)) {
+        let lo = 0, hi = 1; const a = inside(px, pz);
+        for (let k = 0; k < 18; k++) { const m = (lo + hi) / 2; if (inside(px + (x - px) * m, pz + (z - pz) * m) === a) lo = m; else hi = m; }
+        out.push(px + (x - px) * lo, pz + (z - pz) * lo);
+      }
+    }
+    if (!inside(x, z)) out.push(x, z);
+  }
+  return out.length >= 4 ? out : null;
+}
+
+/** Shared switch read by the V4 chunk builders: when active, they leave the V5 sections to the V5 scene. */
 export const v5Exclusion = {
   active: false,
+  /** True while the Jalan China section is shown as well. */
+  china: false,
   ids: new Set<number>(V5_BUILDING_IDS),
-  /** True for street furniture / props that stand in the section's street corridor. */
-  inCorridor(x: number, z: number): boolean { return distToStreet(x, z) < 9.5 && x > 84 && x < 158; },
+  setChina(on: boolean): void { this.china = on; for (const id of CHINA_BUILDING_IDS) { if (on) this.ids.add(id); else this.ids.delete(id); } },
+  /** True for street furniture / props that stand in a section's street corridor. */
+  inCorridor(x: number, z: number): boolean { return (distToStreet(x, z) < 9.5 && x > 84 && x < 158) || (this.china && inChina(x, z, 2)); },
+  /** A road polyline (world metres) with the parts drawn by a V5 section removed: undefined = untouched, null = nothing left. */
+  clipRoad(id: number, world: number[]): number[] | null | undefined {
+    if (id === V5_ROAD_ID) return clipRoadOutsideSection(world);
+    if (this.china && id === CHINA_ROAD_ID) return clipOutside(world, (x, z) => inChina(x, z));
+    return undefined;
+  },
 };
 
 export interface RowFrame { ox: number; oz: number; ry: number; len: number; nx: number; nz: number; dx: number; dz: number }

@@ -14,7 +14,8 @@ import { v5Exclusion, V5_LANDMARK_IDS, STREET } from './geo.ts';
 import { Ambience } from './ambience.ts';
 
 export type RenderMode = 'v4' | V5Mode;
-const LABEL: Record<RenderMode, string> = { v4: 'V4 Existing', a: 'V5 Procedural', b: 'V5 Hybrid' };
+const LABEL: Record<RenderMode, string> = { v4: 'V4 Existing', a: 'V5 Procedural', b: 'V5 Hybrid', c: 'V7 Jalan China' };
+const MODES: RenderMode[] = ['v4', 'a', 'b', 'c'];
 const CHUNKS = ['0_0', '0_-1'];
 
 /** The six fixed viewpoints of the visual quality gate (same poses for every mode). */
@@ -54,6 +55,8 @@ export class V5Controller {
   private time = 0;
   private frameMs: number[] = [];
   onModeChanged: (() => void) | null = null;
+  /** False while another mode owns the number keys (OP fly mode uses 1-3 for speed). */
+  keysEnabled: () => boolean = () => true;
 
   constructor(world: WorldManager, renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, tier: 'low' | 'medium' | 'high') {
     const low = tier === 'low';
@@ -64,6 +67,7 @@ export class V5Controller {
       baseUrl: import.meta.env.BASE_URL,
       low, renderer,
       setFloors: (f) => world.collision.setExtraFloors(f),
+      setWalls: (w) => world.collision.setExtraWalls(w),
     });
     const [ax, az] = STREET[1], [bx, bz] = STREET[3], l = Math.hypot(bx - ax, bz - az);
     this.scene.materials.uniforms.uAxis.value.set((bx - ax) / l, (bz - az) / l);
@@ -80,9 +84,9 @@ export class V5Controller {
     document.head.appendChild(css);
     this.bar = document.createElement('div');
     this.bar.id = 'v5bar';
-    for (const m of ['v4', 'a', 'b'] as RenderMode[]) {
+    for (const m of MODES) {
       const b = document.createElement('button');
-      b.textContent = LABEL[m]; b.dataset.mode = m; b.title = `Key ${['v4', 'a', 'b'].indexOf(m) + 1}`;
+      b.textContent = LABEL[m]; b.dataset.mode = m; b.title = `Key ${MODES.indexOf(m) + 1}`;
       b.addEventListener('click', (e) => { e.stopPropagation(); void this.setMode(m); });
       this.bar.appendChild(b);
     }
@@ -91,8 +95,8 @@ export class V5Controller {
     document.body.appendChild(this.bar);
     window.addEventListener('keydown', (e) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      const m = ({ Digit1: 'v4', Digit2: 'a', Digit3: 'b' } as Record<string, RenderMode>)[e.code];
-      if (m) void this.setMode(m);
+      const m = ({ Digit1: 'v4', Digit2: 'a', Digit3: 'b', Digit4: 'c' } as Record<string, RenderMode>)[e.code];
+      if (m && this.keysEnabled()) void this.setMode(m);
     });
     this.syncBar();
   }
@@ -113,13 +117,19 @@ export class V5Controller {
         this.world.scene.remove(this.scene.group);
         this.scene.dispose();
         v5Exclusion.active = false;
+        v5Exclusion.setChina(false);
         for (const id of V5_LANDMARK_IDS) lm.hidden.delete(id);
         this.ambience.stop();
       } else {
         await this.scene.build(m);
         v5Exclusion.active = true;
+        v5Exclusion.setChina(m === 'c');
         for (const id of V5_LANDMARK_IDS) lm.hidden.add(id);
         this.world.scene.add(this.scene.group);
+        // Light balance: the Jalan China section is tuned separately (softer shadow edge, more sky fill, clear air
+        // so that the DUN at the end of the street keeps its colour).
+        this.pipeline.look = m === 'c' ? { sun: 6.0, hemi: 1.3, fog: 0.35, shadowRadius: 3.2, env: 1.0, exposure: 0.92 } : { sun: 6.6, hemi: 1.05, fog: 0.8, shadowRadius: 2.2, env: 0.85, exposure: 0.9 };
+        this.pipeline.disable();
         this.pipeline.enable();
         this.ambience.start();
       }

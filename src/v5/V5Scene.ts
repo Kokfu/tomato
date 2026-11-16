@@ -16,7 +16,8 @@ import { createMaterials } from './materials.ts';
 import type { KuchingMaterials, MaterialName } from './materials.ts';
 import { autoLot, buildLot, eaveY, ARCADE } from './shophouse.ts';
 import type { LotSpec, SignSource } from './shophouse.ts';
-import { ROWS, BLOCKS, rowFrame, V5_LANDMARK_IDS } from './geo.ts';
+import { ROWS, BLOCKS, rowFrame, V5_LANDMARK_IDS, CHINA_WEST, CHINA_EAST, CHINA_BLOCK } from './geo.ts';
+import { buildChinaStreet } from './china.ts';
 import type { RowDef } from './geo.ts';
 import { LOT_OVERRIDES } from './lots.ts';
 import { buildRoad, buildApron, lampPost, cables, car, pushcart, streetLanterns } from './street.ts';
@@ -24,7 +25,8 @@ import { buildTemple, buildGenericTemple } from './landmarks/temple.ts';
 import { buildFoodCourt, buildGenericFoodCourt, buildOperaStage, buildGenericStage } from './landmarks/foodcourt.ts';
 import { paintAtlas, ATLAS_SIZE } from './landmarks/atlas.ts';
 
-export type V5Mode = 'a' | 'b';
+/** 'c' = the hybrid Carpenter Street section plus the V7 Jalan China section. */
+export type V5Mode = 'a' | 'b' | 'c';
 
 interface SiteLike { id: string; anchor: { x: number; z: number; y: number; yaw: number }; widthM?: number; depthM?: number }
 interface PlaceLike { name: string; cat: string; x: number; z: number; b?: number; sign?: boolean }
@@ -37,6 +39,8 @@ export interface V5Host {
   renderer: THREE.WebGLRenderer;
   /** Walkable raised floors (five-foot ways) are registered with the collision world while V5 is shown. */
   setFloors(floors: { ring: number[]; h: number }[]): void;
+  /** Blocking outlines (piers, parked cars) registered with the collision world while V5 is shown. */
+  setWalls(walls: { ring: number[]; top: number }[]): void;
 }
 
 /** One canvas that holds all run-time sign text (shop names from the mapped place data). */
@@ -45,38 +49,45 @@ class SignAtlas implements SignSource {
   readonly texture: THREE.CanvasTexture;
   private g: CanvasRenderingContext2D;
   private x = 0; private y = 0; private rowH = 0;
+  /** Pixels of the short side of a sign cell. */
+  private cell: number;
   private cache = new Map<string, [number, number, number, number]>();
   constructor(size = 1024) {
     this.canvas.width = this.canvas.height = size;
+    this.cell = Math.round((54 * size) / 1024); // sized so that both sections' signs fit (about 90 boards)
     this.g = this.canvas.getContext('2d')!;
     this.g.fillStyle = '#222'; this.g.fillRect(0, 0, size, size);
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.texture.anisotropy = 8;
   }
+  /** aspect = width / height of the board. Lines are separated by "\n"; `vertical` stacks the characters. */
   rect(text: string, fg: string, bg: string, aspect: number, vertical = false): [number, number, number, number] {
-    const key = `${text}|${fg}|${bg}|${vertical}`;
+    const key = `${text}|${fg}|${bg}|${vertical}|${aspect.toFixed(2)}`;
     const hit = this.cache.get(key);
     if (hit) return hit;
-    const S = this.canvas.width, g = this.g;
-    const h = vertical ? Math.min(320, Math.round(72 / aspect)) : 72, w = vertical ? 72 : Math.min(S, Math.round(72 * aspect));
+    const S = this.canvas.width, g = this.g, c = this.cell, f = c / 72;
+    const tall = vertical || aspect < 1;
+    const w = tall ? c : Math.min(S, Math.round(c * Math.min(aspect, 4.5))), h = tall ? Math.min(Math.round(320 * f), Math.round(c / aspect)) : c;
     if (this.x + w > S) { this.x = 0; this.y += this.rowH + 2; this.rowH = 0; }
+    if (this.y + h > S) { console.warn("V5 sign atlas is full: sign text dropped"); return [0, 0, 0.001, 0.001]; }
     const x = this.x, y = this.y;
     this.x += w + 2; this.rowH = Math.max(this.rowH, h);
     g.fillStyle = bg; g.fillRect(x, y, w, h);
-    g.strokeStyle = fg; g.globalAlpha = 0.6; g.lineWidth = 2; g.strokeRect(x + 3, y + 3, w - 6, h - 6); g.globalAlpha = 1;
+    g.strokeStyle = fg; g.globalAlpha = 0.6; g.lineWidth = 2 * f; g.strokeRect(x + 3 * f, y + 3 * f, w - 6 * f, h - 6 * f); g.globalAlpha = 1;
     g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
-    const font = '"Segoe UI", "Microsoft YaHei", "Noto Sans", Arial, sans-serif';
+    const font = '"Segoe UI", "Microsoft JhengHei", "Microsoft YaHei", "PingFang TC", "Noto Sans CJK TC", "Noto Sans", Arial, sans-serif';
     if (vertical) {
-      const ch = [...text].slice(0, 9), step = (h - 16) / ch.length, size = Math.min(44, step * 0.9);
+      const ch = [...text].slice(0, 9), step = (h - 16 * f) / ch.length, size = Math.min(48 * f, step * 0.9);
       g.font = `700 ${size}px ${font}`;
-      ch.forEach((c, i) => g.fillText(c, x + w / 2, y + 8 + (i + 0.5) * step));
+      ch.forEach((q, i) => g.fillText(q, x + w / 2, y + 8 * f + (i + 0.5) * step));
     } else {
-      let size = 40;
+      const lines = text.split('\n'), lh = (h - 12 * f) / lines.length;
+      let size = Math.min(lines.length > 1 ? lh * 0.82 : h * 0.62, 56 * f);
       g.font = `700 ${size}px ${font}`;
-      const tw = g.measureText(text).width;
-      if (tw > w - 20) { size = Math.max(14, (size * (w - 20)) / tw); g.font = `700 ${size}px ${font}`; }
-      g.fillText(text, x + w / 2, y + h / 2 + 1);
+      const tw = Math.max(...lines.map((l) => g.measureText(l).width));
+      if (tw > w - 16 * f) { size = Math.max(9 * f, (size * (w - 16 * f)) / tw); g.font = `700 ${size}px ${font}`; }
+      lines.forEach((l, i) => g.fillText(l, x + w / 2, y + 6 * f + (i + 0.5) * lh + 1));
     }
     const r: [number, number, number, number] = [(x + 1) / S, 1 - (y + h - 1) / S, (x + w - 1) / S, 1 - (y + 1) / S];
     this.cache.set(key, r);
@@ -108,7 +119,7 @@ export class V5Scene {
   mode: V5Mode | null = null;
   stats = { triangles: 0, drawCalls: 0, buildMs: 0, assetBytes: 0, glb: false, lots: 0, geometryBytes: 0, textureBytes: 0 };
   private host: V5Host;
-  private signs = new SignAtlas();
+  private signs: SignAtlas;
   private atlas: THREE.Texture | null = null;
   private places: PlaceLike[] | null = null;
   private token = 0;
@@ -116,6 +127,8 @@ export class V5Scene {
   constructor(host: V5Host) {
     this.host = host;
     this.group.name = 'v5-scene';
+    // Sign text is read at arm's length in the Jalan China section: 2048 px except on the low preset.
+    this.signs = new SignAtlas(host.low ? 1024 : 2048);
     this.materials = createMaterials({ low: host.low, sign: this.signs.texture });
   }
 
@@ -163,7 +176,7 @@ export class V5Scene {
     const [eL, eR] = openEnds[row.id] ?? [true, true];
     for (let i = 0; i < row.lots; i++) {
       let s = autoLot(Math.floor(rnd(row.building % 100000, i, row.id.charCodeAt(1)) * 1e6), w, row.depth);
-      if (mode === 'b' && LOT_OVERRIDES[row.id]?.[i]) s = { ...s, ...LOT_OVERRIDES[row.id][i] };
+      if (mode !== 'a' && LOT_OVERRIDES[row.id]?.[i]) s = { ...s, ...LOT_OVERRIDES[row.id][i] };
       s.exposedL = i === 0 && eL; s.exposedR = i === row.lots - 1 && eR;
       if (row.lod === 1) { s.blinds = false; s.plants = 0; s.bin = false; }
       specs.push(s);
@@ -192,7 +205,7 @@ export class V5Scene {
   async build(mode: V5Mode): Promise<void> {
     const token = ++this.token, t0 = performance.now();
     const places = await this.loadPlaces();
-    if (mode === 'b') await this.loadAtlas();
+    if (mode !== 'a') await this.loadAtlas();
     if (token !== this.token) return;
     const h = this.host.height;
     const kit = new Kit(0);
@@ -200,7 +213,12 @@ export class V5Scene {
     let lots = 0;
 
     buildRoad(kit, h);
-    for (const def of ROWS) {
+    // With the Jalan China section the corner building keeps only its Carpenter Street bay depth, and the
+    // simplified Jalan China frontage ("JC") is replaced by the detailed rows.
+    const china = mode === 'c';
+    const rowDefs = china ? ROWS.filter((r) => r.id !== 'JC').map((r) => (r.id === 'N3' ? { ...r, depth: 5.5 } : r)) : ROWS;
+    let walls: { ring: number[]; top: number }[] = [];
+    for (const def of rowDefs) {
       // apply the corner skip, then frame the frontage
       let row = def;
       if (def.skip) { const l = Math.hypot(def.b[0] - def.a[0], def.b[1] - def.a[1]); row = { ...def, a: [def.a[0] + ((def.b[0] - def.a[0]) * def.skip) / l, def.a[1] + ((def.b[1] - def.a[1]) * def.skip) / l] }; }
@@ -225,7 +243,8 @@ export class V5Scene {
         cables(kit, [fr.ox + fr.nx * 0.16, y, fr.oz + fr.nz * 0.16], [fr.ox + fr.dx * fr.len + fr.nx * 0.16, y, fr.oz + fr.dz * fr.len + fr.nz * 0.16], 3, row.lots);
       }
     }
-    this.yards(kit, h);
+    if (china) { const r = buildChinaStreet(kit, h, this.signs); floors.push(...r.floors); walls = r.walls; lots += r.lots; }
+    this.yards(kit, h, china ? [...BLOCKS, CHINA_BLOCK] : BLOCKS, china ? [...rowDefs, CHINA_WEST, CHINA_EAST] : ROWS);
 
     // street lamps on the south side at lot boundaries
     for (const [rid, idx] of [['S1', 3], ['S2', 2], ['N1', 5]] as [string, number][]) {
@@ -280,15 +299,16 @@ export class V5Scene {
       o.traverse((m) => { const mesh = m as THREE.Mesh; if (!mesh.isMesh) return; calls++; tris += (mesh.geometry.index?.count ?? 0) / 3; for (const a of Object.values(mesh.geometry.attributes)) gbytes += (a as THREE.BufferAttribute).array.byteLength; gbytes += mesh.geometry.index?.array.byteLength ?? 0; });
     }
     this.host.setFloors(floors);
+    this.host.setWalls(walls);
     this.mode = mode;
     const S = this.signs.canvas.width, det = (this.materials.uniforms.uDetail.value.image as { width: number }).width;
     this.stats = { ...this.stats, triangles: Math.round(tris), drawCalls: calls, buildMs: Math.round(performance.now() - t0), glb: glbs.length > 0, lots, geometryBytes: gbytes,
-      textureBytes: Math.round((S * S * 4 + det * det * 4 + (mode === 'b' ? ATLAS_SIZE * ATLAS_SIZE * 4 : 0)) * 1.333) };
+      textureBytes: Math.round((S * S * 4 + det * det * 4 + (mode !== 'a' ? ATLAS_SIZE * ATLAS_SIZE * 4 : 0)) * 1.333) };
   }
 
   /** Low zinc back-of-lot roofs over each replaced block and plain yard walls on edges without a row. */
-  private yards(kit: Kit, h: (x: number, z: number) => number): void {
-    for (const ring of BLOCKS) {
+  private yards(kit: Kit, h: (x: number, z: number) => number, blocks: number[][], rows: RowDef[]): void {
+    for (const ring of blocks) {
       const n = ring.length / 2;
       let cx = 0, cz = 0;
       for (let i = 0; i < n; i++) { cx += ring[i * 2] / n; cz += ring[i * 2 + 1] / n; }
@@ -306,7 +326,7 @@ export class V5Scene {
       const ccw = (() => { let a = 0; for (let i = 0; i < n; i++) { const p = P(i), q = P(i + 1); a += p[0] * q[1] - q[0] * p[1]; } return a > 0; })();
       for (let i = 0; i < n; i++) {
         const a = P(i), b = P(i + 1);
-        if (ROWS.some((r) => (Math.hypot(r.a[0] - ring[(i % n) * 2], r.a[1] - ring[(i % n) * 2 + 1]) < 0.6 && Math.hypot(r.b[0] - ring[((i + 1) % n) * 2], r.b[1] - ring[((i + 1) % n) * 2 + 1]) < 0.6) || (Math.hypot(r.b[0] - ring[(i % n) * 2], r.b[1] - ring[(i % n) * 2 + 1]) < 0.6 && Math.hypot(r.a[0] - ring[((i + 1) % n) * 2], r.a[1] - ring[((i + 1) % n) * 2 + 1]) < 0.6))) continue;
+        if (rows.some((r) => (Math.hypot(r.a[0] - ring[(i % n) * 2], r.a[1] - ring[(i % n) * 2 + 1]) < 0.6 && Math.hypot(r.b[0] - ring[((i + 1) % n) * 2], r.b[1] - ring[((i + 1) % n) * 2 + 1]) < 0.6) || (Math.hypot(r.b[0] - ring[(i % n) * 2], r.b[1] - ring[(i % n) * 2 + 1]) < 0.6 && Math.hypot(r.a[0] - ring[((i + 1) % n) * 2], r.a[1] - ring[((i + 1) % n) * 2 + 1]) < 0.6))) continue;
         const c = hex(0xcfc9ba, 0.85 + rnd(i, n) * 0.15), lo = hex(0xcfc9ba, 0.6);
         const q: [number, number, number][] = [[a[0], base - 0.3, a[1]], [b[0], base - 0.3, b[1]], [b[0], top, b[1]], [a[0], top, a[1]]];
         // outward = away from the centroid
@@ -363,5 +383,5 @@ export class V5Scene {
     }
   }
 
-  dispose(): void { this.token++; this.disposeMeshes(); this.host.setFloors([]); this.mode = null; }
+  dispose(): void { this.token++; this.disposeMeshes(); this.host.setFloors([]); this.host.setWalls([]); this.mode = null; }
 }

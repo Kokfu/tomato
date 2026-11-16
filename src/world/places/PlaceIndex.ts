@@ -214,6 +214,7 @@ export function buildChunkLabels(data: ChunkData, ctx: BuildContext): THREE.Obje
   for (let i = 0; i < furn.length; i += 5) {
     if (furn[i] !== FURN.sign) continue;
     const x = furn[i + 1] / QUANT, z = furn[i + 2] / QUANT, a = (furn[i + 3] * Math.PI) / 180;
+    if (v5Exclusion.active && v5Exclusion.inCorridor(ox + x, oz + z)) continue; // its pole is skipped too (StreetFurniture.ts)
     const ex = Math.sin(a), ez = Math.cos(a);
     specs.push({ text: data.names[furn[i + 4]] ?? '', style: STREET_STYLE, x: x + ex * 0.45, y: ctx.height.sample(ox + x, oz + z) + 2.55, z: z + ez * 0.45, ex, ez, nx: ez, nz: -ex, maxW: 1.5, h: 0.24, twoSided: true });
   }

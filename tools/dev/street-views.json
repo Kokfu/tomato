@@ -1,0 +1,5 @@
+[
+  { "name": "01-along-street", "x": 156.57, "z": 17.22, "eye": 1.65, "yaw": -0.588, "pitch": 0.15, "fov": 55 },
+  { "name": "02-shopfronts", "x": 164.45, "z": 13.5, "eye": 1.65, "yaw": 0.983, "pitch": 0.2, "fov": 60 },
+  { "name": "03-five-foot-way", "x": 158.8, "z": 6.1, "eye": 1.65, "yaw": -0.7, "pitch": 0.02, "fov": 60 }
+]

@@ -144,3 +144,23 @@ input[type='range'] { width: 100%; accent-color: var(--accent); }
 #op-landmarks button { text-align: left; flex: 0 0 auto; }
 #op-landmarks button.featured { color: var(--accent); }
 @media (pointer: coarse), (max-width: 720px), (max-height: 520px) { #op-toggle { display: none; } }
+
+/* OP mode: visual inspection (saved views, field of view) and the reference comparison panel */
+.op-fov { align-items: center; } .op-fov span { flex: 0 0 62px; font: 11px ui-monospace, Consolas, monospace; } .op-fov input { flex: 1 1 auto; min-width: 0; }
+#op-view-name { flex: 1 1 auto; min-width: 0; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--line); background: rgba(0, 0, 0, 0.25); color: inherit; font-size: 11px; }
+#op-views { display: flex; flex-direction: column; gap: 3px; max-height: min(132px, 18vh); overflow-y: auto; touch-action: pan-y; }
+#op-views > button { text-align: left; flex: 0 0 auto; } #op-views button.featured { color: var(--accent); }
+.op-view { display: flex; gap: 3px; } .op-view button:first-child { text-align: left; } #op-panel .op-view .op-del { flex: 0 0 22px; padding: 4px 0; }
+#op-panel { max-height: calc(100vh - 170px - var(--safe-t)); overflow-y: auto; }
+#ref-panel { position: fixed; inset: 0; z-index: 12; pointer-events: none; }
+#ref-panel .ref-stage { position: absolute; top: 0; bottom: 0; right: 0; width: 100%; display: grid; place-items: center; overflow: hidden; }
+#ref-panel[data-mode="side"] .ref-stage { width: 50%; background: #0b0d10; border-left: 2px solid rgba(255, 255, 255, 0.25); pointer-events: auto; }
+#ref-panel .ref-stage img { width: 100%; height: 100%; object-fit: contain; user-select: none; }
+#ref-panel[data-mode="overlay"] .ref-stage img { object-fit: cover; }
+#ref-panel .ref-badge { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); max-width: 92%; padding: 5px 10px; border-radius: 8px; background: rgba(16, 22, 30, 0.82); color: #dfe6ee; font: 600 11px/1.35 system-ui, sans-serif; text-align: center; }
+#ref-panel .ref-badge.approx { background: rgba(120, 72, 8, 0.9); color: #ffe9bd; }
+#ref-panel .ref-bar { position: absolute; right: 10px; top: 56px; max-width: min(46vw, 640px); padding: 7px 8px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; font-size: 11px; pointer-events: auto; }
+#ref-panel .ref-bar button, #ref-panel .ref-bar select { padding: 4px 7px; border-radius: 6px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); color: inherit; font-size: 11px; }
+#ref-panel .ref-bar select { max-width: 210px; background: #1a2028; } #ref-panel .ref-bar button:hover { border-color: var(--accent); } #ref-panel .ref-bar button:disabled { opacity: 0.4; }
+#ref-panel .ref-bar input[type=range] { width: 110px; }
+#ref-panel .ref-credit { flex: 1 1 100%; color: var(--muted); line-height: 1.35; } #ref-panel .ref-credit a { color: var(--accent); }

@@ -1,0 +1,42 @@
+{
+ "url": "http://localhost:3001/",
+ "mode": "default",
+ "quality": "high",
+ "size": "1280x960",
+ "mobile": false,
+ "initialBytes": 8904193,
+ "totalBytes": 10653168,
+ "views": [
+  {
+   "view": "01-along-street",
+   "fps": 60.1,
+   "calls": 171,
+   "tris": 239298,
+   "geometries": 697,
+   "textures": 125,
+   "chunks": 97,
+   "heapMB": 74
+  },
+  {
+   "view": "02-shopfronts",
+   "fps": 60,
+   "calls": 240,
+   "tris": 235693,
+   "geometries": 703,
+   "textures": 129,
+   "chunks": 97,
+   "heapMB": 78
+  },
+  {
+   "view": "03-five-foot-way",
+   "fps": 60,
+   "calls": 191,
+   "tris": 260410,
+   "geometries": 703,
+   "textures": 129,
+   "chunks": 97,
+   "heapMB": 70
+  }
+ ],
+ "console": []
+}

@@ -1,0 +1,33 @@
+{
+  "note": "Reference photographs for the OP-mode comparison panel. Each file is redistributed under its own licence with attribution; 1280 px copies, otherwise unmodified. Loaded only when the panel is opened.",
+  "images": [
+    {
+      "file": "jalan-china-a-17155538163.jpg",
+      "title": "[A] Jalan China from the Carpenter Street end, 13 May 2015",
+      "author": "Marufish",
+      "license": "CC BY-SA 2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Kuching_City_(17155538163).jpg",
+      "note": "Standpoint and lens estimated, not surveyed.",
+      "approx": true,
+      "view": { "name": "01-along-street", "x": 156.57, "y": 9.55, "z": 17.22, "lat": 0, "lon": 0, "yaw": -0.588, "pitch": 0.15, "fov": 55, "mode": "c" }
+    },
+    {
+      "file": "jalan-china-b-17776339811.jpg",
+      "title": "[B] Jalan China, telephoto toward the DUN, 13 May 2015",
+      "author": "Marufish",
+      "license": "CC BY-SA 2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Kuching_City_(17776339811).jpg",
+      "note": "Long lens: compare the order of buildings and signs, not perspective.",
+      "approx": true
+    },
+    {
+      "file": "jalan-china-c-17588324240.jpg",
+      "title": "[C] Carpenter Street / Jalan China corner, 13 May 2015",
+      "author": "Marufish",
+      "license": "CC BY-SA 2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Kuching_City_(17588324240).jpg",
+      "note": "Corner buildings; outside the rebuilt rows.",
+      "approx": true
+    }
+  ]
+}

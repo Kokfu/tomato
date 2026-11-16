@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { v5Exclusion, V5_ROAD_ID, clipRoadOutsideSection } from '../v5/geo.ts';
+import { v5Exclusion } from '../v5/geo.ts';
 import { CHUNK_SIZE, QUANT, WATER_LEVEL } from './config.ts';
 import type { ChunkData, RoadData } from './types.ts';
 import { ROAD_TYPES, ROAD_STYLE } from './types.ts';
@@ -181,13 +181,13 @@ export function buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBuf
   };
   for (const r0 of data.roads) {
     let r = r0;
-    if (v5Exclusion.active && r0.id === V5_ROAD_ID) {
-      // V5 rendering experiment: the section's carriageway is drawn by the V5 scene.
+    if (v5Exclusion.active) {
+      // V5 rendering experiment: a section's carriageway is drawn by the V5 scene.
       const world: number[] = [];
       for (let i = 0; i < r0.p.length; i += 2) world.push(ox + r0.p[i] / QUANT, oz + r0.p[i + 1] / QUANT);
-      const kept = clipRoadOutsideSection(world);
-      if (!kept) continue;
-      r = { ...r0, p: kept.map((v, i) => Math.round((v - (i % 2 ? oz : ox)) * QUANT)) };
+      const kept = v5Exclusion.clipRoad(r0.id, world);
+      if (kept === null) continue;
+      if (kept) r = { ...r0, p: kept.map((v, i) => Math.round((v - (i % 2 ? oz : ox)) * QUANT)) };
     }
     const type = ROAD_TYPES[r.t];
     const style = ROAD_STYLE[type];

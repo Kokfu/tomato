@@ -4,6 +4,7 @@ import { BUILDING_KINDS } from './types.ts';
 import type { HeightMap } from './HeightMap.ts';
 import { ARCADE_DEPTH, insetEdges } from './arch/frontage.ts';
 import { isDistrictRow } from './district/mainBazaar.ts';
+import { v5Exclusion } from '../v5/geo.ts';
 import { frontFloors, frontObstacles } from './district/frontLayout.ts';
 import { districtFloors, propObstacles } from './district/props.ts';
 import type { LandmarkSite } from './landmarks/LandmarkModels.ts';
@@ -13,6 +14,8 @@ interface Wall {
   /** Rings in world metres: [x0,z0,x1,z1,...] (closed implicitly). */
   rings: Float32Array[];
   top: number;
+  /** Set on district five-foot-way dressing (piers, goods): id of the building it stands in. */
+  dressOf?: number;
 }
 interface WaterPoly { minX: number; maxX: number; minZ: number; maxZ: number; rings: Float32Array[] }
 interface ChunkCollision {
@@ -82,6 +85,11 @@ export class CollisionWorld {
    */
   /** Extra walkable floors that are not part of any chunk (set by the V5 scene while it is shown). */
   private extraFloors: { ring: Float32Array; h: number; minX: number; maxX: number; minZ: number; maxZ: number }[] = [];
+  /** Extra blocking outlines that are not part of any chunk (piers and parked cars of a V5 section while it is shown). */
+  private extraWalls: Wall[] = [];
+  setExtraWalls(walls: { ring: number[]; top: number }[]): void {
+    this.extraWalls = walls.map((w) => { const ring = Float32Array.from(w.ring); return { ...bbox(ring), rings: [ring], top: w.top }; });
+  }
   setExtraFloors(floors: { ring: number[]; h: number }[]): void {
     this.extraFloors = floors.map((f) => { const ring = Float32Array.from(f.ring); return { ring, h: f.h, ...bbox(ring) }; });
   }
@@ -113,7 +121,7 @@ export class CollisionWorld {
         }
         for (const o of frontObstacles(b.id, toWorld(b.r[0], ox, oz), b.a!.f)) {
           const ring = Float32Array.from(o.ring);
-          walls.push({ ...bbox(ring), rings: [ring], top: base + o.h });
+          walls.push({ ...bbox(ring), rings: [ring], top: base + o.h, dressOf: b.id });
         }
       }
     }
@@ -232,9 +240,15 @@ export class CollisionWorld {
         if (!c) continue;
         for (const w of c.walls) {
           if (x < w.minX - pad || x > w.maxX + pad || z < w.minZ - pad || z > w.maxZ + pad) continue;
+          // District five-foot-way dressing of a block that a V5 section currently draws itself.
+          if (w.dressOf !== undefined && v5Exclusion.active && v5Exclusion.ids.has(w.dressOf)) continue;
           fn(w);
         }
       }
+    for (const w of this.extraWalls) {
+      if (x < w.minX - pad || x > w.maxX + pad || z < w.minZ - pad || z > w.maxZ + pad) continue;
+      fn(w);
+    }
   }
 
   /** True inside the corridor of a mapped passage through a building (tunnel=building_passage, covered ways). */

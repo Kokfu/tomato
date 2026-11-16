@@ -16,14 +16,15 @@ import { Kit, hex, shade, mix, rnd } from './kit.ts';
 import type { Col, Opening, V3 } from './kit.ts';
 
 export const ARCADE = 2.3;
-const PIER = 0.5;           // pier width and depth
-const KERB = 0.14;          // five-foot-way floor above the road
-const SOFFIT = 3.25;        // underside of the arcade ceiling
-const F1 = 3.6;             // first-floor level
-const UP = 3.15;            // upper storey height
+export const PIER = 0.5;           // pier width and depth
+export const KERB = 0.14;          // five-foot-way floor above the road
+export const SOFFIT = 3.25;        // underside of the arcade ceiling
+export const F1 = 3.6;             // first-floor level
+export const UP = 3.15;            // upper storey height
 
 export type ShopType = 'folding' | 'roller' | 'open' | 'grille' | 'glass';
-export type WinType = 'louvre' | 'casement' | 'arched' | 'slider';
+/** 'band': one wide strip of glazed casements across the bay (1950s-60s rebuilds). */
+export type WinType = 'louvre' | 'casement' | 'arched' | 'slider' | 'band';
 
 export interface LotSpec {
   w: number;
@@ -31,6 +32,10 @@ export interface LotSpec {
   storeys: 1 | 2 | 3;
   /** Fabric awning over the kerb. */
   awning?: Col;
+  /** Party-wall openings of the five-foot way: true = arched, false = square-headed, unset = varies by lot. */
+  sideArch?: boolean;
+  /** One colour instead of the default two-colour stripes. */
+  awningPlain?: boolean;
   wall: Col;
   trim: Col;
   joinery: Col;
@@ -225,7 +230,7 @@ function arcade(k: Kit, s: LotSpec): void {
   // party walls with an arched walk-through on each side
   const side = (left: boolean) => {
     const col = shade(s.wall, 0.6);
-    const sq = rnd(s.seed, 17) < 0.45;
+    const sq = s.sideArch === undefined ? rnd(s.seed, 17) < 0.45 : !s.sideArch;
     const ops: Opening[] = [{ x0: left ? 0.72 : -ARCADE + 0.25, x1: left ? ARCADE - 0.25 : -0.72, y0: KERB, y1: sq ? 2.6 : 2.72, arch: sq ? 0 : 0.55 }];
     k.at({ x: left ? 0.12 : w - 0.12, ry: left ? Math.PI / 2 : -Math.PI / 2 }, () => {
       k.wall(left ? PIER : -ARCADE, left ? ARCADE : -PIER, KERB, SOFFIT + 0.16, 0, 0.12, ops, col, shade(col, 0.85), 0.8);
@@ -252,7 +257,7 @@ function shutterLeaf(k: Kit, s: LotSpec, hingeX: number, y0: number, y1: number,
   });
 }
 
-function acUnit(k: Kit, x: number, y: number, z: number): void {
+export function acUnit(k: Kit, x: number, y: number, z: number): void {
   k.use('paint');
   const c = hex(0xd9dad6);
   k.box(x - 0.42, x + 0.42, y, y + 0.56, z, z + 0.3, c, '', 0.85);
@@ -267,8 +272,8 @@ function upper(k: Kit, s: LotSpec): void {
   const w = s.w, top = eaveY(s);
   const pil = 0.26, m = pil + 0.32;
   for (let st = 1; st < s.storeys; st++) {
-    const fy = F1 + UP * (st - 1), n = s.windows;
-    const ww = Math.min(1.15, (w - 2 * m) / n - 0.5), gap = (w - 2 * m - n * ww) / n;
+    const fy = F1 + UP * (st - 1), band = s.win === 'band', n = band ? 1 : s.windows;
+    const ww = band ? w - 2 * m - 0.24 : Math.min(1.15, (w - 2 * m) / n - 0.5), gap = (w - 2 * m - n * ww) / n;
     const french = s.win === 'louvre' && rnd(s.seed, 20) < 0.5;
     const sill = fy + (french ? 0.18 : 0.85), head = fy + (s.win === 'arched' ? 2.62 : 2.42);
     const ops: Opening[] = [];
@@ -287,6 +292,7 @@ function upper(k: Kit, s: LotSpec): void {
       k.box(o.x0, o.x0 + 0.05, o.y0, hs, zi, zi + 0.05, fr); k.box(o.x1 - 0.05, o.x1, o.y0, hs, zi, zi + 0.05, fr);
       k.box((o.x0 + o.x1) / 2 - 0.025, (o.x0 + o.x1) / 2 + 0.025, o.y0, hs, zi, zi + 0.05, fr);
       if (s.win !== 'slider') k.box(o.x0, o.x1, (o.y0 + hs) / 2 + 0.2, (o.y0 + hs) / 2 + 0.24, zi, zi + 0.04, fr);
+      if (band) { const nb = Math.max(4, Math.round(ww / 0.62)); for (let q = 1; q < nb; q++) { const x = o.x0 + (ww * q) / nb; if (Math.abs(x - (o.x0 + o.x1) / 2) > 0.05) k.box(x - 0.022, x + 0.022, o.y0, hs, zi, zi + 0.05, fr); } k.box(o.x0, o.x1, hs - 0.5, hs - 0.46, zi, zi + 0.045, fr); }
       if (o.arch) for (let q = 1; q < 4; q++) { const a = (q / 4) * Math.PI, cx = (o.x0 + o.x1) / 2; k.tube([[cx, hs, zi + 0.02], [cx + Math.cos(a) * ww * 0.5, hs + Math.sin(a) * o.arch, zi + 0.02]], 0.015, 4, fr); }
       // sill with a drip, architrave, hood
       k.use('plaster');
@@ -441,7 +447,7 @@ function dressing(k: Kit, s: LotSpec, signs: SignSource | null): void {
     const y1 = F1 - 0.35, y0 = y1 - 0.75, z1 = 1.45;
     k.use('fabric');
     const n = 6;
-    for (let i = 0; i < n; i++) { const xa = 0.3 + ((w - 0.6) * i) / n, xb = 0.3 + ((w - 0.6) * (i + 1)) / n, c = i % 2 ? s.awning : mix(s.awning, hex(0xf1ede0), 0.8); k.quad([xa, y0, z1], [xb, y0, z1], [xb, y1, 0.04], [xa, y1, 0.04], c); k.quad([xa, y0 - 0.16, z1], [xb, y0 - 0.16, z1], [xb, y0, z1], [xa, y0, z1], shade(c, 0.9)); }
+    for (let i = 0; i < n; i++) { const xa = 0.3 + ((w - 0.6) * i) / n, xb = 0.3 + ((w - 0.6) * (i + 1)) / n, c = i % 2 || s.awningPlain ? shade(s.awning, s.awningPlain ? 0.94 + 0.06 * (i % 2) : 1) : mix(s.awning, hex(0xf1ede0), 0.8); k.quad([xa, y0, z1], [xb, y0, z1], [xb, y1, 0.04], [xa, y1, 0.04], c); k.quad([xa, y0 - 0.16, z1], [xb, y0 - 0.16, z1], [xb, y0, z1], [xa, y0, z1], shade(c, 0.9)); }
     k.use('paint');
     for (const x of [0.3, w - 0.3]) k.tube([[x, y0, z1], [x, y1 - 0.5, 0.05]], 0.015, 4, hex(0x666a6e));
   }

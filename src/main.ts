@@ -16,6 +16,9 @@ import type { QualityName } from './ui/GraphicsSettings.ts';
 import { PlacePanel } from './ui/PlacePanel.ts';
 import { Footsteps } from './player/Footsteps.ts';
 import { FlyMode } from './player/FlyMode.ts';
+import type { SavedView } from './player/FlyMode.ts';
+import { ReferencePanel } from './ui/ReferencePanel.ts';
+import STREET_VIEWS from '../tools/dev/street-views.json';
 import type { V5Controller, RenderMode } from './v5/controller.ts';
 
 async function boot(): Promise<void> {
@@ -33,8 +36,11 @@ async function boot(): Promise<void> {
   renderer.info.autoReset = false;
   const adaptive = new AdaptiveResolution();
   const camera = new THREE.PerspectiveCamera(60, 1, 0.3, 2000);
+  // The reference comparison panel (OP mode) can take the right half of the window.
+  let splitView = false;
   const applyResolution = () => {
-    const w = Math.max(1, window.innerWidth), h = Math.max(1, window.innerHeight);
+    const w = Math.max(1, Math.round(window.innerWidth * (splitView ? 0.5 : 1))), h = Math.max(1, window.innerHeight);
+    canvas.style.width = splitView ? '50%' : '';
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, quality.maxPixelRatio) * adaptive.scale);
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
@@ -122,6 +128,7 @@ async function boot(): Promise<void> {
   const v5Ready = import('./v5/controller.ts').then((m) => {
     v5 = new m.V5Controller(world, renderer, camera, qualityName);
     (window as any).__k3d.v5 = v5;
+    v5.keysEnabled = () => !fly.active; // 1-3 are the fly speeds in OP mode
     applyResolution();
     return v5;
   });
@@ -186,6 +193,8 @@ async function boot(): Promise<void> {
         // The character never moved: walking resumes from its last safe position, with collision and gravity.
         player.visual.root.visible = !tpc.firstPerson;
         tpc.snap();
+        // The comparison panel belongs to the inspection mode only.
+        if (refPanel.open) refPanel.toggle(false);
       }
     },
     screenshot: () => (wantShot = true),
@@ -197,6 +206,18 @@ async function boot(): Promise<void> {
       player.teleport(x, z);
       return true;
     },
+    toast: (t) => menu.toast(t, 2.5),
+    setRenderMode: (m) => v5Ready.then((c) => c.setMode(m as RenderMode)),
+    renderMode: () => v5?.mode ?? 'v4',
+    toggleReference: () => refPanel.toggle(),
+    // Fixed cameras of the Jalan China quality gate (the same file drives tools/dev/street-shots.ts).
+    sections: [{ label: 'Jalan China', mode: 'c', views: STREET_VIEWS }],
+  });
+  const refPanel = new ReferencePanel({
+    baseUrl: import.meta.env.BASE_URL,
+    onSplit: (split) => { splitView = split; applyResolution(); },
+    currentView: (name) => fly.currentView(name),
+    goView: (v) => fly.applyView(v),
     toast: (t) => menu.toast(t, 2.5),
   });
 
@@ -350,9 +371,30 @@ async function boot(): Promise<void> {
     }, 200);
   }
 
+  // ?at=china starts at the Jalan China test section with its rendering on; ?view=x,y,z,yaw,pitch,fov reopens an
+  // exact OP-mode camera (the "Copy link" button of the fly panel writes this).
+  const viewQ = qs.get('view')?.split(',').map(Number);
+  if (qs.get('at') === 'china' || (viewQ && viewQ.length === 6 && viewQ.every(Number.isFinite)) || wantMode === 'c') {
+    const wait = window.setInterval(() => {
+      if (!spawnReady || !started) return;
+      window.clearInterval(wait);
+      const mode = wantMode ?? (qs.get('at') === 'china' ? 'c' : undefined);
+      if (viewQ && viewQ.length === 6) {
+        const [x, y, z, yaw, pitch, fov] = viewQ, [lat, lon] = worldToGeo(x, z);
+        const v: SavedView = { name: 'link', x, y, z, lat, lon, yaw, pitch, fov, mode };
+        player.teleport(x, z);
+        fly.applyView(v);
+      } else {
+        player.teleport(158.7, 14.5);
+        player.heading = Math.PI - 0.588; tpc.yaw = -0.588; tpc.snap();
+        if (mode && mode !== 'v4') void v5Ready.then((c) => c.setMode(mode));
+      }
+    }, 200);
+  }
+
   // Debug / automated-test hook.
   (window as any).__k3d = {
-    world, player, camera, tpc, input, renderer, minimap, menu, placePanel, steps, v5, fly,
+    world, player, camera, tpc, input, renderer, minimap, menu, placePanel, steps, v5, fly, refPanel,
     geoToWorld, worldToGeo,
     /** Protected landmarks that reached a generic building generator (must stay empty). */
     landmarkGuard: guardViolations,

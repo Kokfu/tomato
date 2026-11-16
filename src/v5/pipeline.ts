@@ -41,6 +41,8 @@ export class V5Pipeline {
   private saved: Saved | null = null;
   private env: THREE.WebGLRenderTarget | null = null;
   private w = 1; private h = 1; private pr = 1;
+  /** Light balance, set before enable(). The V7 street section uses a softer, hazier-free variant. */
+  look = { sun: 6.6, hemi: 1.05, fog: 0.8, shadowRadius: 2.2, env: 0.85, exposure: 0.9 };
 
   constructor(renderer: THREE.WebGLRenderer, rig: LightRig, camera: THREE.PerspectiveCamera, options: PipelineOptions) {
     this.renderer = renderer; this.rig = rig; this.camera = camera; this.options = options;
@@ -99,7 +101,7 @@ export class V5Pipeline {
     const c = s.camera;
     c.left = c.bottom = -o.shadowRange; c.right = c.top = o.shadowRange; c.near = 150; c.far = 450;
     c.updateProjectionMatrix();
-    s.bias = -0.00035; s.normalBias = 0.035; s.radius = 2.2;
+    s.bias = -0.00035; s.normalBias = 0.035; s.radius = this.look.shadowRadius;
   }
 
   enable(): void {
@@ -107,12 +109,12 @@ export class V5Pipeline {
     const { scene, sun, hemi, sky } = this.rig, r = this.renderer;
     const fog = scene.fog as THREE.FogExp2, u = (sky.material as THREE.ShaderMaterial).uniforms;
     this.saved = { sunI: sun.intensity, sunC: sun.color.getHex(), hemiI: hemi.intensity, hemiSky: hemi.color.getHex(), hemiGround: hemi.groundColor.getHex(), fogC: fog.color.getHex(), fogD: fog.density, exposure: r.toneMappingExposure, tone: r.toneMapping, horizon: u.uHorizon.value.getHex(), zenith: u.uZenith.value.getHex(), env: scene.environment, envI: scene.environmentIntensity };
-    sun.color.setHex(0xffedd2); sun.intensity = 6.6;
-    hemi.color.setHex(0xc4d2e4); hemi.groundColor.setHex(0x9a917e); hemi.intensity = 1.05;
+    sun.color.setHex(0xffedd2); sun.intensity = this.look.sun;
+    hemi.color.setHex(0xc4d2e4); hemi.groundColor.setHex(0x9a917e); hemi.intensity = this.look.hemi;
     u.uHorizon.value.setHex(0xbfd3e2); u.uZenith.value.setHex(0x2f6fb8);
-    fog.color.setHex(0xc3d3df); fog.density = this.saved.fogD * 0.8;
+    fog.color.setHex(0xc3d3df); fog.density = this.saved.fogD * this.look.fog;
     (scene.background as THREE.Color | null)?.setHex?.(0xc3d3df);
-    r.toneMapping = THREE.AgXToneMapping; r.toneMappingExposure = 0.9;
+    r.toneMapping = THREE.AgXToneMapping; r.toneMappingExposure = this.look.exposure;
     // Environment for specular reflections: the sky itself, prefiltered once (256 px cube, ~1.4 MB of GPU memory).
     const pm = new THREE.PMREMGenerator(r);
     const envScene = new THREE.Scene();
@@ -126,7 +128,7 @@ export class V5Pipeline {
     this.env = pm.fromScene(envScene, 0, 0.1, 100);
     pm.dispose(); dome.geometry.dispose(); ground.geometry.dispose();
     scene.environment = this.env.texture;
-    scene.environmentIntensity = 0.85;
+    scene.environmentIntensity = this.look.env;
     this.active = true;
     this.buildComposer();
     this.applyShadow();
