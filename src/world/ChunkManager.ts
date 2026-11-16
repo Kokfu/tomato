@@ -180,13 +180,16 @@ export class ChunkManager {
     if (sp > 0.5) {
       // Look further ahead at vehicle speeds so chunks are downloaded before they are needed.
       const reach = (this.quality.lowRadius + 1 + Math.min(2, sp / 14)) * CHUNK_SIZE;
-      const px = Math.floor((x + (vx / sp) * reach) / CHUNK_SIZE), pz = Math.floor((z + (vz / sp) * reach) / CHUNK_SIZE);
-      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
-        const k = chunkKey(px + dx, pz + dz);
-        if (this.available.has(k) && !this.chunks.has(k)) this.prefetchKeys.push(k);
+      // At flying speeds (OP mode) a second block further ahead is downloaded too: about 1.5 s of travel.
+      for (const ahead of sp > 40 ? [reach, reach + sp * 1.5] : [reach]) {
+        const px = Math.floor((x + (vx / sp) * ahead) / CHUNK_SIZE), pz = Math.floor((z + (vz / sp) * ahead) / CHUNK_SIZE);
+        for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+          const k = chunkKey(px + dx, pz + dz);
+          if (this.available.has(k) && !this.chunks.has(k) && !this.prefetchKeys.includes(k)) this.prefetchKeys.push(k);
+        }
       }
     }
-    this.buildBudget = sp > 9 ? 2 : 1;
+    this.buildBudget = sp > 60 ? 3 : sp > 9 ? 2 : 1;
     this.pump();
   }
 

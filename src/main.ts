@@ -15,6 +15,7 @@ import { QUALITY, defaultQuality, isTouchDevice, AdaptiveResolution } from './ui
 import type { QualityName } from './ui/GraphicsSettings.ts';
 import { PlacePanel } from './ui/PlacePanel.ts';
 import { Footsteps } from './player/Footsteps.ts';
+import { FlyMode } from './player/FlyMode.ts';
 import type { V5Controller, RenderMode } from './v5/controller.ts';
 
 async function boot(): Promise<void> {
@@ -171,6 +172,34 @@ async function boot(): Promise<void> {
       syncInput();
     },
   });
+  // OP / developer fly mode (P): a free inspection camera. Never on by default, nothing is stored.
+  let wantShot = false;
+  const fly = new FlyMode(world, camera, {
+    canToggle: () => started && spawnReady && !paused && !mapOpen && !placeOpen,
+    onChange: (active) => {
+      if (active) {
+        fly.yaw = tpc.yaw;
+        fly.pitch = -tpc.pitch;
+        player.velocity.set(0, 0, 0);
+        player.visual.root.visible = true;
+      } else {
+        // The character never moved: walking resumes from its last safe position, with collision and gravity.
+        player.visual.root.visible = !tpc.firstPerson;
+        tpc.snap();
+      }
+    },
+    screenshot: () => (wantShot = true),
+    walkHere: (x, z) => {
+      const c = world.collision;
+      if (!c.isLoaded(x, z) || c.inWater(x, z)) return false;
+      const h = c.groundAt(x, z, 1e6).h;
+      if (c.insideBuilding(x, z, h)) return false;
+      player.teleport(x, z);
+      return true;
+    },
+    toast: (t) => menu.toast(t, 2.5),
+  });
+
   input.on('interact', () => {
     if (started && !paused && !mapOpen) placePanel.toggle();
   });
@@ -188,7 +217,8 @@ async function boot(): Promise<void> {
   });
   document.addEventListener('pointerlockchange', () => {
     // Esc releases pointer lock without a key event reaching the page: treat it as pause.
-    if (!document.pointerLockElement && input.enabled && !isTouchDevice() && pointerWasLocked) menu.pause();
+    // (In OP fly mode Esc only frees the mouse, so that the fly panel can be clicked.)
+    if (!document.pointerLockElement && input.enabled && !isTouchDevice() && pointerWasLocked && !fly.active) menu.pause();
     pointerWasLocked = !!document.pointerLockElement;
   });
   let pointerWasLocked = false;
@@ -230,8 +260,11 @@ async function boot(): Promise<void> {
     const rawDt = clock.getDelta();
     const dt = simulatedDt > 0 ? simulatedDt : Math.min(rawDt, 0.1);
 
-    world.update(dt, player.position, player.velocity, camera);
-    v5?.update(dt, rawDt, player.position.x, player.position.z);
+    // The world streams around the walking character, or around the free camera in OP fly mode.
+    const flying = fly.active;
+    const focus = flying ? fly.focus : player.position;
+    world.update(dt, focus, flying ? fly.velocity : player.velocity, camera);
+    v5?.update(dt, rawDt, focus.x, focus.z);
 
     if (!spawnReady) {
       // Never let the player move before ground + collision at the spawn point exist.
@@ -242,8 +275,12 @@ async function boot(): Promise<void> {
     }
 
     input.poll();
-    if (spawnReady && !paused) for (let i = 0; i < stepsPerFrame; i++) player.update(dt, input, tpc.yaw);
-    tpc.update(dt, player, input);
+    if (flying) {
+      if (!paused) fly.update(dt, input);
+    } else {
+      if (spawnReady && !paused) for (let i = 0; i < stepsPerFrame; i++) player.update(dt, input, tpc.yaw);
+      tpc.update(dt, player, input);
+    }
     input.endFrame();
 
     blob.visible = quality.shadowMap === 0 && !tpc.firstPerson;
@@ -276,6 +313,18 @@ async function boot(): Promise<void> {
     renderer.info.reset();
     if (v5?.usesPipeline) v5.pipeline.render();
     else renderer.render(world.scene, camera);
+    if (wantShot) {
+      // Same task as the render, so the drawing buffer is still valid.
+      wantShot = false;
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `kuching3d-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+        a.click();
+        window.setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      }, 'image/png');
+    }
 
     fpsAcc += rawDt;
     fpsFrames++;
@@ -303,7 +352,7 @@ async function boot(): Promise<void> {
 
   // Debug / automated-test hook.
   (window as any).__k3d = {
-    world, player, camera, tpc, input, renderer, minimap, menu, placePanel, steps, v5,
+    world, player, camera, tpc, input, renderer, minimap, menu, placePanel, steps, v5, fly,
     geoToWorld, worldToGeo,
     /** Protected landmarks that reached a generic building generator (must stay empty). */
     landmarkGuard: guardViolations,
