@@ -87,3 +87,11 @@ Resized with Pillow (Lanczos), roughness moved into the alpha channel of the alb
 | Downloaded file | `https://www.innerscene.com/api/library/sedan-car-42109739/download` (`sedan-original.glb`, 641,908 bytes, SHA-256 `187c9935c40f952837fe2d98200b390415e695196d7b1280c9ec3ebb1bf4961b`) |
 | Licence | CC0 1.0. Page: "Public domain (CC0). Free to use, modify and redistribute for any purpose, including commercially, with no credit required." The GLB's own `asset.copyright` field says the same ("Authored by Innerscene Corp ... dedicated under CC0 1.0 Universal"). |
 | Why rejected | The licence is fine; the model is not better than the procedural cars. It is a flat-shaded low-poly sedan assembled from primitives: 16,300 triangles in 72 separate meshes, of which only 2,208 form the body and cab (the rest are bevelled boxes, wheel tori and spokes); 9 flat-colour materials, no textures, no UVs on the cab; opaque dark "glass" with no interior; headlights are white boxes; mirrors float beside the body. It would add about 16 times the triangles of a procedural car and a GLTF load for the same slab-sided look. |
+
+## V7.4 pedestrians (Jalan China section)
+
+No new asset, and the prototype is **disabled by default** (see docs/V7.4_REPORT.md): while it is off, nothing is loaded for it. When switched on for development (`?peds=on`), the two or three pedestrians in the Jalan China section (`src/v5/pedestrians.ts`) are clones of the player's "Casual Character" above (Quaternius, CC0), re-coloured at run time (shirt, trousers, shoes, hair, skin tone) and scaled to 1.58 - 1.72 m. They use the same `Idle` and `Walk` clips. The model is fetched once more when the section is first shown (browser cache) and freed when it is hidden.
+
+Considered and not added in this batch: the other Quaternius CC0 characters on the same rig ("Business Man", "Hoodie Character") would give different silhouettes for about 400 kB each; realistic scanned humans with a CC0 or CC BY licence and a walk cycle were not found in a form small enough for this project.
+
+No audio file was added either: a licensed street recording of suitable quality was not sourced. The synthesised ambience from V5 is unchanged (it starts only after the Start click and follows the existing sound switch).

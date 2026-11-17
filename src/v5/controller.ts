@@ -12,6 +12,7 @@ import type { V5Mode } from './V5Scene.ts';
 import { V5Pipeline } from './pipeline.ts';
 import { v5Exclusion, V5_LANDMARK_IDS, STREET } from './geo.ts';
 import { Ambience } from './ambience.ts';
+import type { Pedestrians, PedestrianHost } from './pedestrians.ts';
 
 export type RenderMode = 'v4' | V5Mode;
 const LABEL: Record<RenderMode, string> = { v4: 'V4 Existing', a: 'V5 Procedural', b: 'V5 Hybrid', c: 'V7 Jalan China' };
@@ -48,6 +49,15 @@ export class V5Controller {
   readonly scene: V5Scene;
   readonly pipeline: V5Pipeline;
   readonly ambience = new Ambience();
+  /**
+   * V7.4 pedestrian prototype: OFF by default (the only licensed model at hand is a stylised figure). While off,
+   * nothing of it exists: its code is a separate chunk that is not fetched, no model is loaded, nothing is added
+   * to the scene and nothing is updated. `?peds=on` or `setPedestrians(true)` turns it on for development.
+   */
+  peds: Pedestrians | null = null;
+  pedsEnabled = false;
+  private pedHost: PedestrianHost;
+  private pedToken = 0;
   private world: WorldManager;
   private renderer: THREE.WebGLRenderer;
   private bar: HTMLDivElement;
@@ -69,6 +79,12 @@ export class V5Controller {
       setFloors: (f) => world.collision.setExtraFloors(f),
       setWalls: (w) => world.collision.setExtraWalls(w),
     });
+    this.pedsEnabled = new URLSearchParams(location.search).get('peds') === 'on';
+    this.pedHost = {
+      baseUrl: import.meta.env.BASE_URL, low,
+      ground: (x, z, y) => world.collision.groundAt(x, z, y).h,
+      blocked: (x, z, y) => { const [rx, rz] = world.collision.resolve(x, z, 0.28, y); return Math.hypot(rx - x, rz - z) > 0.01; },
+    };
     const [ax, az] = STREET[1], [bx, bz] = STREET[3], l = Math.hypot(bx - ax, bz - az);
     // V7.2 A/B: ?assets=off keeps the Jalan China section fully procedural (the photographic road textures are not fetched).
     this.scene.realAssets = new URLSearchParams(location.search).get('assets') !== 'off';
@@ -122,6 +138,7 @@ export class V5Controller {
         v5Exclusion.setChina(false);
         for (const id of V5_LANDMARK_IDS) lm.hidden.delete(id);
         this.ambience.stop();
+        this.stopPeds();
       } else {
         await this.scene.build(m);
         v5Exclusion.active = true;
@@ -134,6 +151,7 @@ export class V5Controller {
         this.pipeline.disable();
         this.pipeline.enable();
         this.ambience.start();
+        if (m === 'c' && this.pedsEnabled) void this.startPeds(); else this.stopPeds();
       }
       // The two chunks that hold the section are rebuilt with / without the replaced blocks.
       this.world.chunks.invalidate(CHUNKS);
@@ -143,6 +161,30 @@ export class V5Controller {
     } finally {
       this.busy = false;
     }
+  }
+
+  private async startPeds(): Promise<void> {
+    if (this.peds) return;
+    const token = ++this.pedToken;
+    const { Pedestrians } = await import('./pedestrians.ts');
+    if (token !== this.pedToken || this.peds) return;
+    this.peds = new Pedestrians(this.pedHost);
+    this.world.scene.add(this.peds.group);
+    await this.peds.start();
+  }
+
+  private stopPeds(): void {
+    this.pedToken++;
+    if (!this.peds) return;
+    this.peds.stop();
+    this.world.scene.remove(this.peds.group);
+    this.peds = null;
+  }
+
+  /** Development switch for the pedestrian prototype (off by default). */
+  async setPedestrians(on: boolean): Promise<void> {
+    this.pedsEnabled = on;
+    if (on && this.mode === 'c') await this.startPeds(); else this.stopPeds();
   }
 
   /** V7.2 A/B switch at run time: rebuilds the Jalan China section with or without the photographic road material. */
@@ -168,6 +210,7 @@ export class V5Controller {
     this.time += dt;
     this.scene.update(this.time);
     this.ambience.update(px, pz);
+    if (this.peds?.active) this.peds.update(dt, px, pz);
     this.frameMs.push(rawDt * 1000);
     if (this.frameMs.length > 120) this.frameMs.shift();
     if (this.frameMs.length % 30 === 0 && !this.busy) {

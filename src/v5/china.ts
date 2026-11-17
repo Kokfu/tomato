@@ -56,8 +56,8 @@ interface Extra {
   board?: 'hk' | 'ak';
   /** Condensers on wall brackets: [fraction of the lot width, metres above the first floor]. */
   acs?: [number, number][];
-  /** Goldsmith fit-out behind the shopfront; 'lit' when the shop is open. */
-  goldsmith?: 'dim' | 'lit';
+  /** Fit-out behind the shopfront: a goldsmith's ('lit' when the shop is open, 'dim' behind a closed gate), or 'plain': the same counters and cabinets left empty where the trade is not confirmed. */
+  fit?: 'lit' | 'dim' | 'plain';
   /** Corrugated awning over the upper window. */
   hood?: boolean;
   antenna?: boolean;
@@ -76,17 +76,17 @@ const J = { grey: 0xaeb6b8, green: 0x8fa79c, red: 0xa04a3c, brown: 0x6a4a37, whi
 
 /** West row, from the corner building northwards (lot 0 = No. 29). */
 export const WEST: ChinaLot[] = [
-  { no: 29, basis: 'ref [A]: Heng Kee Goldsmith - weathered cream wall, strip of glazed casements, deep eave, pink octagonal plaque column on steel arms, large leaning pink fascia board, teal awning, closed grille, condensers, roof aerial. Interior fit-out is a typical goldsmith, not photographed',
+  { no: 29, basis: 'ref [A]: Heng Kee Goldsmith - weathered cream wall, strip of glazed casements, deep eave, pink octagonal plaque column on steel arms, large leaning pink fascia board, teal awning, closed grille, condensers, roof aerial. Interior (V7.4: glass counters and wall cabinets, seen dim behind the closed gate) is a typical goldsmith fit-out, not photographed',
     spec: { wall: hex(0xe0d8bc), joinery: hex(J.green), win: 'band', shop: 'grille', roof: 'zinc', eave: 0.9, hoods: false, blinds: false, ac: 0, awningPlain: true, awning: hex(0x1f8f86), bare: true },
-    extra: { column: { chars: '興基金鋪', fg: '#f4ecdf', bg: '#bd7483', size: 0.8, rise: 1.9, oct: true, top: 'hk', foot: 'HENG KEE\nGOLDSMITH\n29', footFg: '#f4ecdf', footBg: '#b56a7a' }, board: 'hk', acs: [[0.8, 0.74], [0.24, 0.74]], goldsmith: 'dim', antenna: true, downpipe: true,
+    extra: { column: { chars: '興基金鋪', fg: '#f4ecdf', bg: '#bd7483', size: 0.8, rise: 1.9, oct: true, top: 'hk', foot: 'HENG KEE\nGOLDSMITH\n29', footFg: '#f4ecdf', footBg: '#b56a7a' }, board: 'hk', acs: [[0.8, 0.74], [0.24, 0.74]], fit: 'dim', antenna: true, downpipe: true,
       stains: [[0.976, 3.0, 2.7, 0.12, 0.5, 0.082], [0.3, 2.85, 0.42, 0.5, 0.3], [0.62, 2.85, 0.42, 0.6, 0.38], [0.86, 2.85, 0.42, 0.4, 0.42], [0.2, 0.73, 0.55, 0.3, 0.35], [0.56, 0.73, 0.5, 0.25, 0.3], [0.84, 0.73, 0.58, 0.3, 0.42], [0.978, -0.78, 1.7, 0.1, 0.42]] } },
-  { no: 27, basis: 'ref [A] + OSM node 12779002964: Ann Kee Goldsmith - pale yellow wall, small-paned casements under a teal corrugated awning, flat roof terrace with green railing, olive plaque column under a round diamond emblem, leaning yellow fascia board, open front. First plaque character is cursive in [A]; shown as 安 (from the romanised name), the other three are legible. Interior fit-out is a typical goldsmith, not photographed',
-    spec: { wall: hex(0xe8d98f), joinery: hex(J.white), win: 'band', panes: 5, shop: 'open', roof: 'zinc', parapet: true, parapetH: 0.35, crest: false, flat: true, hoods: false, blinds: false, ac: 0, bare: true },
-    extra: { column: { chars: '安基金鋪', fg: '#f3d6d1', bg: '#a99a2f', size: 0.76, rise: 2.15, top: 'disc', foot: 'ANN KEE\nGOLDSMITH\n27', footFg: '#3d5fb0', footBg: '#d6c43c' }, board: 'ak', goldsmith: 'lit', hood: true, terrace: true, downpipe: true,
+  { no: 27, basis: 'ref [A] + OSM node 12779002964: Ann Kee Goldsmith - pale yellow wall, small-paned casements under a teal corrugated awning, flat roof terrace with green railing, olive plaque column under a round diamond emblem, leaning yellow fascia board, open front. First plaque character is cursive in [A]; shown as 安 (from the romanised name), the other three are legible. Interior (V7.4: glass counters, wall cabinets, stools) is a typical goldsmith fit-out, not photographed',
+    spec: { wall: hex(0xe8d98f), joinery: hex(J.white), win: 'band', panes: 5, shop: 'open', roof: 'zinc', parapet: true, parapetH: 0.35, crest: false, flat: true, hoods: false, blinds: false, ac: 0, bare: true, interiorTone: 0.62 },
+    extra: { column: { chars: '安基金鋪', fg: '#f3d6d1', bg: '#a99a2f', size: 0.76, rise: 2.15, top: 'disc', foot: 'ANN KEE\nGOLDSMITH\n27', footFg: '#3d5fb0', footBg: '#d6c43c' }, board: 'ak', fit: 'lit', hood: true, terrace: true, downpipe: true,
       stains: [[0.024, 3.0, 2.4, 0.11, 0.4, 0.082], [0.5, 2.9, 0.4, 0.9, 0.22], [0.3, 0.73, 0.55, 0.3, 0.3], [0.72, 0.73, 0.5, 0.28, 0.28], [0.022, -0.78, 1.5, 0.1, 0.35]] } },
-  { no: 25, basis: 'ref [A]: three-storey rose-pink building with a gable pediment, balconies with dark balustrades, round terracotta columns, dentilled cornice, red fascia board and a tall blank red projecting sign under a logo panel (logo approximated), grooved piers. OSM node 12779002965 (Yong Hu Goldsmith) falls in this lot; the 2015 board is not legible, so it carries no text',
-    spec: { storeys: 3, wall: hex(C.rose), trim: hex(0xe9dccd), joinery: hex(0x4a3028), win: 'louvre', windows: 2, shop: 'grille', roof: 'zinc', parapet: true, hoods: false, blinds: false, ac: 0, dado: hex(0xd9a79b) },
-    extra: { balconies: true, goldsmith: 'dim', rustic: true, vsign: true } },
+  { no: 25, basis: 'ref [A]: three-storey rose-pink building with a gable pediment, balconies with dark balustrades, round terracotta columns, dentilled cornice, red fascia board and a tall blank red projecting sign under a logo panel (logo approximated), grooved piers. Use: OpenStreetMap node 12779002965 (Yong Hu Goldsmith, mapped 2025) falls mid-lot and is the only evidence of the trade; the 2015 photograph shows a closed gate and an illegible board. The board therefore carries no text and the interior is approximate: a single plain counter and cabinet with no stock',
+    spec: { storeys: 3, wall: hex(C.rose), trim: hex(0xe9dccd), joinery: hex(0x4a3028), win: 'louvre', windows: 2, shop: 'grille', roof: 'zinc', parapet: true, hoods: false, blinds: false, ac: 0, dado: hex(0xd9a79b), bare: true },
+    extra: { balconies: true, fit: 'plain', rustic: true, vsign: true } },
   { no: 23, basis: 'ref [A], [B]: two storeys, pale cream, three pale grey louvred shutters, white signboard over the shopfront (a barber; wording not legible, left blank)',
     spec: { wall: hex(0xe9dfcc), joinery: hex(J.grey), win: 'louvre', windows: 3, shop: 'roller', roof: 'tile', hoods: false, blinds: false, ac: 0, sign: { text: ' ', fg: '#a33', bg: '#f1eee6' } }, extra: { downpipe: true } },
   { no: 21, basis: 'ref [B] + OSM node 12779002967: pink wall, two louvred shutters, "21" board, blue vertical sign of Kedai Jam Chan Chong (watch dealer, 泉昌)',
@@ -470,49 +470,202 @@ function stains(k: Kit, s: LotSpec, list: NonNullable<Extra['stains']>): void {
   }
 }
 
+type Fit = 'lit' | 'dim' | 'plain';
+
 /**
- * Goldsmith fit-out behind the shopfront: an L of display counters with trays of gold, a lit wall showcase,
- * stools, a safe, an altar shelf and a clock. Typical of the trade on this street; not photographed.
+ * Shop fit-out behind the shopfront (V7.4): a U of glass display counters round a centre aisle that lines up
+ * with the entrance, glazed wall cabinets on both side walls and the back wall, a panelled door to the back
+ * room, a safe, downlights. 'lit' and 'dim' carry a goldsmith's stock, stools, counter mirrors and an altar
+ * shelf; 'plain' is one empty counter and one empty cabinet (trade not confirmed). Typical of the trade on this street:
+ * none of these interiors is photographed.
  */
-function goldsmith(k: Kit, s: LotSpec, lit: boolean): void {
-  const xa = 0.37, xb = s.w - 0.37, zf = -ARCADE - 0.22, zb = zf - 4.15, y = KERB + 0.01, a = lit ? 0.72 : 0.42;
-  const wood = hex(0x6a3a2c, a), alu = hex(0xb9bdc0, a), velvet = hex(0x9a1f28, a), gold = hex(0xe0b548, Math.min(1, a * 1.5)), cream = hex(0xe9e2cf, a);
-  const counter = (x0: number, x1: number, z0: number, z1: number) => {
-    k.use('timber'); k.box(x0, x1, y, y + 0.6, z0, z1, wood, 'y-', 0.7);
-    k.use('fabric'); k.box(x0 + 0.03, x1 - 0.03, y + 0.6, y + 0.66, z0 + 0.03, z1 - 0.03, velvet, 'y-');
-    k.use('paint');
-    for (const cx of [x0, x1 - 0.03]) for (const cz of [z0, z1 - 0.03]) k.box(cx, cx + 0.03, y + 0.6, y + 0.98, cz, cz + 0.03, alu, 'y-');
-    for (const cz of [z0, z1 - 0.03]) k.box(x0, x1, y + 0.95, y + 0.98, cz, cz + 0.03, alu, 'x+x-');
-    for (const cx of [x0, x1 - 0.03]) k.box(cx, cx + 0.03, y + 0.95, y + 0.98, z0, z1, alu, 'z+z-');
-    k.use('gold');
-    const along = x1 - x0 > z1 - z0, n = Math.floor(((along ? x1 - x0 : z1 - z0) - 0.1) / 0.22);
+function fitout(k: Kit, s: LotSpec, kind: Fit): void {
+  const lit = kind === 'lit', stock = kind !== 'plain', a = lit ? 0.8 : 0.42, on = lit ? 1 : 0.06;
+  const xa = 0.37, xb = s.w - 0.37, zf = -ARCADE - 0.22, zb = zf - 4.15, y = KERB + 0.01, ceil = s.shop === 'open' ? 2.9 : 2.95;
+  const wood = hex(0x5a3526, a), woodHi = hex(0x7a5236, a), alu = hex(0xc4c8ca, a), dark = hex(0x1b1c1e, a), velvet = hex(0x7d1620, a), tray = hex(0x15161a, a);
+  const gold = hex(0xe0b548, Math.min(1, a * 1.45)), cream = hex(0xe9e2cf, a), glassC = hex(0xcfe2e6, lit ? 1 : 0.08), warm = hex(0xfff0d2, on);
+  const sd = s.seed;
+
+  /** Rows of small stock on a pad: rings, chains or bangles, one kind per tray. */
+  const trays = (x0: number, x1: number, z0: number, z1: number, yy: number, salt: number) => {
+    const along = x1 - x0 > z1 - z0, L = along ? x1 - x0 : z1 - z0, n = Math.floor((L - 0.08) / 0.3);
     for (let i = 0; i < n; i++) for (let r = 0; r < 2; r++) {
-      if (rnd(s.seed, i, 40 + r) < 0.2) continue;
-      const u = 0.1 + i * 0.22, v = 0.12 + r * 0.2, cx = along ? x0 + u : x0 + v, cz = along ? z0 + v : z0 + u;
-      k.box(cx, cx + (along ? 0.12 : 0.07), y + 0.66, y + 0.69, cz, cz + (along ? 0.07 : 0.12), gold, 'y-');
+      const t = rnd(sd, i * 2 + r, salt), u0 = 0.06 + i * 0.3, v0 = 0.045 + r * 0.235;
+      if (t < 0.14) continue;
+      const P = (u: number, v: number, du: number, dv: number, h: number, c: Col) => { const bx = along ? x0 + u0 + u : x0 + v0 + v, bz = along ? z0 + v0 + v : z0 + u0 + u; k.box(bx, bx + (along ? du : dv), yy, yy + h, bz, bz + (along ? dv : du), c, 'y-'); };
+      k.use('paint'); P(0, 0, 0.26, 0.2, 0.012, tray);
+      k.use('gold');
+      if (t < 0.45) for (let q = 0; q < 4; q++) for (let p = 0; p < 2; p++) P(0.03 + q * 0.055, 0.04 + p * 0.08, 0.022, 0.022, 0.03, gold);       // rings
+      else if (t < 0.75) for (let q = 0; q < 4; q++) P(0.025 + q * 0.058, 0.02, 0.012, 0.16, 0.018, gold);                                             // chains
+      else for (let q = 0; q < 3; q++) { const cx = (along ? x0 + u0 : x0 + v0) + (along ? 0.05 + q * 0.08 : 0.1), cz = (along ? z0 + v0 : z0 + u0) + (along ? 0.1 : 0.05 + q * 0.08); k.cyl(cx, cz, yy + 0.012, yy + 0.03, 0.034, 0.034, 8, gold, true); } // bangles
     }
   };
-  counter(xa + 1.25, xb - 0.05, zf - 1.75, zf - 1.2);
-  counter(xb - 0.6, xb - 0.05, zb + 0.9, zf - 1.78);
-  // lit showcase on the left wall
-  k.use('timber'); k.box(xa, xa + 0.14, y + 0.95, y + 2.0, zb + 0.9, zf - 0.9, wood, 'x-');
-  k.use('glow'); k.quad([xa + 0.145, y + 1.02, zb + 0.97], [xa + 0.145, y + 1.02, zf - 0.97], [xa + 0.145, y + 1.93, zf - 0.97], [xa + 0.145, y + 1.93, zb + 0.97], hex(0xf2ead2, lit ? 0.55 : 0.22));
-  k.use('gold');
-  for (let r = 0; r < 3; r++) for (let i = 0; zb + 1.1 + i * 0.27 < zf - 1.15; i++) if (rnd(s.seed, r, i) > 0.15) { const z = zb + 1.1 + i * 0.27; k.box(xa + 0.15, xa + 0.17, y + 1.12 + r * 0.29, y + 1.3 + r * 0.29, z, z + 0.13, gold, 'x-'); }
-  // back wall: doorway, safe, altar shelf with a red lamp, clock
+  /** Glass display counter: plinth with a recessed kick, padded deck, framed glass case, a light strip. */
+  const showcase = (x0: number, x1: number, z0: number, z1: number, salt: number) => {
+    k.use('paint'); k.box(x0 + 0.04, x1 - 0.04, y, y + 0.08, z0 + 0.04, z1 - 0.04, dark, 'y-y+');
+    k.use('timber'); k.box(x0, x1, y + 0.08, y + 0.5, z0, z1, wood, 'y-', 0.72);
+    k.use('paint'); k.box(x0 - 0.005, x1 + 0.005, y + 0.5, y + 0.54, z0 - 0.005, z1 + 0.005, alu, 'y-');
+    k.use('fabric'); k.box(x0 + 0.03, x1 - 0.03, y + 0.54, y + 0.56, z0 + 0.03, z1 - 0.03, stock ? velvet : hex(0x3a3d42, a), 'y-');
+    if (stock) trays(x0 + 0.03, x1 - 0.03, z0 + 0.03, z1 - 0.03, y + 0.56, salt);
+    k.use('paint');
+    const t = 0.018, y0 = y + 0.54, y1 = y + 0.95;
+    for (const cx of [x0, x1 - t]) for (const cz of [z0, z1 - t]) k.box(cx, cx + t, y0, y1, cz, cz + t, alu, 'y-y+');
+    for (const cz of [z0, z1 - t]) k.box(x0, x1, y1 - t, y1, cz, cz + t, alu, 'x+x-');
+    for (const cx of [x0, x1 - t]) k.box(cx, cx + t, y1 - t, y1, z0, z1, alu, 'z+z-');
+    k.use('glow');
+    if (x1 - x0 > z1 - z0) k.box(x0 + 0.05, x1 - 0.05, y1 - 0.035, y1 - 0.02, z1 - 0.05, z1 - 0.03, warm, 'y+');
+    else for (const cx of [x0 + 0.03, x1 - 0.05]) k.box(cx, cx + 0.02, y1 - 0.035, y1 - 0.02, z0 + 0.05, z1 - 0.05, warm, 'y+');
+    k.use('pane'); k.box(x0 + 0.006, x1 - 0.006, y0, y1 - 0.004, z0 + 0.006, z1 - 0.006, glassC, 'y-');
+  };
+  /** Wall cabinet: cupboard below, glazed lit showcase above. `face` is the open side: 'x+' (left wall), 'x-' (right wall) or 'z+' (back wall). */
+  const wallcase = (x0: number, x1: number, z0: number, z1: number, face: 'x+' | 'x-' | 'z+', salt: number) => {
+    const y0 = y + 0.92, y1 = y + 2.12, e = 0.03;
+    k.use('timber');
+    k.box(x0, x1, y, y0, z0, z1, wood, 'y-', 0.72);
+    k.box(x0, x1, y0, y1, z0, z1, woodHi, face);            // carcass, open toward the shop (timber is double-sided: the inside shows)
+    k.box(x0, x1, y1, y1 + 0.1, z0, z1, wood, 'y-');
+    const zAxis = face !== 'z+', L = zAxis ? z1 - z0 : x1 - x0;
+    // lit back panel
+    k.use(lit ? 'glow' : 'paint');
+    const back = lit ? hex(0xf3ead6, 0.26) : hex(0xd8d2c2, a * 0.4);
+    if (face === 'x+') k.quad([x0 + e, y0 + e, z1 - e], [x0 + e, y0 + e, z0 + e], [x0 + e, y1 - e, z0 + e], [x0 + e, y1 - e, z1 - e], back);
+    else if (face === 'x-') k.quad([x1 - e, y0 + e, z0 + e], [x1 - e, y0 + e, z1 - e], [x1 - e, y1 - e, z1 - e], [x1 - e, y1 - e, z0 + e], back);
+    else k.quad([x0 + e, y0 + e, z0 + e], [x1 - e, y0 + e, z0 + e], [x1 - e, y1 - e, z0 + e], [x0 + e, y1 - e, z0 + e], back);
+    // glass shelves and what stands on them
+    const fx0 = face === 'x+' ? x0 + 0.05 : face === 'x-' ? x0 + 0.03 : x0 + e, fx1 = face === 'x+' ? x1 - 0.03 : face === 'x-' ? x1 - 0.05 : x1 - e;
+    const fz0 = face === 'z+' ? z0 + 0.05 : z0 + e, fz1 = face === 'z+' ? z1 - 0.03 : z1 - e;
+    for (let r = 0; r < 3; r++) {
+      const sy = y0 + 0.06 + r * 0.38;
+      if (r) { k.use('paint'); k.box(fx0, fx1, sy - 0.012, sy, fz0, fz1, hex(0xdfe9ea, a), ''); }
+      if (!stock) continue;
+      const n = Math.floor((L - 0.16) / 0.36);
+      for (let i = 0; i < n; i++) {
+        const t = rnd(sd, r * 17 + i, salt), u = 0.12 + i * 0.36 + (zAxis ? z0 : x0);
+        if (t < 0.12) continue;
+        // a velvet stand (necklace bust or sloped pad) with gold on its face
+        const hgt = t < 0.55 ? 0.26 : 0.14, wd = 0.2, mx = (fx0 + fx1) / 2, mz = (fz0 + fz1) / 2;
+        k.use('fabric');
+        if (zAxis) k.box(mx - 0.05, mx + 0.05, sy, sy + hgt, u, u + wd, t < 0.55 ? tray : velvet, 'y-'); else k.box(u, u + wd, sy, sy + hgt, mz - 0.05, mz + 0.05, t < 0.55 ? tray : velvet, 'y-');
+        k.use('gold');
+        const fxp = face === 'x+' ? mx + 0.05 : mx - 0.065, fzp = mz + 0.05;
+        for (let q = 0; q < (t < 0.55 ? 3 : 2); q++) {
+          const gy = sy + 0.04 + q * 0.07, ins = 0.03 + q * 0.025;
+          if (zAxis) k.box(fxp, fxp + 0.015, gy, gy + 0.02, u + ins, u + wd - ins, gold, ''); else k.box(u + ins, u + wd - ins, gy, gy + 0.02, fzp, fzp + 0.015, gold, '');
+        }
+      }
+    }
+    // frame and glass on the open side
+    k.use('paint');
+    if (zAxis) { const fx = face === 'x+' ? x1 - 0.02 : x0; for (const zz of [z0, (z0 + z1) / 2 - 0.012, z1 - 0.025]) k.box(fx, fx + 0.02, y0, y1, zz, zz + 0.025, alu, 'y-y+'); k.box(fx, fx + 0.02, y1 - 0.025, y1, z0, z1, alu, 'z+z-'); k.box(fx, fx + 0.02, y0, y0 + 0.025, z0, z1, alu, 'z+z-'); }
+    else { const fz = z1 - 0.02; for (const xx of [x0, (x0 + x1) / 2 - 0.012, x1 - 0.025]) k.box(xx, xx + 0.025, y0, y1, fz, fz + 0.02, alu, 'y-y+'); k.box(x0, x1, y1 - 0.025, y1, fz, fz + 0.02, alu, 'x+x-'); k.box(x0, x1, y0, y0 + 0.025, fz, fz + 0.02, alu, 'x+x-'); }
+    k.use('pane');
+    if (face === 'x+') k.quad([x1 - 0.008, y0, z1], [x1 - 0.008, y0, z0], [x1 - 0.008, y1, z0], [x1 - 0.008, y1, z1], glassC);
+    else if (face === 'x-') k.quad([x0 + 0.008, y0, z0], [x0 + 0.008, y0, z1], [x0 + 0.008, y1, z1], [x0 + 0.008, y1, z0], glassC);
+    else k.quad([x0, y0, z1 - 0.008], [x1, y0, z1 - 0.008], [x1, y1, z1 - 0.008], [x0, y1, z1 - 0.008], glassC);
+  };
+
+  // counters: two runs down the shop and one across the back, leaving the aisle on the entrance axis
+  const lx0 = xa + 0.93, lx1 = lx0 + 0.55, rx1 = xb - 0.93, rx0 = rx1 - 0.55, zc0 = zf - 0.85, zc1 = zb + 1.2;
+  // (the unconfirmed shop gets one counter and one cabinet only: it must not read as a copy of its neighbours)
+  if (stock) showcase(lx0, lx1, zc1, zc0, 41);
+  showcase(rx0, rx1, stock ? zc1 : zc1 + 0.9, zc0, 43);
+  if (stock) showcase(lx1 + 0.02, rx0 - 0.02, zc1, zc1 + 0.55, 45);
+  if (stock) wallcase(xa, xa + 0.3, zb + 1.0, zf - 0.6, 'x+', 51);
+  wallcase(xb - 0.3, xb, zb + 1.0, zf - 0.6, 'x-', 53);
+  if (stock) wallcase(xa + 1.75, xb - 1.05, zb, zb + 0.3, 'z+', 55);
+
+  // back wall: framed panelled door, safe
+  const dx0 = xa + 0.45, dx1 = xa + 1.35, dz = zb + 0.012;
+  k.use('timber');
+  k.box(dx0 - 0.07, dx0, y, y + 2.1, zb, zb + 0.05, wood, 'z-y-'); k.box(dx1, dx1 + 0.07, y, y + 2.1, zb, zb + 0.05, wood, 'z-y-'); k.box(dx0 - 0.07, dx1 + 0.07, y + 2.1, y + 2.17, zb, zb + 0.05, wood, 'z-');
+  k.quad([dx0, y, dz], [dx1, y, dz], [dx1, y + 2.1, dz], [dx0, y + 2.1, dz], woodHi);
+  for (const [p0, p1] of [[0.14, 0.92], [1.06, 1.96]]) k.box(dx0 + 0.12, dx1 - 0.12, y + p0, y + p1, dz, dz + 0.012, shade(woodHi, 0.82), 'z-');
   k.use('paint');
-  k.quad([xa + 0.4, y, zb + 0.01], [xa + 1.3, y, zb + 0.01], [xa + 1.3, y + 2.1, zb + 0.01], [xa + 0.4, y + 2.1, zb + 0.01], hex(0x121416));
-  k.box(xb - 1.45, xb - 0.8, y, y + 0.95, zb + 0.05, zb + 0.6, hex(0x6f7678, a), 'y-', 0.7);
-  k.box(xb - 1.5, xb - 0.7, y + 2.1, y + 2.16, zb, zb + 0.32, hex(0xa8241f, a));
-  k.box(xb - 1.4, xb - 0.8, y + 2.16, y + 2.62, zb + 0.01, zb + 0.05, hex(0x8f1c1a, a), 'z-');
-  const cx = (xa + xb) / 2 + 0.2, cy = y + 2.3;
-  k.poly(DISC.filter((_, i) => i % 2 === 0).map(([u, v]) => [cx + (u - 0.5) * 0.36, cy + (v - 0.5) * 0.36, zb + 0.03] as V3), cream);
+  k.box(dx1 - 0.13, dx1 - 0.09, y + 0.98, y + 1.02, dz, dz + 0.06, alu, 'z-');
+  const sx0 = xb - 1.0, sx1 = xb - 0.38, sg = hex(0x6c7376, a);
+  k.box(sx0, sx1, y, y + 1.05, zb + 0.32, zb + 0.9, sg, 'y-', 0.7);
+  k.box(sx0 + 0.05, sx1 - 0.05, y + 0.08, y + 0.97, zb + 0.9, zb + 0.915, shade(sg, 1.15), 'z-');
+  k.poly(DISC.filter((_, i) => i % 3 === 0).map(([u, v]) => [sx0 + 0.2 + (u - 0.5) * 0.11, y + 0.58 + (v - 0.5) * 0.11, zb + 0.92] as V3), alu);
+  k.box(sx1 - 0.2, sx1 - 0.17, y + 0.42, y + 0.7, zb + 0.915, zb + 0.95, alu, 'z-');
+  // clock above the door
+  const cx = (dx0 + dx1) / 2, cy = y + 2.5;
+  k.poly(DISC.filter((_, i) => i % 2 === 0).map(([u, v]) => [cx + (u - 0.5) * 0.4, cy + (v - 0.5) * 0.4, zb + 0.02] as V3), dark);
+  k.poly(DISC.filter((_, i) => i % 2 === 0).map(([u, v]) => [cx + (u - 0.5) * 0.34, cy + (v - 0.5) * 0.34, zb + 0.03] as V3), cream);
+  if (stock) {
+    // altar shelf with a red lamp, high on the back wall (usual in the street's Chinese-run shops)
+    k.box(xb - 1.5, xb - 0.75, y + 2.34, y + 2.39, zb, zb + 0.3, hex(0xa8241f, a));
+    k.box(xb - 1.42, xb - 0.83, y + 2.39, y + 2.78, zb + 0.01, zb + 0.05, hex(0x8f1c1a, a), 'z-');
+    k.use('glow'); k.box(xb - 1.16, xb - 1.09, y + 2.42, y + 2.51, zb + 0.1, zb + 0.17, hex(0xff5a3a, 0.8));
+    // stools on the customer side, a mirror on each side counter
+    k.use('paint');
+    for (const [sx, sz] of [[lx1 + 0.3, zf - 1.5], [lx1 + 0.3, zf - 2.5], [rx0 - 0.3, zf - 1.9]] as [number, number][]) {
+      k.cyl(sx, sz, y, y + 0.02, 0.16, 0.16, 10, alu, true); k.cyl(sx, sz, y + 0.02, y + 0.44, 0.022, 0.022, 6, alu, false);
+      k.cyl(sx, sz, y + 0.44, y + 0.5, 0.17, 0.17, 12, hex(0x8f1c1a, a + 0.1), true, 0.8);
+    }
+    for (const [mx, mz, ry] of [[(lx0 + lx1) / 2, zf - 1.3, Math.PI / 2], [(rx0 + rx1) / 2, zf - 2.2, -Math.PI / 2]] as [number, number, number][]) k.at({ x: mx, y: y + 0.95, z: mz, ry }, () => {
+      k.use('paint'); k.box(-0.06, 0.06, 0, 0.015, -0.05, 0.05, alu); k.box(-0.008, 0.008, 0.015, 0.1, -0.008, 0.008, alu, 'y-y+');
+      k.at({ y: 0.1, rx: -0.2 }, () => { k.use('paint'); k.box(-0.1, 0.1, 0, 0.26, -0.008, 0, alu); k.use('glass'); k.quad([-0.09, 0.01, 0.002], [0.09, 0.01, 0.002], [0.09, 0.25, 0.002], [-0.09, 0.25, 0.002], hex(0xaec3c8, a)); });
+    });
+  }
+  // recessed downlights in two rows and a ceiling panel light over the aisle
   k.use('glow');
-  k.box(xb - 1.14, xb - 1.06, y + 2.2, y + 2.3, zb + 0.1, zb + 0.18, hex(0xff5a3a, 0.8));
-  k.box((xa + xb) / 2 - 0.2, (xa + xb) / 2 + 1.0, y + 2.78, y + 2.82, zf - 1.5, zf - 1.42, hex(0xf2f4ee, lit ? 1 : 0.5));
-  // stools at the counter
+  for (const lx of [(lx0 + lx1) / 2, (rx0 + rx1) / 2]) for (let i = 0; i < 4; i++) { const lz = zf - 0.7 - i * 0.85; k.quad([lx - 0.07, ceil - 0.012, lz - 0.07], [lx + 0.07, ceil - 0.012, lz - 0.07], [lx + 0.07, ceil - 0.012, lz + 0.07], [lx - 0.07, ceil - 0.012, lz + 0.07], hex(0xfff4dc, on)); }
+  k.box((xa + xb) / 2 - 0.3, (xa + xb) / 2 + 0.3, ceil - 0.03, ceil - 0.012, zf - 2.6, zf - 1.4, hex(0xf4f6f0, on), 'y+');
+}
+
+/**
+ * Shopfront joinery the generic lot leaves out (V7.4): a frame lining the opening, a floor track, and either the
+ * guide channels of the rolled-up shutter (open shop) or the stacked leaves, lock plate and extra rails of the
+ * collapsible gate.
+ */
+function frontDetail(k: Kit, s: LotSpec): void {
+  const ox0 = 0.5, ox1 = s.w - 0.5, oy1 = 2.95, zi = -ARCADE - 0.2, zo = -ARCADE + 0.015, fr = hex(0x4b4f52, 0.7), st = hex(0x2f3336, 0.7);
   k.use('paint');
-  for (const sx of [xa + 2.0, xa + 3.1]) { k.cyl(sx, zf - 0.8, y, y + 0.42, 0.03, 0.03, 6, alu, false); k.cyl(sx, zf - 0.8, y + 0.42, y + 0.48, 0.17, 0.17, 10, hex(0xa8241f, a + 0.15), true); }
+  for (const x of [ox0, ox1 - 0.06]) k.box(x, x + 0.06, KERB, oy1, zi, zo, fr, 'y-');
+  k.box(ox0, ox1, oy1 - 0.05, oy1, zi, zo, fr, 'x+x-');
+  k.box(ox0 + 0.06, ox1 - 0.06, KERB + 0.05, KERB + 0.065, zi + 0.04, zi + 0.11, st, 'x+x-y-');
+  if (s.shop === 'open') {
+    for (const x of [ox0 + 0.06, ox1 - 0.11]) k.box(x, x + 0.05, KERB + 0.05, oy1 - 0.3, zi - 0.03, zi + 0.05, hex(0x70757a, 0.7), 'y-y+');
+  } else if (s.shop === 'grille') {
+    for (const x of [ox0 + 0.06, ox1 - 0.2]) k.box(x, x + 0.14, KERB + 0.06, oy1 - 0.08, zi + 0.045, zi + 0.1, st, 'y-y+');
+    const mx = s.w / 2;
+    k.box(mx - 0.02, mx + 0.02, KERB + 0.06, oy1 - 0.08, zi + 0.05, zi + 0.105, st, 'y-y+');
+    k.box(mx - 0.05, mx + 0.05, 1.08, 1.22, zi + 0.1, zi + 0.12, hex(0x4a4d50, 0.7));
+    for (const y of [0.95, 1.85]) k.box(ox0 + 0.2, ox1 - 0.2, y, y + 0.03, zi + 0.085, zi + 0.1, st, 'x+x-');
+  }
+}
+
+const TREAD = 0.3;
+/** Risers between two lot floors that differ by `drop` metres. */
+const risers = (drop: number): number => (drop > 0.2 ? Math.ceil(drop / 0.18) : 1);
+
+/**
+ * Five-foot-way works of one lot (V7.4). The street falls toward the river and every lot is level, so the floors
+ * step: this builds the flight of steps in the party-wall opening on the uphill side, a block step at the kerb
+ * where the drain ledge stands high above the road, and the soft shade where the floor meets the walls.
+ * `drop`: how far this floor is below the uphill neighbour's; `ledge`: height of the drain ledge above the road
+ * at the downhill end.
+ */
+function walkway(k: Kit, s: LotSpec, west: boolean, drop: number, ledge: number): void {
+  const w = s.w, conc = hex(0x9c998f), ux = west ? 0 : w, dir = west ? 1 : -1, z0 = -(ARCADE - 0.25), z1 = -0.72;
+  if (drop > 0.03) {
+    const n = risers(drop);
+    k.use('concrete');
+    const span = (a: number, b: number, top: number, c: Col) => k.box(Math.min(a, b), Math.max(a, b), KERB - 0.02, top, z0, z1, c, 'y-', 0.82);
+    span(ux - dir * 0.05, ux, KERB + drop - 0.004, shade(conc, 0.85));
+    for (let j = 1; j < n; j++) span(ux + dir * (j - 1) * TREAD, ux + dir * j * TREAD, KERB + drop * (1 - j / n), shade(conc, 0.95 + 0.05 * (j % 2)));
+  }
+  if (ledge > 0.28) {
+    const xa = west ? w * 0.42 : 0.3, xb = west ? w - 0.3 : w * 0.58;
+    k.use('concrete');
+    k.box(xa, xb, -0.75, 0.045 - ledge / 2, 0.78, 0.98, shade(conc, 0.92), 'y-z-', 0.8);
+  }
+  // soft shade at the foot of the shopfront and of both party walls (the baked floor gradient is linear)
+  k.use('contact');
+  const y = KERB + 0.006, v = 0.13, B: Col = [0, 0, 0];
+  k.quad([0.12, y, -ARCADE + 0.6], [w - 0.12, y, -ARCADE + 0.6], [w - 0.12, y, -ARCADE], [0.12, y, -ARCADE], B, [0.5, 0, 0.5, v]);
+  k.poly([[0.12, y, -PIER], [0.55, y, -PIER], [0.55, y, -ARCADE], [0.12, y, -ARCADE]], B, [[0.5, v], [0.5, 0], [0.5, 0], [0.5, v]]);
+  k.poly([[w - 0.55, y, -PIER], [w - 0.12, y, -PIER], [w - 0.12, y, -ARCADE], [w - 0.55, y, -ARCADE]], B, [[0.5, 0], [0.5, v], [0.5, v], [0.5, 0]]);
 }
 
 /** Teal corrugated awning over the upper window ([A], No. 27). */
@@ -553,7 +706,7 @@ function extras(k: Kit, s: LotSpec, signs: SignSource, e: Extra): void {
   if (e.column) column(k, s, signs, e.column);
   if (e.board) tiltBoard(k, s, signs, e.board);
   if (e.acs) condensers(k, s, e.acs);
-  if (e.goldsmith) goldsmith(k, s, e.goldsmith === 'lit');
+  if (e.fit) { fitout(k, s, e.fit); frontDetail(k, s); }
   if (e.hood) hood(k, s);
   if (e.antenna) antenna(k, s);
   if (e.rustic) rustic(k, s);
@@ -618,7 +771,7 @@ export function buildChinaStreet(kit: Kit, h: HeightFn, signs: SignSource, photo
     const ry = row.west ? ryStreet : ryStreet + Math.PI;
     const specs = row.lots.map((l, i) => {
       // square-headed walk-throughs on the west row ([A]); the east row is not visible enough to tell and keeps the mix
-      const s: LotSpec = { ...autoLot(1000 + l.no * 37, w, row.depth(i)), plants: 0, bin: false, ...(row.west ? { sideArch: false } : {}), ...l.spec, basis: l.basis };
+      const s: LotSpec = { ...autoLot(1000 + l.no * 37, w, row.depth(i)), plants: 0, bin: false, soffit: 0.58, ...(row.west ? { sideArch: false } : {}), ...l.spec, basis: l.basis };
       if (l.spec.trim === undefined) s.trim = mix(s.wall, hex(0xf4f1ea), 0.6);
       return s;
     });
@@ -630,15 +783,25 @@ export function buildChinaStreet(kit: Kit, h: HeightFn, signs: SignSource, photo
       s.exposedL = row.west ? lo : hi; s.exposedR = row.west ? hi : lo;
     });
     let minEave = Infinity; const l0 = row.west ? 0 : 100;
+    // Each lot is level, just proud of the road at mid-lot (V7.3), and (V7.4) never lower than the terrain under its
+    // own five-foot way: on the steepest lots the uphill end used to sink below the ground, which showed through the floor.
+    const bases = specs.map((_, i) => {
+      let top = -Infinity;
+      for (const fs of [0, 0.5, 1]) for (const d of [-0.24, ARCADE]) { const [tx, tz] = S.toWorld(row.t0 + (i + fs) * w, side * (S.half + d)); top = Math.max(top, h(tx, tz)); }
+      return Math.max(ground(row.t0 + i * w + w / 2) + 0.13, top - 0.14 + 0.03);
+    });
     specs.forEach((s, i) => {
       const s0 = row.t0 + i * w;                       // station of the lot's south edge
       const sx = row.west ? s0 : s0 + w;                // station of local x = 0
       const [x, z] = S.toWorld(sx, side * S.half);
       // The street falls about 5 m toward the river (terrain model): each lot is level and steps down from its
       // neighbour, standing just proud of the road at its uphill end.
-      const base = ground(s0 + w / 2) + 0.13;
+      const base = bases[i];
+      // V7.4: stairs up to the uphill neighbour's floor, and a block step where the drain ledge is high above the road
+      const drop = i > 0 ? bases[i - 1] - base : 0, ledge = base + 0.045 - (ground(s0 + w) + 0.03);
       kit.at({ x, y: base, z, ry }, () => {
         buildLot(kit, s, signs);
+        walkway(kit, s, row.west, drop, ledge);
         buildApron(kit, s.w, s.seed);
         // footing down to the falling road
         kit.use('concrete');
@@ -651,8 +814,18 @@ export function buildChinaStreet(kit: Kit, h: HeightFn, signs: SignSource, photo
       { const q = (st: number): V3 => { const [cx, cz] = S.toWorld(st, side * (S.half - 0.16)); return [cx, base + Math.min(eaveY(s), F1 + UP) - 0.8, cz]; }; cables(kit, q(s0), q(s0 + w), 3, l0 + i); }
       const c = (st: number, o: number) => S.toWorld(st, side * (S.half + o));
       floors.push({ ring: [...c(s0, -0.24), ...c(s0 + w, -0.24), ...c(s0 + w, ARCADE), ...c(s0, ARCADE)], h: base + 0.14 });
-      // piers stand on the lot boundaries
-      for (const st of i === 0 ? [s0, s0 + w] : [s0 + w]) walls.push({ ring: [...c(st - PIER / 2, 0), ...c(st + PIER / 2, 0), ...c(st + PIER / 2, PIER), ...c(st - PIER / 2, PIER)], top: base + 3 });
+      // drain ledge in front of the kerb, the kerb block step and the stair treads (all stood on)
+      floors.push({ ring: [...c(s0, -0.78), ...c(s0 + w, -0.78), ...c(s0 + w, -0.24), ...c(s0, -0.24)], h: base + 0.045 });
+      if (ledge > 0.28) floors.push({ ring: [...c(s0 + w * 0.42, -0.98), ...c(s0 + w - 0.3, -0.98), ...c(s0 + w - 0.3, -0.78), ...c(s0 + w * 0.42, -0.78)], h: base + 0.045 - ledge / 2 });
+      if (drop > 0.2) { const n = risers(drop); for (let j = 1; j < n; j++) floors.push({ ring: [...c(s0 + (j - 1) * TREAD, 0.67), ...c(s0 + j * TREAD, 0.67), ...c(s0 + j * TREAD, ARCADE - 0.2), ...c(s0 + (j - 1) * TREAD, ARCADE - 0.2)], h: base + 0.14 + drop * (1 - j / n) }); }
+      // shopfront line (the mapped block outline behind it is not exactly parallel on the east row)
+      walls.push({ ring: [...c(s0, ARCADE), ...c(s0 + w, ARCADE), ...c(s0 + w, ARCADE + 0.5), ...c(s0, ARCADE + 0.5)], top: base + 3 });
+      // piers stand on the lot boundaries; behind each the party wall runs back to the shopfront, pierced by the walk-through
+      for (const st of i === 0 ? [s0, s0 + w] : [s0 + w]) {
+        walls.push({ ring: [...c(st - PIER / 2, 0), ...c(st + PIER / 2, 0), ...c(st + PIER / 2, PIER), ...c(st - PIER / 2, PIER)], top: base + 3 });
+        walls.push({ ring: [...c(st - 0.12, PIER), ...c(st + 0.12, PIER), ...c(st + 0.12, 0.72), ...c(st - 0.12, 0.72)], top: base + 3 });
+        walls.push({ ring: [...c(st - 0.12, ARCADE - 0.25), ...c(st + 0.12, ARCADE - 0.25), ...c(st + 0.12, ARCADE), ...c(st - 0.12, ARCADE)], top: base + 3 });
+      }
     });
     void minEave; void n;
   }

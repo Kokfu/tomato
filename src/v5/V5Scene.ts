@@ -146,8 +146,8 @@ function bufGeometry(b: Buf): THREE.BufferGeometry {
   return g;
 }
 
-const NO_SHADOW = new Set<string>(['poly', 'glow', 'glass', 'wire', 'contact']);
-const NO_RECEIVE = new Set<string>(['poly', 'glow', 'wire', 'contact']);
+const NO_SHADOW = new Set<string>(['poly', 'glow', 'glass', 'wire', 'contact', 'pane']);
+const NO_RECEIVE = new Set<string>(['poly', 'glow', 'wire', 'contact', 'pane']);
 /** Trade words for hanging signboards, by mapped category (a description of the trade, not a claimed shop name). */
 const TRADE: Record<string, string> = { jewelry: '金铺', watches: '钟表', restaurant: '饭店', cafe: '茶室', convenience: '便利店' };
 const SIGN_STYLES: [string, string][] = [['#f6efe0', '#8c1c15'], ['#f3d98a', '#1f3f6a'], ['#ffffff', '#1f6a45'], ['#f6e7b0', '#3a2a1e'], ['#b3261e', '#f4efe2'], ['#f2c53d', '#7a1612']];
@@ -362,7 +362,7 @@ export class V5Scene {
       if (!buf.idx.length) continue;
       const mesh = new THREE.Mesh(bufGeometry(buf), this.materials.byName[name as MaterialName]);
       mesh.castShadow = !NO_SHADOW.has(name); mesh.receiveShadow = !NO_RECEIVE.has(name);
-      mesh.renderOrder = name === 'poly' ? 5 : 0;
+      mesh.renderOrder = name === 'poly' ? 5 : name === 'pane' ? 6 : 0;
       mesh.matrixAutoUpdate = false;
       this.group.add(mesh);
       tris += buf.idx.length / 3; calls++; gbytes += buf.count * 44 + buf.idx.length * (buf.count > 65535 ? 4 : 2);

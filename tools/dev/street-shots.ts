@@ -1,5 +1,5 @@
 // Fixed-camera captures of the Jalan China test section (the V7 visual quality gate).
-// Usage: node tools/dev/street-shots.ts <outDir> [--url=http://localhost:3000/] [--size=1280x960] [--mode=c] [--quality=high] [--prefix=after-] [--stats]
+// Usage: node tools/dev/street-shots.ts <outDir> [--url=http://localhost:3000/] [--size=1280x960] [--mode=c] [--quality=high] [--prefix=after-] [--views=file.json] [--stats]
 // Cameras are OP fly-mode poses (world metres, eye height above local ground, yaw, pitch, vertical FOV).
 // Without --mode the app's default rendering is captured (the "before" state).
 import { chromium } from '@playwright/test';
@@ -13,7 +13,8 @@ const mode = opt('mode', '');
 const quality = opt('quality', 'high');
 const prefix = opt('prefix', '');
 const mobile = rest.includes('--mobile');
-const views: { name: string; x: number; z: number; eye: number; yaw: number; pitch: number; fov: number }[] = JSON.parse(readFileSync(new URL('./street-views.json', import.meta.url), 'utf8'));
+// `peds` (only with the pedestrian prototype switched on, ?peds=on): [pedestrian index, station in metres, walking, heading north] held in place for the capture.
+const views: { name: string; x: number; z: number; eye: number; yaw: number; pitch: number; fov: number; peds?: [number, number, boolean, boolean][] }[] = JSON.parse(readFileSync(opt('views', '') || new URL('./street-views.json', import.meta.url), 'utf8'));
 mkdirSync(outDir, { recursive: true });
 
 const browser = await chromium.launch({ channel: 'msedge', args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
@@ -48,6 +49,10 @@ for (const v of views) {
     else Object.defineProperty(k.camera, 'fov', { configurable: true, get: () => v.fov, set: () => {} });
     k.camera.updateProjectionMatrix();
     if (first && mode && k.v5) await k.v5.setMode(mode);
+    if (k.v5?.pedsEnabled && k.v5.mode === 'c' && v.peds) {
+      for (let i = 0; i < 100 && !k.v5.peds?.active; i++) await new Promise((r) => setTimeout(r, 100));
+      for (const [i, s, walking, north] of v.peds) k.v5.peds.list[i]?.place(s, walking, north, k.v5.peds.host);
+    }
   }, { v, mode, first });
   first = false;
   await page.waitForFunction(() => (window as any).__k3d.world.chunks.progress() >= 0.999, null, { timeout: 90000 }).catch(() => errors.push('chunk load timeout'));

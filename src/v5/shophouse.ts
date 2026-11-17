@@ -67,6 +67,10 @@ export interface LotSpec {
   crest?: boolean;
   /** Shop interior without the generic shelving and goods: the caller fits it out. */
   bare?: boolean;
+  /** Baked light level of the shop interior (default 0.34 dim, 0.75 behind glazing). */
+  interiorTone?: number;
+  /** Baked light level of the five-foot-way ceiling (default 0.42). */
+  soffit?: number;
   /** 'band' windows: this many rows of small panes instead of two large ones. */
   panes?: number;
   /** Where this lot's appearance comes from: 'typical' (rule) or a reference note. */
@@ -197,7 +201,7 @@ function shopfront(k: Kit, s: LotSpec, signs: SignSource | null): void {
 
 /** Dim shop interior behind an opening x0..x1 at z = zf: floor, walls, ceiling, shelves, a lit tube. */
 function interior(k: Kit, s: LotSpec, x0: number, x1: number, top: number, zf: number, bright = false): void {
-  const zb = zf - 4.2, a = bright ? 0.75 : 0.34;
+  const zb = zf - 4.2, a = s.interiorTone ?? (bright ? 0.75 : 0.34);
   const wall = shade(mix(s.wall, hex(0xd8d2c4), 0.6), a), fl = shade(s.floor, a * 0.9);
   const xa = x0 - 0.15, xb = x1 + 0.15, ceil = Math.max(top, 2.9);
   k.use('plaster');
@@ -238,9 +242,9 @@ function arcade(k: Kit, s: LotSpec): void {
   k.quad([0, KERB, 0], [w, KERB, 0], [w, KERB, -ARCADE], [0, KERB, -ARCADE], [f0, f0, f1, f1]);
   // ceiling boards on joists
   k.use('timber');
-  const cb = hex(0x8d8474, 0.42);
+  const st = s.soffit ?? 0.42, cb = hex(0x8d8474, st);
   k.quad([0, SOFFIT + 0.16, -ARCADE], [w, SOFFIT + 0.16, -ARCADE], [w, SOFFIT + 0.16, -PIER], [0, SOFFIT + 0.16, -PIER], [shade(cb, 0.8), shade(cb, 0.8), cb, cb]);
-  if (k.detail) for (let x = 0.3; x < w - 0.1; x += 0.52) k.box(x - 0.04, x + 0.04, SOFFIT, SOFFIT + 0.16, -ARCADE, -PIER, hex(0x6f6557, 0.5), 'y+z+z-');
+  if (k.detail) for (let x = 0.3; x < w - 0.1; x += 0.52) k.box(x - 0.04, x + 0.04, SOFFIT, SOFFIT + 0.16, -ARCADE, -PIER, hex(0x6f6557, (0.5 * st) / 0.42), 'y+z+z-');
   // bressummer over the piers
   k.use('plaster');
   k.box(0, w, F1 - 0.5, F1, -PIER, 0, s.wall, 'x+x-y+');

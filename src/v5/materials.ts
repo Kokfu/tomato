@@ -13,7 +13,7 @@ import * as THREE from 'three';
 export const MATERIAL_NAMES = [
   'plaster', 'concrete', 'tile', 'glazed', 'shutter', 'louvre', 'timber', 'paint', 'asphalt', 'paving', 'stone',
   'zinc', 'glass', 'fabric', 'foliage', 'glow', 'gold', 'atlas', 'sign', 'poly', 'wire', 'carpaint', 'contact',
-  'asphaltPhoto',
+  'asphaltPhoto', 'pane',
 ] as const;
 export type MaterialName = (typeof MATERIAL_NAMES)[number];
 
@@ -390,6 +390,8 @@ export function createMaterials(opts: { low?: boolean; atlas?: THREE.Texture | n
     carpaint: { surface: 'carpaint', env: 1.2 },
     contact: { surface: 'none' },
     asphaltPhoto: { surface: 'asphaltPhoto', env: 0.6 },
+    // Clear glass of display cases (V7.4): see-through, with a faint reflection.
+    pane: { surface: 'none', rough: 0.05, env: 0.4, double: true, transparent: 0.2 },
   };
   const byName = {} as Record<MaterialName, THREE.Material>;
   for (const n of MATERIAL_NAMES) byName[n] = n === 'contact' ? contactMaterial() : make(specs[n], uniforms, low, n);

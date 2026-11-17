@@ -25,7 +25,7 @@ interface ChunkCollision {
   decks: Float32Array;
   pdecks: { ring: Float32Array; h: number; minX: number; maxX: number; minZ: number; maxZ: number }[];
   /** Raised paving (district five-foot ways): stood on like a deck, but it is ordinary ground. */
-  floors: { ring: Float32Array; h: number; minX: number; maxX: number; minZ: number; maxZ: number }[];
+  floors: { ring: Float32Array; h: number; minX: number; maxX: number; minZ: number; maxZ: number; of?: number }[];
   /** 5 floats per mapped building passage segment: ax, az, bx, bz, halfWidth. */
   pass: Float32Array;
 }
@@ -117,7 +117,7 @@ export class CollisionWorld {
       if (isDistrictRow(b, ox, oz)) {
         for (const fl of frontFloors(b.id, toWorld(b.r[0], ox, oz), b.a!.f, (x, z) => this.height.sample(x, z))) {
           const ring = Float32Array.from(fl.ring);
-          floors.push({ ring, h: fl.h, ...bbox(ring) });
+          floors.push({ ring, h: fl.h, ...bbox(ring), of: b.id });
         }
         for (const o of frontObstacles(b.id, toWorld(b.r[0], ox, oz), b.a!.f)) {
           const ring = Float32Array.from(o.ring);
@@ -213,6 +213,9 @@ export class CollisionWorld {
     }
     for (const p of c.floors) {
       if (x < p.minX || x > p.maxX || z < p.minZ || z > p.maxZ) continue;
+      // Five-foot way of a block that a V5 section currently draws (and floors) itself: its lots differ, so this
+      // one would be an invisible platform above or below the visible floor.
+      if (p.of !== undefined && v5Exclusion.active && v5Exclusion.ids.has(p.of)) continue;
       if (p.h <= lim && p.h > h && pointInRing(x, z, p.ring)) h = p.h;
     }
     for (const p of c.pdecks) {
