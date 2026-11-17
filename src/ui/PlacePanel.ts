@@ -33,6 +33,9 @@ export class PlacePanel {
   private list: Place[] = [];
   open = false;
 
+  /** True while a shop is within reach (its "Inspect Shop" prompt is up, unless the car takes E). */
+  get nearShop(): boolean { return this.list.length > 0 && !this.open; }
+
   constructor(host: PlacePanelHost) {
     this.host = host;
     const q = new URLSearchParams(location.search);
@@ -60,7 +63,7 @@ export class PlacePanel {
     const p = $('place-prompt');
     const first = this.list[0];
     p.classList.toggle('hidden', (!first && !this.admin) || this.open);
-    if (first) p.innerHTML = `<kbd>E</kbd> ${esc(first.name)}${this.list.length > 1 ? ` <span class="more">+${this.list.length - 1}</span>` : ''}`;
+    if (first) p.innerHTML = `<kbd>E</kbd>Inspect Shop <span class="more">${esc(first.name)}${this.list.length > 1 ? ` +${this.list.length - 1}` : ''}</span>`;
     else if (this.admin) p.innerHTML = '<kbd>E</kbd> Add a place here';
   }
 

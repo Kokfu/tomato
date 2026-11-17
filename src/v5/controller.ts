@@ -4,7 +4,8 @@
 //   B   - V5 hybrid high-fidelity rendering
 // without moving the player or the camera, at the same time of day and render resolution.
 //
-// Keys 1 / 2 / 3, the bar at the top of the screen, or ?render=v4|a|b in the URL.
+// Keys 1-4, the bar in Settings > Developer settings, or ?render=v4|a|b|c in the URL. Since V8 the default
+// (main.ts) is 'c', V7 Jalan China; the others are kept for comparison and screenshot testing.
 import * as THREE from 'three';
 import type { WorldManager } from '../world/WorldManager.ts';
 import { V5Scene } from './V5Scene.ts';
@@ -68,7 +69,8 @@ export class V5Controller {
   /** False while another mode owns the number keys (OP fly mode uses 1-3 for speed). */
   keysEnabled: () => boolean = () => true;
 
-  constructor(world: WorldManager, renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, tier: 'low' | 'medium' | 'high') {
+  /** `barHost`: where the comparison buttons go (the Developer settings panel); without it they float at the top of the screen. */
+  constructor(world: WorldManager, renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, tier: 'low' | 'medium' | 'high', barHost?: HTMLElement) {
     const low = tier === 'low';
     this.world = world; this.renderer = renderer;
     this.scene = new V5Scene({
@@ -98,7 +100,9 @@ export class V5Controller {
     css.textContent = `#v5bar{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:30;display:flex;gap:6px;align-items:center;padding:6px 8px;border-radius:12px;background:rgba(16,22,30,.78);backdrop-filter:blur(8px);font:600 12px/1 system-ui,sans-serif;color:#dfe6ee;box-shadow:0 2px 12px rgba(0,0,0,.3)}
       #v5bar button{all:unset;cursor:pointer;padding:7px 11px;border-radius:8px;color:#b9c4d0}#v5bar button:hover{background:rgba(255,255,255,.08)}
       #v5bar button.on{background:#f2c14e;color:#1a1408}#v5bar span{padding:0 6px;font-weight:500;color:#9fb0c0;white-space:nowrap}
-      @media (max-width:700px), (pointer:coarse){#v5bar{top:42%;left:auto;right:6px;transform:none;flex-direction:column;gap:3px;padding:4px;font-size:10px}#v5bar button{padding:6px 7px}#v5bar span{display:none}}`;
+      @media (max-width:700px), (pointer:coarse){#v5bar{top:42%;left:auto;right:6px;transform:none;flex-direction:column;gap:3px;padding:4px;font-size:10px}#v5bar button{padding:6px 7px}#v5bar span{display:none}}
+      #v5bar.embedded{position:static;transform:none;flex-direction:row;flex-wrap:wrap;gap:6px;padding:0;margin:4px 0 2px;background:none;backdrop-filter:none;box-shadow:none;font-size:12px}
+      #v5bar.embedded button{padding:7px 10px;border:1px solid rgba(255,255,255,.14)}#v5bar.embedded span{display:block;flex-basis:100%;padding:2px 0 0;font-size:11px}`;
     document.head.appendChild(css);
     this.bar = document.createElement('div');
     this.bar.id = 'v5bar';
@@ -110,7 +114,7 @@ export class V5Controller {
     }
     this.info = document.createElement('span');
     this.bar.appendChild(this.info);
-    document.body.appendChild(this.bar);
+    if (barHost) { this.bar.classList.add('embedded'); barHost.replaceChildren(this.bar); } else document.body.appendChild(this.bar);
     window.addEventListener('keydown', (e) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const m = ({ Digit1: 'v4', Digit2: 'a', Digit3: 'b', Digit4: 'c' } as Record<string, RenderMode>)[e.code];

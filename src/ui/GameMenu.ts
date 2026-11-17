@@ -1,5 +1,6 @@
 import { QUALITY, saveQuality } from './GraphicsSettings.ts';
 import type { QualityName } from './GraphicsSettings.ts';
+import { buildLabel } from '../version.ts';
 
 const $ = (id: string) => document.getElementById(id)!;
 
@@ -8,6 +9,8 @@ export interface MenuCallbacks {
   onResume: () => void;
   onPause: () => void;
   onReset: () => void;
+  /** Pause menu "Drive Car": take the character to the car (the menu stays open until it is there). */
+  onDriveCar?: () => void;
   onQuality: (q: QualityName) => void;
   onAdaptive: (on: boolean) => void;
   onSensitivity: (v: number) => void;
@@ -33,6 +36,8 @@ export class GameMenu {
     });
     $('btn-pause').addEventListener('click', () => this.pause());
     $('pause-resume').addEventListener('click', () => this.resume());
+    $('pause-drive').addEventListener('click', () => cb.onDriveCar?.());
+    $('build-version').textContent = `Version: ${buildLabel()}`;
     $('pause-reset').addEventListener('click', () => {
       cb.onReset();
       this.resume();
@@ -92,6 +97,14 @@ export class GameMenu {
     $('settings').classList.add('hidden');
     $('pause').classList.remove('hidden');
     this.cb.onPause();
+  }
+
+  /** State of the pause menu's Drive Car button (busy while the car's surroundings load). */
+  setDriveCar(text: string, enabled: boolean, title = ''): void {
+    const b = $('pause-drive') as HTMLButtonElement;
+    if (b.textContent !== text) b.textContent = text;
+    b.disabled = !enabled;
+    b.title = title;
   }
 
   resume(): void {

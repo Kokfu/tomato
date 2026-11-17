@@ -41,9 +41,8 @@ export class Driving {
   private gearEl = document.getElementById('speedo-gear')!;
   private noteEl = document.getElementById('speedo-note')!;
   private prompt = document.getElementById('car-prompt')!;
-  private help = document.getElementById('help')!;
-  private walkHelp: string;
-  private near = false;
+  /** The E prompt shown for the car: "Enter Car" on foot within reach, "Exit Car" at the wheel when nearly stopped. */
+  private promptKind: 'enter' | 'exit' | null = null;
   private shownKmh = -1;
   private shownGear = '';
   private shownNote = '';
@@ -70,8 +69,18 @@ export class Driving {
     this.model = new CarModel();
     this.model.root.visible = false;
     this.camera = new ChaseCamera(camera, c);
-    this.walkHelp = this.help.innerHTML;
   }
+
+  /** Where the car is, or will stand once its area has loaded. */
+  get whereabouts(): { x: number; z: number } {
+    return this.placed ? { x: this.car.x, z: this.car.z } : { x: CAR_START.x, z: CAR_START.z };
+  }
+
+  /** True on foot within reach of the car (the "Enter Car" prompt is up; E gets in, ahead of shop inspection). */
+  get near(): boolean { return this.promptKind === 'enter'; }
+
+  /** True at the wheel when the car is slow enough to get out. */
+  get canExit(): boolean { return this.active && this.car.speed <= EXIT_SPEED; }
 
   /** Stand the car at its starting place as soon as the ground there is loaded. Cheap to call every frame. */
   tryPlace(): void {
@@ -118,10 +127,9 @@ export class Driving {
     player.visual.root.visible = false;
     this.camera.snap(this.car);
     this.model.marker.visible = false;
-    this.setNear(false);
+    this.setPrompt(null);
     this.hud.classList.add('driving');
     this.speedo.classList.remove('hidden');
-    this.help.innerHTML = '<b>W</b> accelerate &middot; <b>S</b> brake / reverse &middot; <b>A D</b> steer &middot; <b>Space</b> handbrake &middot; <b>Mouse</b> look &middot; <b>Wheel</b> zoom &middot; <b>R</b> back to road &middot; <b>E</b> get out &middot; <b>P</b> OP mode';
     this.refreshHud(true);
     return true;
   }
@@ -150,8 +158,19 @@ export class Driving {
     this.model.marker.visible = true;
     this.hud.classList.remove('driving');
     this.speedo.classList.add('hidden');
-    this.help.innerHTML = this.walkHelp;
+    this.setPrompt(null);
     return true;
+  }
+
+  /**
+   * Pause menu "Drive Car": a free place for the walking character beside the parked car (the same search as
+   * getting out), or null while the car or the ground round it is not loaded, or when there is no room.
+   */
+  standSpot(): [number, number] | null {
+    if (!this.placed || this.active) return null;
+    const c = this.world.collision;
+    if (!c.isLoaded(this.car.x, this.car.z) || !this.world.chunks.isReady(this.car.x, this.car.z)) return null;
+    return this.exitSpot();
   }
 
   /** A free standing place beside the car: right door first, then left, then behind and in front. */
@@ -218,19 +237,29 @@ export class Driving {
     const far = Math.hypot(p.x - this.car.x, p.z - this.car.z);
     this.model.root.visible = far < this.world.viewDistance;
     this.model.marker.visible = far < 260;
-    this.setNear(promptAllowed && this.canEnter(player));
+    this.setPrompt(promptAllowed && this.canEnter(player) ? 'enter' : null);
   }
 
-  private setNear(near: boolean): void {
-    if (near === this.near) return;
-    this.near = near;
-    this.prompt.classList.toggle('hidden', !near);
-    this.hud.classList.toggle('near-car', near);
+  /** At the wheel, once per frame: "Exit Car" while the car is nearly stopped. */
+  drivingPrompt(promptAllowed: boolean): void {
+    this.setPrompt(promptAllowed && this.canExit ? 'exit' : null);
+  }
+
+  private setPrompt(kind: 'enter' | 'exit' | null): void {
+    if (kind === this.promptKind) return;
+    this.promptKind = kind;
+    this.prompt.classList.toggle('hidden', !kind);
+    if (kind) {
+      const text = kind === 'enter' ? 'Enter Car' : 'Exit Car';
+      this.prompt.innerHTML = `<kbd>E</kbd>${text}`;
+      this.prompt.setAttribute('aria-label', text);
+    }
+    this.hud.classList.toggle('near-car', kind === 'enter');
   }
 
   /** Hide the prompt (menus, map, OP mode). */
   hidePrompt(): void {
-    this.setNear(false);
+    this.setPrompt(null);
   }
 
   /** Speedometer: km/h, gear and surface note. Only touches the DOM when a value changes. */

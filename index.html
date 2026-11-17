@@ -27,11 +27,11 @@
         <button id="btn-settings" class="icon-btn" title="Settings" aria-label="Settings">&#x2699;</button>
         <button id="btn-pause" class="icon-btn" title="Pause (Esc)" aria-label="Pause">&#x23F8;</button>
       </div>
-      <div id="help" class="panel">
-        <b>WASD</b> move &middot; <b>Shift</b> run &middot; <b>Space</b> jump &middot; <b>Mouse</b> look &middot; <b>Wheel</b> zoom &middot; <b>E</b> inspect shop &middot; <b>M</b> map &middot; <b>V</b> view &middot; <b>Esc</b> pause
+      <div id="help" class="panel" data-context="walk">
+        <b>WASD</b> move &middot; <b>Shift</b> run &middot; <b>Space</b> jump &middot; <b>Mouse</b> look &middot; <b>Wheel</b> zoom &middot; <b>M</b> map &middot; <b>V</b> view &middot; <b>P</b> OP mode &middot; <b>Esc</b> pause
       </div>
-      <button id="place-prompt" class="panel hidden" aria-label="Inspect place"></button>
-      <button id="car-prompt" class="panel hidden" aria-label="Get in the car"><kbd>E</kbd>Drive</button>
+      <button id="place-prompt" class="panel hidden" aria-label="Inspect shop"></button>
+      <button id="car-prompt" class="panel hidden" aria-label="Enter car"><kbd>E</kbd>Enter Car</button>
       <div id="speedo" class="panel hidden" aria-label="Speedometer">
         <div id="speedo-gear" data-gear="N">N</div>
         <div id="speedo-kmh">0</div>
@@ -70,6 +70,13 @@
         <label class="row"><input type="checkbox" id="opt-stats" /> Show performance stats</label>
         <label>Look sensitivity <input type="range" id="opt-sens" min="0.5" max="2" step="0.1" value="1" /></label>
         <p class="note">Quality settings change rendering only. Geography and collision are identical at every level.</p>
+        <details id="dev-settings">
+          <summary>Developer settings</summary>
+          <label>Renderer comparison <span class="note">(keys 1&ndash;4)</span></label>
+          <div id="dev-render"><span class="note">Loading&hellip;</span></div>
+          <p class="note">For development only. The default rendering is V7 Jalan China: the detailed street section where it exists and the normal geographic rendering everywhere else.</p>
+        </details>
+        <p id="build-version" class="note">Version</p>
         <button id="settings-close" class="primary">Done</button>
       </div>
     </div>
@@ -103,6 +110,7 @@
       <div class="modal-card">
         <h2>Paused</h2>
         <button id="pause-resume" class="primary">Resume</button>
+        <button id="pause-drive">Drive Car</button>
         <button id="pause-reset">Return to Waterfront</button>
         <button id="pause-settings">Settings</button>
         <p class="note">Map data &copy; OpenStreetMap contributors (ODbL). Where OpenStreetMap has no building, machine-detected footprints from Overture Maps Foundation (ODbL) are used: Microsoft Global ML Building Footprints and Google Open Buildings (CC BY 4.0); they are drawn plain grey and are less accurate. Elevation: Copernicus DEM GLO-30. Building heights are estimated unless tagged in the source.</p>

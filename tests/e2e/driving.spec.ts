@@ -15,8 +15,14 @@ const BLOCK_LOOP: [number, number][] = [
 ];
 
 const k3d = <T>(page: Page, fn: (k: any) => T): Promise<T> => page.evaluate(`(${fn.toString()})(window.__k3d)`) as Promise<T>;
+/**
+ * These physics tests were written against the V4 street geometry (straight runs along the mapped centre lines). Since
+ * the V8 UI cleanup the game starts in V7 Jalan China, whose parked rows stand on Jalan China's mapped centre line, so
+ * they pin ?render=v4. The V7 lane test below switches to 'c' itself; tests/e2e/ui.spec.ts drives in the default.
+ */
 const ready = async (page: Page) => {
-  await start(page);
+  await page.goto('./?render=v4');
+  await start(page, { navigate: false });
   await page.waitForFunction(() => (window as any).__k3d.driving.placed, null, { timeout: 60_000 });
   await page.evaluate(() => (window as any).__k3d.setSimulatedDt(1 / 60));
 };
@@ -82,15 +88,18 @@ test.describe('V8 driving prototype', () => {
     await page.evaluate(() => (window as any).__k3d.setSimulatedDt(1 / 60));
     await frames(page, 3);
     await expect(page.locator('#car-prompt')).toBeVisible();
-    await expect(page.locator('#car-prompt')).toContainText('Drive');
+    await expect(page.locator('#car-prompt')).toContainText('Enter Car');
+    await expect(page.locator('#help')).toContainText('enter car');
 
     // E: in the car.
     await page.keyboard.press('KeyE');
     let s = await carState(page);
     expect(s.active).toBe(true);
     await expect(page.locator('#speedo')).toBeVisible();
-    await expect(page.locator('#car-prompt')).toBeHidden();
+    // Standing still at the wheel: E gets out (contextual prompt); the driving controls are shown.
+    await expect(page.locator('#car-prompt')).toContainText('Exit Car');
     await expect(page.locator('#help')).toContainText('handbrake');
+    await expect(page.locator('#help')).toContainText('exit car');
     expect(await k3d(page, (k) => k.player.visual.root.visible)).toBe(false);
     expect(await k3d(page, (k) => k.placePanel && document.getElementById('place-panel')!.classList.contains('hidden'))).toBe(true);
 
@@ -103,6 +112,9 @@ test.describe('V8 driving prototype', () => {
     await frames(page, 20); // the HUD refreshes four times a second
     expect(Number(await page.locator('#speedo-kmh').textContent())).toBeGreaterThan(15);
     await expect(page.locator('#speedo-gear')).toHaveText('D');
+    // Moving: no "Exit Car" prompt.
+    await expect(page.locator('#car-prompt')).toBeHidden();
+    await expect(page.locator('#help')).not.toContainText('exit car');
     // The character rides along: the map, the location read-out and the streaming follow the car.
     expect(await k3d(page, (k) => Math.hypot(k.player.position.x - k.driving.car.x, k.player.position.z - k.driving.car.z))).toBeLessThan(0.5);
     expect(await k3d(page, (k) => k.world.chunks.nearestRoadName(k.player.position.x, k.player.position.z))).toBe('Jalan China');

@@ -1,9 +1,25 @@
 import { defineConfig, loadEnv } from 'vite';
+import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+
+/** What is actually being built: the release (from the last commit's "Vn:" prefix), the commit, uncommitted changes and the date. */
+function buildInfo(command: string) {
+  const git = (args: string) => { try { return execSync(`git ${args}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return ''; } };
+  const subject = git('log -1 --format=%s');
+  return {
+    release: /^(V\d+(?:\.\d+)*)\b/.exec(subject)?.[1] ?? '',
+    package: JSON.parse(readFileSync('package.json', 'utf8')).version as string,
+    commit: git('rev-parse --short HEAD'),
+    modified: git('status --porcelain --untracked-files=no') !== '',
+    date: new Date().toISOString().slice(0, 10),
+    dev: command === 'serve',
+  };
+}
 
 // Relative base so the static build can be hosted from any sub-path (e.g. GitHub Pages).
 // Host/port/public-hostname come from .env (see .env.example) so the same config serves
 // localhost, the LAN and the public DuckDNS name (router forwards external :3000 -> this machine :3000).
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const host = env.HOST || '0.0.0.0'; // all interfaces, so forwarded traffic is accepted
   const port = Number(env.PORT) || 3000;
@@ -20,6 +36,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: './',
+    define: { __K3D_BUILD__: JSON.stringify(buildInfo(command)) },
     server: {
       ...common,
       // HMR websocket goes back through the same public host:port when opened remotely.

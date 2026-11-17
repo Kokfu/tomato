@@ -245,7 +245,8 @@ export class FlyMode {
     const u = new URL(location.href);
     u.search = '';
     u.searchParams.set('view', [v.x, v.y, v.z, v.yaw, v.pitch, v.fov].join(','));
-    if (v.mode && v.mode !== 'v4') u.searchParams.set('render', v.mode);
+    // Always named: since V8 the default rendering is 'c', so a V4 view must say so to reopen as it was.
+    if (v.mode) u.searchParams.set('render', v.mode);
     return u.toString();
   }
 

@@ -21,6 +21,12 @@ import { ReferencePanel } from './ui/ReferencePanel.ts';
 import STREET_VIEWS from '../tools/dev/street-views.json';
 import type { V5Controller, RenderMode } from './v5/controller.ts';
 import { Driving } from './vehicle/Driving.ts';
+import { ControlsHelp } from './ui/ControlsHelp.ts';
+import type { ControlsContext } from './ui/ControlsHelp.ts';
+
+/** Rendering at start: V7 Jalan China (its detailed section, the normal geographic rendering elsewhere). The legacy
+ *  comparison modes stay available in Settings > Developer settings, by keys 1-4 and by ?render=v4|a|b|c. */
+const DEFAULT_RENDER_MODE: RenderMode = 'c';
 
 async function boot(): Promise<void> {
   const canvas = document.getElementById('scene') as HTMLCanvasElement;
@@ -70,6 +76,11 @@ async function boot(): Promise<void> {
         started = true;
         steps.unlock();
         syncInput();
+        // The default rendering is built behind the start screen; its street ambience waits for this first click.
+        if (v5) {
+          v5.ambience.enabled = steps.enabled;
+          if (steps.enabled && v5.mode !== 'v4') v5.ambience.start();
+        }
       },
       onTimeOfDay: (t) => {
         const m = v5?.mode ?? 'v4';
@@ -81,14 +92,17 @@ async function boot(): Promise<void> {
       },
       onSound: (on) => { steps.enabled = on; v5?.ambience.setEnabled(on); if (on && v5 && v5.mode !== 'v4') v5.ambience.start(); },
       onResume: () => {
+        endCarTrip(); // leaving the pause menu cancels a "Drive Car" that is still loading
         paused = false;
         syncInput();
       },
       onPause: () => {
         paused = true;
         syncInput();
+        syncDriveButton();
       },
-      onReset: () => resetLocation(),
+      onReset: () => { endCarTrip(); resetLocation(); },
+      onDriveCar: () => driveCar(),
       onQuality: (q) => {
         qualityName = q;
         quality = QUALITY[q];
@@ -127,7 +141,8 @@ async function boot(): Promise<void> {
   world.chunks.renderer = renderer;
   // The V5 code (generators, materials, post-processing) is a separate chunk: it does not add to the first download.
   const v5Ready = import('./v5/controller.ts').then((m) => {
-    v5 = new m.V5Controller(world, renderer, camera, qualityName);
+    v5 = new m.V5Controller(world, renderer, camera, qualityName, document.getElementById('dev-render')!);
+    if (!started) v5.ambience.enabled = false; // no audio before the first click (onStart)
     (window as any).__k3d.v5 = v5;
     v5.keysEnabled = () => !fly.active; // 1-3 are the fly speeds in OP mode
     applyResolution();
@@ -178,6 +193,59 @@ async function boot(): Promise<void> {
     tpc.yaw = 0;
     tpc.snap();
   };
+  // The start screen waits for the default rendering, so the street does not change under the player's eyes.
+  const qMode = new URLSearchParams(location.search).get('render');
+  const initialMode: RenderMode = qMode === 'v4' || qMode === 'a' || qMode === 'b' || qMode === 'c' ? qMode : DEFAULT_RENDER_MODE;
+  let renderReady = false;
+  const applyInitialMode = () => {
+    const done = () => { renderReady = true; menu.setLoading(1, 'Ready', true); };
+    if (initialMode === 'v4') return done();
+    menu.setLoading(0.97, 'Preparing the Jalan China street section…', false);
+    v5Ready.then((c) => c.setMode(initialMode)).catch((e) => console.warn('Default rendering unavailable, using the geographic rendering:', e)).finally(done);
+  };
+
+  // Pause menu "Drive Car": stream the car's surroundings, then stand the character beside it, facing it. The
+  // player is not put in the car, and is never moved onto ground whose collision is not loaded.
+  let carTrip: { t: number } | null = null;
+  const tripFocus = new THREE.Vector3();
+  const noVelocity = new THREE.Vector3();
+  const syncDriveButton = () => menu.setDriveCar(carTrip ? 'Finding the car…' : 'Drive Car', !carTrip && !driving.active, driving.active ? 'You are already driving' : '');
+  const endCarTrip = (message?: string) => {
+    if (!carTrip) return;
+    carTrip = null;
+    syncDriveButton();
+    if (message) menu.toast(message, 3);
+  };
+  const driveCar = () => {
+    if (!spawnReady || carTrip || driving.active) return;
+    if (fly.active) fly.toggle(); // back to the walking character first
+    carTrip = { t: 0 };
+    syncDriveButton();
+    stepCarTrip(0);
+  };
+  const stepCarTrip = (dt: number) => {
+    if (!carTrip) return;
+    carTrip.t += dt;
+    driving.tryPlace();
+    const spot = driving.standSpot();
+    if (spot) {
+      const car = driving.car;
+      player.teleport(spot[0], spot[1]);
+      player.heading = Math.atan2(car.x - spot[0], car.z - spot[1]);
+      tpc.yaw = player.heading - Math.PI; // camera behind the character, looking at the car
+      tpc.snap();
+      carTrip = null;
+      syncDriveButton();
+      menu.resume();
+      menu.toast('Press E to enter car.', 4);
+      return;
+    }
+    const w = driving.whereabouts;
+    if (driving.placed && world.collision.isLoaded(w.x, w.z) && world.chunks.isReady(w.x, w.z)) endCarTrip('No free place to stand beside the car');
+    else if (carTrip.t > 45) endCarTrip('The area around the car could not be loaded');
+  };
+  const controls = new ControlsHelp();
+
   const toggleView = () => {
     if (driving.active) return; // the driving camera is third-person only
     tpc.firstPerson = !tpc.firstPerson;
@@ -322,17 +390,22 @@ async function boot(): Promise<void> {
     const dt = simulatedDt > 0 ? simulatedDt : Math.min(rawDt, 0.1);
 
     // The world streams around the walking character, or around the free camera in OP fly mode.
+    // ("Drive Car" from the pause menu streams around the car until the character stands beside it.)
     const flying = fly.active;
-    const focus = flying ? fly.focus : player.position;
-    world.update(dt, focus, flying ? fly.velocity : driving.active ? driving.velocity : player.velocity, camera);
+    const trip = carTrip ? driving.whereabouts : null;
+    const focus = flying ? fly.focus : trip ? tripFocus.set(trip.x, player.position.y, trip.z) : player.position;
+    world.update(dt, focus, flying ? fly.velocity : trip ? noVelocity : driving.active ? driving.velocity : player.velocity, camera);
     v5?.update(dt, rawDt, focus.x, focus.z);
+    if (carTrip) stepCarTrip(dt);
 
     if (!spawnReady) {
       // Never let the player move before ground + collision at the spawn point exist.
       const p = world.chunks.progress();
       spawnReady = world.chunks.isReady(spawn.x, spawn.z) && p > 0.6;
-      if (spawnReady) resetLocation();
-      menu.setLoading(spawnReady ? 1 : p * 0.95, spawnReady ? 'Ready' : `Loading Kuching Waterfront… ${Math.round(p * 100)}%`, spawnReady);
+      if (spawnReady) {
+        resetLocation();
+        applyInitialMode();
+      } else menu.setLoading(p * 0.95, `Loading Kuching Waterfront… ${Math.round(p * 100)}%`, false);
     }
 
     input.poll();
@@ -344,6 +417,7 @@ async function boot(): Promise<void> {
       }
     } else if (driving.active) {
       if (!paused) for (let i = 0; i < stepsPerFrame; i++) driving.drive(dt, input);
+      driving.drivingPrompt(input.enabled);
       driving.camera.update(dt, driving.car, input);
       // The walking camera keeps the same bearing, so the heading-up minimap and getting out are seamless.
       tpc.yaw = driving.camera.yaw;
@@ -358,6 +432,11 @@ async function boot(): Promise<void> {
       player.heading = driving.car.heading;
     }
     input.endFrame();
+
+    // Contextual controls line. E belongs to the car when both the car and a shop are in reach.
+    const context: ControlsContext = flying ? 'fly' : driving.active ? (driving.canExit ? 'drive-stopped' : 'drive')
+      : driving.near ? 'walk-car' : placePanel.nearShop && !placeOpen ? 'walk-shop' : 'walk';
+    controls.set(context);
 
     blob.visible = quality.shadowMap === 0 && !tpc.firstPerson && !driving.active;
     if (blob.visible) blob.position.set(player.position.x, world.collision.groundAt(player.position.x, player.position.z, player.position.y).h + 0.08, player.position.z);
@@ -456,7 +535,9 @@ async function boot(): Promise<void> {
     /** Protected landmarks that reached a generic building generator (must stay empty). */
     landmarkGuard: guardViolations,
     get fps() { return fps; },
-    get ready() { return spawnReady; },
+    get ready() { return spawnReady && renderReady; },
+    controls,
+    driveCar,
     setSimulatedDt: (v: number) => (simulatedDt = v),
     setStepsPerFrame: (n: number) => (stepsPerFrame = Math.max(1, n | 0)),
     teleportGeo: (lat: number, lon: number) => {
