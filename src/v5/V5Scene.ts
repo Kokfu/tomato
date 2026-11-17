@@ -435,6 +435,10 @@ export class V5Scene {
           mesh.castShadow = !NO_SHADOW.has(name); mesh.receiveShadow = !NO_RECEIVE.has(name);
           mesh.renderOrder = name === 'poly' ? 5 : 0;
         });
+        // Same tag as the registry's models (LandmarkModels): the site this object draws, so the one-copy-per-landmark
+        // rule can be checked across both renderers.
+        root.name = `${s.id}:v5`;
+        root.userData.landmark = s.id;
         root.position.set(s.anchor.x, s.anchor.y, s.anchor.z);
         root.rotation.y = s.anchor.yaw;
         root.updateMatrixWorld(true);
