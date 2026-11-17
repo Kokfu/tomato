@@ -45,13 +45,18 @@ export const CAR = {
 };
 
 /**
- * Where the car waits: at the mouth of Jalan China (OSM way 124545031) just off Jalan Main Bazaar, on the
- * mapped carriageway beside the east frontage, facing the direction of the one-way street (toward Jalan
- * Carpenter). It is behind the last parked car of the V7 street section (9 m of clear road ahead), so the
- * car can pull straight out whichever rendering of the street is shown, and it is the first thing seen on
- * walking up from the waterfront.
+ * Where the car waits: at the mouth of Jalan China (OSM way 124545031) just off Jalan Main Bazaar, in the
+ * middle of the street between its two mapped frontages (street frame of src/v5/geo.ts: s = 91 m, o = 0),
+ * facing along the street in the direction of the one-way traffic (toward Jalan Carpenter).
+ *
+ * That is the free lane between the two rows of parked cars of the V7 street section (inner edges at
+ * o = -1.35 and +1.35 m, so 0.48 m to spare on each side of the body), so holding W drives straight down
+ * Jalan China to Jalan Carpenter in either rendering. It is 2.6 m west of the OSM centre line, which runs
+ * through the east parked row (docs/V8_REPORT.md, data finding 1), and still on that carriageway by the
+ * runtime rule (2.59 m from the line, mapped width 6 m). It is the first thing seen on walking up from
+ * the waterfront.
  */
-export const CAR_START = { x: 207.69, z: -53.85, heading: -0.588 };
+export const CAR_START = { x: 205.882, z: -55.044, heading: -0.58863 };
 
 export type CarBlock = '' | 'water' | 'edge' | 'loading' | 'deck';
 

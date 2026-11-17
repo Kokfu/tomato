@@ -91,8 +91,60 @@ the new UI tests use the default rendering. Nothing in the game was moved to mak
 Screenshots (1920 x 1080, medium): `docs/screenshots/v8-ui/`: `01-hud-walking-default`, `02-settings-developer`,
 `03-pause-menu`, `04-drive-car-arrived`, `05-hud-driving`, `06-hud-shop`, `07-hud-op-mode`.
 
-## 6. Open point for decision
+## 6. Open point for decision (resolved in V8.0.1)
 
 In the default rendering, a player who gets in and holds W without steering stops against a V7 parked car after
 about 8 m; the lane between the rows is drivable with steering. Turning the car's waiting place into the lane is a
 one-line data change, but it changes where the car stands and was left out of this cleanup.
+
+## 7. V8.0.1: driving spawn and lane alignment
+
+**Measured.** In the Jalan China street frame (`src/v5/geo.ts`: s = metres from the Jalan Carpenter end, o = metres
+east of the middle between the two mapped frontages, half width 4.04 m):
+
+- Mapped centre line (OSM way 124545031, inferred width 6 m): parallel to the street at o = +2.58 m along the whole
+  section.
+- V7 parked-car collision boxes: west row centred at o = -2.24 m, east row at +2.24 m. The inner edges are at
+  o = -1.35 and +1.35 m, so the free lane between them is 2.7 m wide. The last east car is at s = 75.8-80.2 m.
+- Old waiting place: s = 91.0, o = +2.17 (on the centre line). Holding W met the east car at s = 78 after 8.8 m
+  (closing speed 8.5 m/s, then 0 km/h).
+
+**Changed.** Only the car's waiting place (`CAR_START`, `src/vehicle/VehiclePhysics.ts`). It is now s = 91, o = 0:
+the middle of the street at its Jalan Main Bazaar mouth, facing exactly along the street toward Jalan Carpenter
+(the one-way direction). That leaves 0.48 m clear on each side of the body past both parked rows. It is still on
+Jalan China by the runtime rule: 2.59 m from the centre line, within the mapped half width plus the 1 m tolerance.
+No road, building or parked-car coordinates changed. The same pose is clear in V4. Holding W with no steering now
+drives the full 88 m to Jalan Carpenter with no contact and no sideways drift in both V7 and V4. Drive Car stands
+the character at the driver's door (west side), as before.
+
+**Tests.**
+
+- Unit test of the waiting place: the old assertion "whole body within the mapped width" assumed the centre line is
+  the middle of the street. It now checks the place against the mapped frontages and the parked rows: in the middle
+  (|o| < 0.05), more than 0.4 m clear of both rows, and pointing down the lane. It also checks that the place is on
+  the carriageway by the runtime rule and faces with the traffic.
+- `tests/e2e/driving.spec.ts` runs in the default V7 rendering, except for the tests that place the car on the
+  mapped centre line, which stay in V4.
+  - Default V7: walk up, enter, drive, brake, reverse, stop, exit; the new acceptance test (Esc > Drive Car > E >
+    4 s of W with no steering: 34 m, 54 km/h, zero contact, then brake, stop, exit); lane keeping; the block loop
+    through four junctions (Jalan China leg in the lane, left turn into Jalan Carpenter made in the junction);
+    switching to OP mode and back.
+  - V4 regressions: steering and handbrake, R back to the road, collisions, the block loop.
+- `tests/e2e/ui.spec.ts`: the Drive Car test now picks a clear spot out of reach for its walk back to the car.
+  Sideways from the car is now the shophouse row, and the spot ahead depends on how far the car rolled.
+- Results: unit 64/64; tsc clean; vite build OK; driving 9/9; UI 4/4 (twice).
+
+**Performance** (1920 x 1080, medium, high-speed streaming run on Jalan Tun Abang Haji Openg, same machine, same
+session):
+
+| Run | New start | Old start |
+|---|---|---|
+| Run 1 | 55.3 fps | 51.3 fps |
+| Run 2 | 56.0 fps | 50.6 fps |
+
+The route is unaffected by the start. Single stalls of 1-2.5 s occurred in both variants. There were no impacts and
+no frames on unbuilt chunks in any run. Real time at the new start: 56 fps standing in the car, and 52 fps while
+holding W down the lane (p95 26 ms).
+
+Screenshot: `docs/screenshots/v8-0-1/01-driving-start-v7.png`, the chase view at the new start, from the
+acceptance test.

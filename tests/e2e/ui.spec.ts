@@ -211,10 +211,30 @@ test.describe('V8 UI cleanup', () => {
     await page.locator('#pause-drive').click();
     await expect(page.locator('#pause')).toBeHidden({ timeout: 60_000 });
     expect(await k3d(page, (k) => k.driving.canEnter(k.player) && !k.driving.active)).toBe(true);
-    const c2 = await carState(page);
     at = await state(page);
-    const away = [at.x + (at.x - c2.x) * 4, at.z + (at.z - c2.z) * 4];
-    await page.evaluate(([x, z]) => (window as any).__k3d.player.teleport(x, z), away);
+    // A place out of reach of the car with a clear straight walk back: ahead of or behind the stand spot along the
+    // car, or further out to the side. Where the car was left depends on how far it rolled, and in V7 Jalan China
+    // the street holds two rows of parked cars and the shophouse rows, so the first clear candidate is taken.
+    const away = await page.evaluate(([ax, az]) => {
+      const k = (window as any).__k3d, c = k.world.collision, car = k.driving.car, R = 0.35;
+      const fx = Math.sin(car.heading), fz = Math.cos(car.heading), sx = ax - car.x, sz = az - car.z, sl = Math.hypot(sx, sz);
+      const clear = (x: number, z: number) => {
+        if (!c.isLoaded(x, z)) return false;
+        const h = c.groundAt(x, z, car.y + 1).h;
+        if (Math.abs(h - car.y) > 0.5 || c.insideBuilding(x, z, h) || c.inWater(x, z)) return false;
+        const [rx, rz] = c.resolve(x, z, R, h);
+        return Math.hypot(rx - x, rz - z) < 0.01;
+      };
+      for (const [dx, dz] of [[fx * 6, fz * 6], [-fx * 6, -fz * 6], [(sx / sl) * 2.5, (sz / sl) * 2.5], [fx * 4, fz * 4], [-fx * 4, -fz * 4]]) {
+        const x = ax + dx, z = az + dz;
+        let ok = true;
+        for (let t = 0; t <= 1 && ok; t += 0.05) ok = clear(x + (ax - x) * t, z + (az - z) * t);
+        if (ok) return [x, z];
+      }
+      return null;
+    }, [at.x, at.z]);
+    expect(away, 'a clear place out of reach of the car').not.toBeNull();
+    await page.evaluate(([x, z]) => (window as any).__k3d.player.teleport(x, z), away!);
     await frames(page, 3);
     expect(await k3d(page, (k) => k.driving.canEnter(k.player))).toBe(false);
     const w = await walk(page, [[at.x, at.z]], { tolerance: 0.4, maxSeconds: 15 });

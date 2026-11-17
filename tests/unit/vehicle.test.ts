@@ -10,6 +10,7 @@ import type { RoadHit } from '../../src/vehicle/RoadQuery.ts';
 import { CollisionWorld } from '../../src/world/CollisionWorld.ts';
 import { HeightMap } from '../../src/world/HeightMap.ts';
 import { ROAD_TYPES } from '../../src/world/types.ts';
+import { CHINA } from '../../src/v5/geo.ts';
 import type { ChunkData } from '../../src/world/types.ts';
 
 const DATA = 'public/data/kuching';
@@ -283,16 +284,27 @@ test('R returns the car to the last pose it held on the carriageway', () => {
 
 const carWidth = CAR.halfWid * 2;
 
-test('the car waits on Jalan China, kerbside, facing the direction of the one-way street', () => {
+test('the car waits on Jalan China, in the free lane between the frontages, facing the direction of the one-way street', () => {
   const r = nearestDrivable(dataAt, CAR_START.x, CAR_START.z, carWidth);
   assert.ok(r, 'a drivable road is found');
   assert.equal(r!.name, 'Jalan China');
   assert.equal(r!.id, 124545031);
-  assert.ok(onRoad(r), 'on the carriageway');
-  assert.ok(r!.dist + CAR.halfWid <= r!.width / 2 + 0.2, `whole body within the mapped width: ${r!.dist}`);
+  assert.ok(onRoad(r), `on the carriageway by the runtime rule: ${r!.dist} m from the centre line`);
   assert.ok(r!.oneWay);
   const along = Math.sin(CAR_START.heading) * r!.dx + Math.cos(CAR_START.heading) * r!.dz;
   assert.ok(along > 0.99, `faces with the traffic: ${along}`);
+  // The mapped centre line runs about 2.6 m east of the middle of the street (it passes through the V7 east
+  // parked row; docs/V8_REPORT.md data finding 1), so the car's place is checked against the two mapped
+  // frontages instead (src/v5/geo.ts street frame: o = 0 halfway between them).
+  const [s, o] = CHINA.toStreet(CAR_START.x, CAR_START.z);
+  assert.ok(s > CHINA.len && s < CHINA.len + 4.5, `at the Jalan Main Bazaar mouth of the street: s = ${s}`);
+  assert.ok(Math.abs(o) < 0.05, `in the middle between the frontages: o = ${o}`);
+  // V7 parked rows (src/v5/china.ts): centred 1.8 m inside each pier line, at most 0.905 m half wide plus the
+  // 0.03 m collision margin. The body must clear both with room to spare, and point straight down the lane.
+  const rowInner = CHINA.half - 1.8 - 0.905 - 0.03;
+  assert.ok(rowInner - (Math.abs(o) + CAR.halfWid) > 0.4, `clear of both parked rows: ${rowInner - Math.abs(o) - CAR.halfWid} m`);
+  const lane = Math.sin(CAR_START.heading) * -CHINA.dx + Math.cos(CAR_START.heading) * -CHINA.dz;
+  assert.ok(lane > 0.99999, `straight down the street: ${lane}`);
 });
 
 /** Every drivable-class way with a vertex within `radius` of Jalan China, merged across chunks. */

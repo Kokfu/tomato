@@ -8,24 +8,37 @@ import { CAR_START } from '../../src/vehicle/VehiclePhysics.ts';
 import { CHINA } from '../../src/v5/geo.ts';
 
 const HALF_LEN = 1.95, HALF_WID = 0.865;
-/** The block loop from the car's kerb: Jalan China, Jalan Carpenter, Jalan Bishopgate, Jalan Main Bazaar, Jalan China. */
+/** The block loop from the car: Jalan China, Jalan Carpenter, Jalan Bishopgate, Jalan Main Bazaar, Jalan China (mapped centre lines). */
 const BLOCK_LOOP: [number, number][] = [
   [190.5, -27.4], [172.1, 0], [156.8, 22.9], [176, 34], [180.2, 36.4], [183, 37.4], [256, 54.8], [264, 56.7],
   [279.3, 7.7], [282.1, 0], [288.8, -17.8], [256, -41.5], [218.2, -68.7], [205.6, -49.9],
 ];
+/**
+ * The same loop in V7. Jalan China's mapped centre line runs through the east row of parked cars, so the first leg is
+ * driven in the middle of the street (the lane between the rows, o = 0) into the junction, and the left turn into
+ * Jalan Carpenter is made there (street frame [s, o] of src/v5/geo.ts): turning earlier would swing the car's rear into
+ * the first parked car (s 5.2 to 9.6 m), which the test driver's look-ahead does. The rest of the loop is unchanged.
+ */
+const BLOCK_LOOP_V7: [number, number][] = [
+  ...([[60, 0], [30, 0], [-4.5, 0], [-3.5, 8], [-3, 14]] as [number, number][]).map(([s, o]) => CHINA.toWorld(s, o)),
+  ...BLOCK_LOOP.slice(3),
+];
 
 const k3d = <T>(page: Page, fn: (k: any) => T): Promise<T> => page.evaluate(`(${fn.toString()})(window.__k3d)`) as Promise<T>;
 /**
- * These physics tests were written against the V4 street geometry (straight runs along the mapped centre lines). Since
- * the V8 UI cleanup the game starts in V7 Jalan China, whose parked rows stand on Jalan China's mapped centre line, so
- * they pin ?render=v4. The V7 lane test below switches to 'c' itself; tests/e2e/ui.spec.ts drives in the default.
+ * The game starts in V7 Jalan China (render mode 'c'), and so do these tests unless they pass 'v4'. The tests that
+ * place the car on Jalan China's mapped centre line (steering, handbrake, R, collisions) pin ?render=v4: in V7 that
+ * line runs through the east row of parked cars (docs/V8_REPORT.md, data finding 1). They are the V4 regressions.
  */
-const ready = async (page: Page) => {
-  await page.goto('./?render=v4');
+const ready = async (page: Page, render: 'default' | 'v4' = 'default') => {
+  await page.goto(render === 'v4' ? './?render=v4' : './');
   await start(page, { navigate: false });
   await page.waitForFunction(() => (window as any).__k3d.driving.placed, null, { timeout: 60_000 });
+  expect(await k3d(page, (k) => k.v5.mode)).toBe(render === 'v4' ? 'v4' : 'c');
   await page.evaluate(() => (window as any).__k3d.setSimulatedDt(1 / 60));
 };
+/** Street frame of Jalan China (src/v5/geo.ts): [metres from the Jalan Carpenter end, metres east of the middle]. */
+const street = (p: { x: number; z: number }) => CHINA.toStreet(p.x, p.z);
 /** Stand the character at the driver's door (the right side) of the car. */
 const toDoor = async (page: Page) => {
   await page.evaluate(() => {
@@ -65,10 +78,11 @@ const hold = async (page: Page, codes: string[], n: number) => {
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
 test.describe('V8 driving prototype', () => {
-  test('walk to the car, E to get in, drive forward, brake, reverse, stop, E to get out, walk on', async ({ page }) => {
+  test('default V7: walk to the car, E to get in, drive forward, brake, reverse, stop, E to get out, walk on', async ({ page }) => {
     const issues = watch(page);
     await ready(page);
     const parked = await carState(page);
+    expect(Math.hypot(parked.x - CAR_START.x, parked.z - CAR_START.z)).toBeLessThan(0.01);
     expect(parked.road).toBe('Jalan China');
     expect(parked.onRoad).toBe(true);
     expect(parked.inBuilding).toBe(false);
@@ -103,12 +117,15 @@ test.describe('V8 driving prototype', () => {
     expect(await k3d(page, (k) => k.player.visual.root.visible)).toBe(false);
     expect(await k3d(page, (k) => k.placePanel && document.getElementById('place-panel')!.classList.contains('hidden'))).toBe(true);
 
-    // W: forward along Jalan China.
-    await hold(page, ['KeyW'], 120);
+    // W: forward along Jalan China, down the lane between the parked rows, touching nothing.
+    const go = await hold(page, ['KeyW'], 120);
     const a = await carState(page);
     const along = (a.x - parked.x) * fwd[0] + (a.z - parked.z) * fwd[1];
     expect(a.vf).toBeGreaterThan(6);
     expect(along).toBeGreaterThan(7);
+    expect(go.maxImpact).toBe(0);
+    expect(go.blocked).toEqual([]);
+    expect(Math.abs(street(a)[1])).toBeLessThan(0.1);
     await frames(page, 20); // the HUD refreshes four times a second
     expect(Number(await page.locator('#speedo-kmh').textContent())).toBeGreaterThan(15);
     await expect(page.locator('#speedo-gear')).toHaveText('D');
@@ -162,9 +179,9 @@ test.describe('V8 driving prototype', () => {
     expect(issues.errors).toEqual([]);
   });
 
-  test('steering, handbrake, off-road note and R back to the road', async ({ page }) => {
+  test('V4: steering, handbrake, off-road note and R back to the road', async ({ page }) => {
     const issues = watch(page);
-    await ready(page);
+    await ready(page, 'v4');
     const turn = async (key: string) => {
       await placeCar(page, 181.5, -14.1, -0.588); // middle of Jalan China
       await getIn(page);
@@ -227,9 +244,9 @@ test.describe('V8 driving prototype', () => {
     expect(issues.errors).toEqual([]);
   });
 
-  test('collisions: a shophouse wall, a parked car and the river stop the car', async ({ page }) => {
+  test('V4: collisions: a shophouse wall, a parked car and the river stop the car', async ({ page }) => {
     const issues = watch(page);
-    await ready(page);
+    await ready(page, 'v4');
 
     // 1. Straight at the shophouse row on Jalan China.
     await placeCar(page, 181.5, -14.1, -0.588 + Math.PI / 2);
@@ -304,11 +321,11 @@ test.describe('V8 driving prototype', () => {
     expect(issues.errors).toEqual([]);
   });
 
-  test('drives round a real block through four junctions, on the road surface all the way', async ({ page }) => {
+  for (const render of ['default', 'v4'] as const) test(`${render === 'v4' ? 'V4' : 'default V7'}: drives round a real block through four junctions, on the road surface all the way`, async ({ page }) => {
     const issues = watch(page);
-    await ready(page);
+    await ready(page, render);
     await getIn(page);
-    const r = await driveRoute(page, BLOCK_LOOP, { speed: 9, speedup: 2, maxSeconds: 200 });
+    const r = await driveRoute(page, render === 'v4' ? BLOCK_LOOP : BLOCK_LOOP_V7, { speed: 9, speedup: 2, maxSeconds: 200 });
     expect(r.reached).toBe(true);
     expect(r.everInBuilding).toBe(false);
     expect(r.everInWater).toBe(false);
@@ -334,16 +351,13 @@ test.describe('V8 driving prototype', () => {
     expect(issues.errors).toEqual([]);
   });
 
-  test('V7 Jalan China rendering: pull out and drive the lane between the two rows of parked cars', async ({ page }) => {
+  test('default V7: lane keeping between the two rows of parked cars at 12 km/h', async ({ page }) => {
     const issues = watch(page);
     await ready(page);
     await toDoor(page);
-    await page.evaluate(() => (window as any).__k3d.v5.setMode('c'));
-    await page.waitForFunction(() => (window as any).__k3d.v5.mode === 'c' && !(window as any).__k3d.v5.busy, null, { timeout: 60_000 });
-    await page.waitForTimeout(3000);
     await waitChunks(page);
     await page.evaluate(() => (window as any).__k3d.setSimulatedDt(1 / 60));
-    // The car's waiting place is clear in this rendering too (nothing of the street section stands in it).
+    // The car's waiting place is clear (nothing of the street section stands in it).
     const s0 = await carState(page);
     expect(Math.hypot(s0.x - CAR_START.x, s0.z - CAR_START.z)).toBeLessThan(0.01);
     expect(await k3d(page, (k) => k.driving.car.canOccupy(k.driving.car.x, k.driving.car.z, k.driving.car.heading))).toBe(true);
@@ -388,7 +402,69 @@ test.describe('V8 driving prototype', () => {
     expect(issues.errors).toEqual([]);
   });
 
-  test('switching between driving, OP fly mode and walking', async ({ page }) => {
+  test('default V7 acceptance: pause menu Drive Car, E, hold W: the car pulls out and drives down Jalan China without touching a parked car', async ({ page }) => {
+    const issues = watch(page);
+    await ready(page);
+    await waitChunks(page);
+    // From the waterfront start, as a player would: Esc, Drive Car.
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#pause-drive')).toBeEnabled();
+    await page.locator('#pause-drive').click();
+    await expect(page.locator('#pause')).toBeHidden({ timeout: 60_000 });
+    await waitChunks(page);
+    await page.evaluate(() => (window as any).__k3d.setSimulatedDt(1 / 60));
+    const parked = await carState(page);
+    expect(Math.hypot(parked.x - CAR_START.x, parked.z - CAR_START.z)).toBeLessThan(0.01);
+    expect(parked.road).toBe('Jalan China');
+    expect(parked.onRoad).toBe(true);
+    expect(parked.inBuilding).toBe(false);
+    const [s0, o0] = street(parked);
+    // The car stands in the middle of the street, and the 80 m straight ahead are free for the whole body.
+    expect(Math.abs(o0)).toBeLessThan(0.05);
+    const clear = await k3d(page, (k) => {
+      const car = k.driving.car, fx = Math.sin(car.heading), fz = Math.cos(car.heading);
+      for (let d = 0; d <= 80; d += 0.5) if (!car.canOccupy(car.x + fx * d, car.z + fz * d, car.heading)) return d;
+      return 80;
+    });
+    expect(clear, 'free road straight ahead (m)').toBe(80);
+    await expect(page.locator('#car-prompt')).toContainText('Enter Car');
+
+    // E: in. The starting view (chase camera down the lane between the parked rows).
+    await page.keyboard.press('KeyE');
+    expect((await carState(page)).active).toBe(true);
+    await frames(page, 30);
+    await page.screenshot({ path: 'test-results/driving-v7-start.png' });
+
+    // Hold W without steering for 4 s (about 34 m, 54 km/h): no contact, no stop, straight down the lane on Jalan China.
+    const go = await hold(page, ['KeyW'], 240);
+    const a = await carState(page);
+    const [s1, o1] = street(a);
+    expect(go.maxImpact).toBe(0);
+    expect(go.blocked).toEqual([]);
+    expect(go.everInBuilding).toBe(false);
+    expect(s0 - s1, 'metres driven down the street').toBeGreaterThan(30);
+    expect(Math.abs(o1 - o0)).toBeLessThan(0.1);
+    expect(Math.abs(wrap(a.heading - parked.heading))).toBeLessThan(0.01);
+    expect(a.kmh).toBeGreaterThan(40);
+    expect(a.onRoad).toBe(true);
+    expect(a.road).toBe('Jalan China');
+
+    // Brake to a stand and get out.
+    const stop = await hold(page, ['KeyS'], 80);
+    await hold(page, ['Space'], 60);
+    const st = await carState(page);
+    expect(stop.maxImpact).toBe(0);
+    expect(Math.abs(st.vf)).toBeLessThan(0.1);
+    expect(street(st)[0]).toBeLessThan(s1);
+    await page.keyboard.press('KeyE');
+    expect((await carState(page)).active).toBe(false);
+    const foot = await state(page);
+    expect(foot.inBuilding).toBe(false);
+    expect(Math.hypot(foot.x - st.x, foot.z - st.z)).toBeLessThan(HALF_LEN + 1.6);
+    expect(issues.errors).toEqual([]);
+  });
+
+  test('default V7: switching between driving, OP fly mode and walking', async ({ page }) => {
     const issues = watch(page);
     await ready(page);
     await getIn(page);
@@ -401,7 +477,8 @@ test.describe('V8 driving prototype', () => {
     await frames(page, 120);
     const stopped = await carState(page);
     expect(stopped.active).toBe(true);
-    expect(stopped.vf).toBe(0);
+    // At a stand (the sideways slip decays exponentially, so a denormal remainder such as -5e-41 m/s can be left).
+    expect(Math.abs(stopped.vf)).toBeLessThan(1e-6);
     const fly0 = await k3d(page, (k) => ({ x: k.fly.position.x, z: k.fly.position.z }));
     await hold(page, ['KeyW'], 40);
     const fly1 = await k3d(page, (k) => ({ x: k.fly.position.x, z: k.fly.position.z }));
