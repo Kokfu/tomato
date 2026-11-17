@@ -236,6 +236,36 @@ test('a glancing hit slides along the wall and turns the nose away', () => {
   assert.ok(car.x + CAR.halfWid <= 100.3, 'stayed outside');
 });
 
+test('V8.1: the same driving gives the same path at 30, 60 and 144 fps and through 100 ms stalls', () => {
+  // Accelerate 3 s, turn right under part throttle 1.5 s, brake 2.5 s. Controls are sampled per frame, as in the game.
+  const drive = (frameDt: (i: number) => number) => {
+    const car = new VehicleBody(flat());
+    car.place(0, 0, 0);
+    let t = 0;
+    for (let i = 0; t < 7 - 1e-9; i++) {
+      const dt = Math.min(frameDt(i), 7 - t);
+      car.update(dt, { ...NEUTRAL, ...(t < 3 - 1e-9 ? { throttle: 1 } : t < 4.5 - 1e-9 ? { throttle: 0.6, steer: 1 } : { throttle: -1 }) });
+      t += dt;
+    }
+    return car;
+  };
+  const ref = drive(() => 1 / 144);
+  // A stall every 30th frame: main.ts caps a frame at 0.1 s; the frame boundaries then fall 0.1 s apart at worst.
+  for (const [label, dt, tol] of [['30 fps', () => 1 / 30, 0.15], ['60 fps', () => 1 / 60, 0.15], ['60 fps with 100 ms stalls', (i: number) => (i % 30 === 29 ? 0.1 : 1 / 60), 0.6]] as [string, (i: number) => number, number][]) {
+    const car = drive(dt);
+    const d = Math.hypot(car.x - ref.x, car.z - ref.z);
+    assert.ok(d < tol, `${label}: ends ${d.toFixed(3)} m from the 144 fps path`);
+    assert.ok(Math.abs(car.heading - ref.heading) < tol / 5, `${label}: heading ${car.heading} vs ${ref.heading}`);
+    assert.ok(Math.abs(car.vf - ref.vf) < 0.2, `${label}: speed ${car.vf} vs ${ref.vf}`);
+  }
+  // Into a wall at full throttle with every frame a 100 ms stall: no tunnelling, same resting place.
+  const w = worldWith([{ ring: [60, 100, 160, 100, 160, 120, 60, 120], h: 10 }]);
+  const car = new VehicleBody(envOf(w));
+  car.place(110, 20, 0);
+  for (let i = 0; i < 80; i++) { car.update(0.1, { ...NEUTRAL, throttle: 1 }); assert.ok(!inside(w, car), `inside at z ${car.z}`); }
+  assert.ok(Math.abs(car.z + CAR.halfLen - 100) < 0.05, `nose rests on the wall: ${car.z + CAR.halfLen}`);
+});
+
 test('a 2.7 m gap between two obstacles is passable, a 1.6 m gap is not', () => {
   for (const [gap, passes] of [[2.7, true], [1.6, false]] as [number, boolean][]) {
     const w = worldWith([

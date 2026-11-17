@@ -57,6 +57,8 @@ export class LandmarkModels {
   /** Sites not drawn for now (the V5 rendering experiment draws its own versions). */
   readonly hidden = new Set<string>();
   private state = new Map<string, SiteState>();
+  /** Gets a loaded model ready to draw (textures uploaded, programs compiled) before it is shown (set by main.ts). */
+  prepare: ((o: THREE.Object3D) => Promise<void>) | null = null;
   private loader: Promise<GLTFLoader> | null = null;
   private mats: LandmarkMaterials;
   private base: string;
@@ -126,6 +128,11 @@ export class LandmarkModels {
       root.userData.triangles = info.triangles;
       root.updateMatrixWorld(true);
       root.traverse((o) => { o.matrixAutoUpdate = false; });
+      if (this.prepare) {
+        // The old LOD stays up meanwhile (no hole in the street).
+        await this.prepare(root);
+        if (token !== st.token) { this.disposeObject(root); return; }
+      }
       this.drop(st);
       st.object = root;
       st.shown = lod;

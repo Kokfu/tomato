@@ -154,6 +154,9 @@ export class V5Controller {
         this.pipeline.look = m === 'c' ? { sun: 6.6, hemi: 1.15, fog: 0.35, shadowRadius: 2.0, env: 1.0, exposure: 1.05 } : { sun: 6.6, hemi: 1.05, fog: 0.8, shadowRadius: 2.2, env: 0.85, exposure: 0.9 };
         this.pipeline.disable();
         this.pipeline.enable();
+        // Upload the section's textures and compile its programs now, not on the frame it first comes into view
+        // (which may be from a car 1.3 km away, after a teleport): src/world/prepareDraw.ts.
+        this.pipeline.prepare(this.scene.group);
         this.ambience.start();
         if (m === 'c' && this.pedsEnabled) void this.startPeds(); else this.stopPeds();
       }

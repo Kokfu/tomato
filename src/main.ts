@@ -1,6 +1,7 @@
 import { guardViolations } from './world/landmarks/protect.ts';
 import * as THREE from 'three';
 import { WorldManager } from './world/WorldManager.ts';
+import { prepareForDraw, whenCompiled } from './world/prepareDraw.ts';
 import { worldToGeo, geoToWorld } from './world/GeoProjection.ts';
 import { registerLandmarks } from './world/landmarks/index.ts';
 import { Input } from './player/Input.ts';
@@ -139,6 +140,9 @@ async function boot(): Promise<void> {
   }
   registerLandmarks(world.landmarks);
   world.chunks.renderer = renderer;
+  // A streamed landmark model joins the scene only once its programs are compiled (for whichever render path is in
+  // use) and its textures are uploaded, so it never stalls the frame it first appears in.
+  world.landmarkModels.prepare = (o) => whenCompiled(renderer, v5?.usesPipeline ? v5.pipeline.prepare(o) : prepareForDraw(renderer, o, camera, world.scene));
   // The V5 code (generators, materials, post-processing) is a separate chunk: it does not add to the first download.
   const v5Ready = import('./v5/controller.ts').then((m) => {
     v5 = new m.V5Controller(world, renderer, camera, qualityName, document.getElementById('dev-render')!);

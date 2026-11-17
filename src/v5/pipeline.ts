@@ -16,6 +16,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
+import { prepareForDraw } from '../world/prepareDraw.ts';
 
 const AO_SCALE = 0.5;
 
@@ -192,6 +193,16 @@ export class V5Pipeline {
   render(): void {
     if (this.composer) this.composer.render();
     else this.renderer.render(this.rig.scene, this.camera);
+  }
+
+  /**
+   * Upload the textures of `object` (in, or about to join, the world scene) and start compiling its shader programs
+   * for this pipeline's render state, without drawing it (src/world/prepareDraw.ts). With the HDR composer the scene
+   * is drawn into the composer's target (linear output, tone mapping in the output pass), so that is the target the
+   * programs are compiled for.
+   */
+  prepare(object: THREE.Object3D): Set<THREE.Material> {
+    return prepareForDraw(this.renderer, object, this.camera, this.rig.scene, this.composer ? this.composer.readBuffer : null);
   }
 
   /** Bytes of GPU memory held by the pipeline's own render targets (estimate from formats and sizes). */
