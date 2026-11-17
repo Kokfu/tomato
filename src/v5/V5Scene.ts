@@ -49,18 +49,57 @@ class SignAtlas implements SignSource {
   readonly canvas = document.createElement('canvas');
   readonly texture: THREE.CanvasTexture;
   private g: CanvasRenderingContext2D;
-  private x = 0; private y = 0; private rowH = 0;
+  private sky: [number, number, number][];
   /** Pixels of the short side of a sign cell. */
   private cell: number;
   private cache = new Map<string, [number, number, number, number]>();
   constructor(size = 1024) {
     this.canvas.width = this.canvas.height = size;
+    this.sky = [[0, size, 0]];
     this.cell = Math.round((54 * size) / 1024); // sized so that both sections' signs fit (about 90 boards)
     this.g = this.canvas.getContext('2d')!;
     this.g.fillStyle = '#222'; this.g.fillRect(0, 0, size, size);
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.texture.anisotropy = 8;
+  }
+  /** Skyline packer: each cell goes where it sits lowest, so tall vertical signs no longer waste a whole row. */
+  private alloc(w: number, h: number): [number, number] | null {
+    const S = this.canvas.width, sky = this.sky;
+    w = Math.min(S, w + 2); h += 2;
+    let best = -1, bestY = Infinity;
+    for (let i = 0; i < sky.length; i++) {
+      if (sky[i][0] + w > S) break;
+      let y = 0;
+      for (let j = i; j < sky.length && sky[j][0] < sky[i][0] + w; j++) y = Math.max(y, sky[j][2]);
+      if (y < bestY) { bestY = y; best = i; }
+    }
+    if (best < 0 || bestY + h > S) { console.warn("V5 sign atlas is full: sign text dropped"); return null; }
+    const x = sky[best][0], x1 = x + w, out: [number, number, number][] = [];
+    for (const [sx, sw, sy] of sky) {
+      if (sx + sw <= x || sx >= x1) { out.push([sx, sw, sy]); continue; }
+      if (sx < x) out.push([sx, x - sx, sy]);
+      if (sx + sw > x1) out.push([x1, sx + sw - x1, sy]);
+    }
+    out.push([x, w, bestY + h]);
+    this.sky = out.sort((p, q) => p[0] - q[0]);
+    return [x, bestY];
+  }
+  /** Custom-painted board: `draw` works in a clipped w x h box. The short side is `scale` cells. */
+  paint(key: string, aspect: number, draw: (g: CanvasRenderingContext2D, w: number, h: number) => void, scale = 2): [number, number, number, number] {
+    const hit = this.cache.get('paint|' + key);
+    if (hit) return hit;
+    const S = this.canvas.width, g = this.g, c = Math.round(this.cell * scale);
+    const w = aspect >= 1 ? Math.min(S, Math.round(c * aspect)) : c, h = aspect >= 1 ? c : Math.min(S, Math.round(c / aspect));
+    const at = this.alloc(w, h);
+    if (!at) return [0, 0, 0.001, 0.001];
+    g.save(); g.translate(at[0], at[1]); g.beginPath(); g.rect(0, 0, w, h); g.clip();
+    draw(g, w, h);
+    g.restore();
+    const r: [number, number, number, number] = [(at[0] + 1) / S, 1 - (at[1] + h - 1) / S, (at[0] + w - 1) / S, 1 - (at[1] + 1) / S];
+    this.cache.set('paint|' + key, r);
+    this.texture.needsUpdate = true;
+    return r;
   }
   /** aspect = width / height of the board. Lines are separated by "\n"; `vertical` stacks the characters. */
   rect(text: string, fg: string, bg: string, aspect: number, vertical = false): [number, number, number, number] {
@@ -70,10 +109,9 @@ class SignAtlas implements SignSource {
     const S = this.canvas.width, g = this.g, c = this.cell, f = c / 72;
     const tall = vertical || aspect < 1;
     const w = tall ? c : Math.min(S, Math.round(c * Math.min(aspect, 4.5))), h = tall ? Math.min(Math.round(320 * f), Math.round(c / aspect)) : c;
-    if (this.x + w > S) { this.x = 0; this.y += this.rowH + 2; this.rowH = 0; }
-    if (this.y + h > S) { console.warn("V5 sign atlas is full: sign text dropped"); return [0, 0, 0.001, 0.001]; }
-    const x = this.x, y = this.y;
-    this.x += w + 2; this.rowH = Math.max(this.rowH, h);
+    const at = this.alloc(w, h);
+    if (!at) return [0, 0, 0.001, 0.001];
+    const [x, y] = at;
     g.fillStyle = bg; g.fillRect(x, y, w, h);
     g.strokeStyle = fg; g.globalAlpha = 0.6; g.lineWidth = 2 * f; g.strokeRect(x + 3 * f, y + 3 * f, w - 6 * f, h - 6 * f); g.globalAlpha = 1;
     g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';

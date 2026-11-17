@@ -58,12 +58,27 @@ export interface LotSpec {
   exposedL: boolean;
   exposedR: boolean;
   seed: number;
+  /** Nearly flat roof (a roof terrace behind a parapet). */
+  flat?: boolean;
+  /** Eave overhang in metres (default 0.5). */
+  eave?: number;
+  /** Parapet height (default 0.95) and whether it carries the raised centre block (default true). */
+  parapetH?: number;
+  crest?: boolean;
+  /** Shop interior without the generic shelving and goods: the caller fits it out. */
+  bare?: boolean;
+  /** 'band' windows: this many rows of small panes instead of two large ones. */
+  panes?: number;
   /** Where this lot's appearance comes from: 'typical' (rule) or a reference note. */
   basis: string;
 }
 
 /** Supplies UV rectangles for text drawn at run time (browser fonts, one shared canvas). */
-export interface SignSource { rect(text: string, fg: string, bg: string, aspect: number, vertical?: boolean): [number, number, number, number] }
+export interface SignSource {
+  rect(text: string, fg: string, bg: string, aspect: number, vertical?: boolean): [number, number, number, number];
+  /** Custom-painted board (aspect = width / height). `draw` paints into a w x h pixel box at the origin; `scale` multiplies the cell size. */
+  paint(key: string, aspect: number, draw: (g: CanvasRenderingContext2D, w: number, h: number) => void, scale?: number): [number, number, number, number];
+}
 
 const WALLS = [0xe8e4d8, 0xe2dccb, 0xd6d7d1, 0xcbd6da, 0xe6dab6, 0xdfe3d2, 0xe9e2d6, 0xd9d2c2];
 const JOINERY = [0x5f8284, 0x6f7f95, 0x6a4a37, 0x3f5c4a, 0x8a8f8c, 0x7d5a44, 0x4d6f8a];
@@ -193,6 +208,7 @@ function interior(k: Kit, s: LotSpec, x0: number, x1: number, top: number, zf: n
   k.use('paving');
   k.quad([xa, KERB + 0.01, zf], [xb, KERB + 0.01, zf], [xb, KERB + 0.01, zb], [xa, KERB + 0.01, zb], fl);
   // shelving along both walls with rows of goods, a counter, a ceiling tube
+  if (!s.bare) {
   k.use('timber');
   const sh = hex(0x6b5340, a);
   for (const sx of [xa + 0.02, xb - 0.42]) {
@@ -207,6 +223,7 @@ function interior(k: Kit, s: LotSpec, x0: number, x1: number, top: number, zf: n
     const c = hex(goods[Math.floor(rnd(s.seed, row * 6 + i, side) * goods.length)], a * 1.3);
     const sx = side ? xb - 0.47 : xa + 0.42;
     k.box(sx, sx + 0.05, y, y + hgt, zc, zc + 0.3, c, 'y-');
+  }
   }
   k.use('glow');
   k.box((xa + xb) / 2 - 0.6, (xa + xb) / 2 + 0.6, ceil - 0.08, ceil - 0.04, zf - 1.6, zf - 1.52, hex(0xf2f4ee, bright ? 1 : 0.8));
@@ -292,7 +309,8 @@ function upper(k: Kit, s: LotSpec): void {
       k.box(o.x0, o.x0 + 0.05, o.y0, hs, zi, zi + 0.05, fr); k.box(o.x1 - 0.05, o.x1, o.y0, hs, zi, zi + 0.05, fr);
       k.box((o.x0 + o.x1) / 2 - 0.025, (o.x0 + o.x1) / 2 + 0.025, o.y0, hs, zi, zi + 0.05, fr);
       if (s.win !== 'slider') k.box(o.x0, o.x1, (o.y0 + hs) / 2 + 0.2, (o.y0 + hs) / 2 + 0.24, zi, zi + 0.04, fr);
-      if (band) { const nb = Math.max(4, Math.round(ww / 0.62)); for (let q = 1; q < nb; q++) { const x = o.x0 + (ww * q) / nb; if (Math.abs(x - (o.x0 + o.x1) / 2) > 0.05) k.box(x - 0.022, x + 0.022, o.y0, hs, zi, zi + 0.05, fr); } k.box(o.x0, o.x1, hs - 0.5, hs - 0.46, zi, zi + 0.045, fr); }
+      if (band && s.panes) for (let q = 1; q < s.panes; q++) { const y = o.y0 + ((hs - o.y0) * q) / s.panes; k.box(o.x0, o.x1, y - 0.014, y + 0.014, zi, zi + 0.04, fr, 'x+x-'); }
+      if (band) { const nb = Math.max(4, Math.round(ww / (s.panes ? 0.34 : 0.62))); for (let q = 1; q < nb; q++) { const x = o.x0 + (ww * q) / nb; if (Math.abs(x - (o.x0 + o.x1) / 2) > 0.05) k.box(x - 0.022, x + 0.022, o.y0, hs, zi, zi + 0.05, fr); } k.box(o.x0, o.x1, hs - 0.5, hs - 0.46, zi, zi + 0.045, fr); }
       if (o.arch) for (let q = 1; q < 4; q++) { const a = (q / 4) * Math.PI, cx = (o.x0 + o.x1) / 2; k.tube([[cx, hs, zi + 0.02], [cx + Math.cos(a) * ww * 0.5, hs + Math.sin(a) * o.arch, zi + 0.02]], 0.015, 4, fr); }
       // sill with a drip, architrave, hood
       k.use('plaster');
@@ -332,9 +350,9 @@ function upper(k: Kit, s: LotSpec): void {
 
 function roof(k: Kit, s: LotSpec): void {
   const w = s.w, top = eaveY(s);
-  const pitch = s.roof === 'tile' ? 0.5 : 0.3;
+  const pitch = s.flat ? 0.02 : s.roof === 'tile' ? 0.5 : 0.3;
   const mods = Math.max(1, Math.round(s.depth / 9.5)), half = s.depth / mods / 2, rise = half * pitch;
-  const over = s.parapet ? 0 : 0.5;
+  const over = s.parapet ? 0 : s.eave ?? 0.5, ph = s.parapetH ?? 0.95;
   const tc = s.roof === 'tile' ? hex([0xa5523a, 0x96482f, 0xb05f43, 0x8c4a37][s.seed % 4], 0.9) : hex(0xa9aeb0, 0.8);
   const y = (z: number): number => { // roof surface height at depth z (z <= over)
     const d = Math.max(0, -z), i = Math.min(mods - 1, Math.floor(d / (2 * half))), t = d - i * 2 * half;
@@ -364,10 +382,10 @@ function roof(k: Kit, s: LotSpec): void {
   } else {
     // parapet wall with coping, hiding the roof from the street
     k.use('plaster');
-    k.box(0, w, top, top + 0.95, -0.26, 0, s.wall, 'y-x+x-');
-    k.prism([[-0.3, top + 0.95], [0.06, top + 0.95], [0.06, top + 1.03], [-0.3, top + 1.03]], 0, w, s.trim, false);
-    k.box(w / 2 - 0.9, w / 2 + 0.9, top + 1.03, top + 1.45, -0.24, 0.02, s.wall, 'y-');
-    k.prism([[-0.28, top + 1.45], [0.07, top + 1.45], [0.07, top + 1.53], [-0.28, top + 1.53]], w / 2 - 0.98, w / 2 + 0.98, s.trim);
+    k.box(0, w, top, top + ph, -0.26, 0, s.wall, 'y-x+x-');
+    k.prism([[-0.3, top + ph], [0.06, top + ph], [0.06, top + ph + 0.08], [-0.3, top + ph + 0.08]], 0, w, s.trim, false);
+    if (s.crest !== false) k.box(w / 2 - 0.9, w / 2 + 0.9, top + 1.03, top + 1.45, -0.24, 0.02, s.wall, 'y-');
+    if (s.crest !== false) k.prism([[-0.28, top + 1.45], [0.07, top + 1.45], [0.07, top + 1.53], [-0.28, top + 1.53]], w / 2 - 0.98, w / 2 + 0.98, s.trim);
   }
   // party-wall parapets following the roof, and exposed gable ends
   k.use('plaster');
