@@ -12,7 +12,8 @@ import * as THREE from 'three';
 
 export const MATERIAL_NAMES = [
   'plaster', 'concrete', 'tile', 'glazed', 'shutter', 'louvre', 'timber', 'paint', 'asphalt', 'paving', 'stone',
-  'zinc', 'glass', 'fabric', 'foliage', 'glow', 'gold', 'atlas', 'sign', 'poly', 'wire',
+  'zinc', 'glass', 'fabric', 'foliage', 'glow', 'gold', 'atlas', 'sign', 'poly', 'wire', 'carpaint', 'contact',
+  'asphaltPhoto',
 ] as const;
 export type MaterialName = (typeof MATERIAL_NAMES)[number];
 
@@ -60,6 +61,8 @@ function detailTexture(size: number): THREE.DataTexture {
 
 const COMMON = /* glsl */ `
   uniform sampler2D uDetail;
+  uniform sampler2D uRoadA;
+  uniform sampler2D uRoadN;
   uniform float uGroundY;
   uniform vec2 uAxis;
   uniform float uTime;
@@ -183,7 +186,7 @@ const SURFACE: Record<string, string> = {
     vec4 a = kTex(p.xz * 1.7), b = kTex(p.xz * 0.09), c = kTex(p.xz * 6.1);
     float patchy = smoothstep(0.3, 0.8, b.g);
     float crack = smoothstep(0.012, 0.0, abs(kTex(p.xz * 0.31 + 0.37).a - 0.5)) * smoothstep(0.55, 0.75, b.a) * fade;
-    kAlb *= mix(0.78, 1.18, patchy) * (0.9 + 0.2 * a.a);
+    kAlb *= mix(0.66, 1.2, patchy) * (0.86 + 0.28 * a.a);
     kAlb = mix(kAlb, kAlb * 1.9 + 0.012, c.b * 0.55 * fade);
     kAlb *= 1.0 - 0.35 * crack;
     kRough = mix(0.96, 0.8, patchy) - 0.1 * a.g;
@@ -251,13 +254,46 @@ const SURFACE: Record<string, string> = {
     vec4 a = kTri(p, n, 2.9);
     kAlb *= 0.85 + 0.3 * a.g;
     kRough = 0.32 + 0.25 * a.g; kMetal = 0.85;`,
+  // Automotive paint: smooth clear-coated surface (no grain bump), a light film of road dust low down.
+  carpaint: /* glsl */ `
+    vec4 b = kTri(p, n, 0.45);
+    kAlb *= 0.96 + 0.07 * b.g;
+    kRough = 0.2 + 0.1 * b.g; kMetal = 0.32;`,
+  // Window and vehicle glass: near-neutral mirror whose tint does not colour the reflection; old panes are
+  // slightly uneven and dusty, so reflections break up from pane to pane instead of reading as flat paint.
+  glass: /* glsl */ `
+    float sat = max(kAlb.r, max(kAlb.g, kAlb.b)) - min(kAlb.r, min(kAlb.g, kAlb.b));
+    float tint = step(sat, 0.16);
+    vec4 b = kTri(p, n, 0.55);
+    float lum = dot(kAlb, vec3(0.333));
+    kAlb = mix(kAlb, vec3(0.05, 0.054, 0.058) + min(lum * 3.0, 0.2), tint * 0.85); // dark tinted car glass reflects less than a window pane
+    kAlb *= 0.85 + 0.3 * b.g;
+    kRough = 0.05 + 0.1 * b.a * tint; kMetal = 0.6;
+    kH = b.g * 0.0035 * tint * fade;`,
+  // --- V7.2 photographic road set (CC0, see docs/ASSETS.md). RGB = albedo (sRGB), A = roughness; second texture = GL normal. ---
+  // The albedo is divided by its own mean, so the photo supplies texture and the vertex colour still supplies the hue.
+  // Poly Haven asphalt_03: the scan is 2.05 m wide and is laid at that size on the ground plane.
+  asphaltPhoto: /* glsl */ `
+    vec2 uv = p.xz / 2.05;
+    vec4 t = texture2D(uRoadA, uv);
+    vec4 b = kTex(p.xz * 0.09);
+    kAlb *= t.rgb / vec3(0.0842, 0.0571, 0.0402);
+    kAlb *= mix(0.9, 1.08, smoothstep(0.3, 0.8, b.g)); // broad tone drift hides the 2 m repeat
+    kRough = t.a;
+    #ifndef K_LOW
+      vec3 m = texture2D(uRoadN, uv).xyz * 2.0 - 1.0;
+      vec3 tn = normalize(vec3(1.0, 0.0, 0.0) - n * n.x);
+      kNw = normalize(tn * m.x + cross(tn, n) * m.y + n * m.z);
+    #endif`,
   none: '',
 };
 
 export interface KuchingMaterials {
   byName: Record<MaterialName, THREE.Material>;
   /** Shared uniforms (ground level, street axis, time, detail texture). */
-  uniforms: { uDetail: { value: THREE.Texture }; uGroundY: { value: number }; uAxis: { value: THREE.Vector2 }; uTime: { value: number } };
+  uniforms: { uDetail: { value: THREE.Texture }; uGroundY: { value: number }; uAxis: { value: THREE.Vector2 }; uTime: { value: number };
+    /** V7.2 photographic road set, null until the Jalan China section loads it. */
+    uRoadA: { value: THREE.Texture | null }; uRoadN: { value: THREE.Texture | null } };
   dispose(): void;
 }
 
@@ -270,6 +306,15 @@ interface Spec {
 
 /** Sky irradiance comes from the hemisphere light shared with the rest of the world; the environment map adds specular only. */
 const LIGHTS_MAPS = THREE.ShaderChunk.lights_fragment_maps.replace('iblIrradiance += getIBLIrradiance( geometryNormal );', '');
+
+/** Soft dark patch under a parked car (ambient occlusion the shadow map and screen-space AO are too coarse to give). */
+function contactMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'varying vec2 vUv; void main() { vec2 e = smoothstep(vec2(0.0), vec2(0.22, 0.34), vUv) * smoothstep(vec2(1.0), vec2(0.78, 0.66), vUv); gl_FragColor = vec4(0.0, 0.0, 0.0, 0.8 * e.x * e.y); }',
+  });
+}
 
 function make(spec: Spec, uniforms: KuchingMaterials['uniforms'], low: boolean, key: string): THREE.MeshStandardMaterial {
   const m = new THREE.MeshStandardMaterial({
@@ -296,14 +341,14 @@ function make(spec: Spec, uniforms: KuchingMaterials['uniforms'], low: boolean, 
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>\n${defs}\n${COMMON}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
-        vec3 kAlb = diffuseColor.rgb; float kRough = roughness; float kMetal = metalness; float kH = 0.0;
+        vec3 kAlb = diffuseColor.rgb; float kRough = roughness; float kMetal = metalness; float kH = 0.0; vec3 kNw = vec3(0.0);
         { vec3 p = vWp; vec3 n = normalize(vWn); float dist = length(cameraPosition - p); float fade = clamp(1.3 - dist / 42.0, 0.0, 1.0);
         ${SURFACE[spec.surface]}
         }
         diffuseColor.rgb = kAlb;`)
       .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = clamp(kRough, 0.045, 1.0);')
       .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = clamp(kMetal, 0.0, 1.0);')
-      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n#ifndef K_LOW\n if (kH != 0.0) normal = kBump(normal, -vViewPosition, kH, faceDirection);\n#endif')
+      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n#ifndef K_LOW\n if (dot(kNw, kNw) > 0.0) normal = normalize(mat3(viewMatrix) * kNw);\n if (kH != 0.0) normal = kBump(normal, -vViewPosition, kH, faceDirection);\n#endif')
       .replace('#include <lights_fragment_maps>', LIGHTS_MAPS)
       .replace('#include <emissivemap_fragment>', spec.glow ? `#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * ${spec.glow.toFixed(3)};` : '#include <emissivemap_fragment>');
   };
@@ -318,6 +363,7 @@ export function createMaterials(opts: { low?: boolean; atlas?: THREE.Texture | n
     uGroundY: { value: 7.7 },
     uAxis: { value: new THREE.Vector2(0.866, 0.5) },
     uTime: { value: 0 },
+    uRoadA: { value: null as THREE.Texture | null }, uRoadN: { value: null as THREE.Texture | null },
   };
   const specs: Record<MaterialName, Spec> = {
     plaster: { surface: 'plaster', env: 0.5 },
@@ -332,7 +378,7 @@ export function createMaterials(opts: { low?: boolean; atlas?: THREE.Texture | n
     paving: { surface: 'paving', env: 0.8, defines: { K_TILE: '0.3', K_GLOSS: '0.34' } },
     stone: { surface: 'stone', env: 0.5 },
     zinc: { surface: 'zinc', env: 1.0, double: true },
-    glass: { surface: 'none', rough: 0.07, metal: 0.55, env: 1.5, double: true },
+    glass: { surface: 'glass', rough: 0.07, metal: 0.6, env: 1.35, double: true },
     fabric: { surface: 'fabric', env: 0.2, double: true },
     foliage: { surface: 'foliage', env: 0.3, double: true, sway: true },
     glow: { surface: 'none', rough: 0.6, env: 0.3, glow: 0.95, double: true },
@@ -341,11 +387,14 @@ export function createMaterials(opts: { low?: boolean; atlas?: THREE.Texture | n
     sign: { surface: 'none', rough: 0.55, env: 0.6, map: opts.sign ?? null, double: true },
     poly: { surface: 'poly', env: 1.0, double: true, transparent: 0.62, glow: 0.5 },
     wire: { surface: 'none', rough: 0.7, env: 0.2 },
+    carpaint: { surface: 'carpaint', env: 1.2 },
+    contact: { surface: 'none' },
+    asphaltPhoto: { surface: 'asphaltPhoto', env: 0.6 },
   };
   const byName = {} as Record<MaterialName, THREE.Material>;
-  for (const n of MATERIAL_NAMES) byName[n] = make(specs[n], uniforms, low, n);
+  for (const n of MATERIAL_NAMES) byName[n] = n === 'contact' ? contactMaterial() : make(specs[n], uniforms, low, n);
   return {
     byName, uniforms,
-    dispose() { for (const n of MATERIAL_NAMES) byName[n].dispose(); uniforms.uDetail.value.dispose(); },
+    dispose() { for (const n of MATERIAL_NAMES) byName[n].dispose(); uniforms.uDetail.value.dispose(); uniforms.uRoadA.value?.dispose(); uniforms.uRoadN.value?.dispose(); },
   };
 }

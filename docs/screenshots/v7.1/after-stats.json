@@ -1,0 +1,101 @@
+{
+ "url": "http://localhost:3002/",
+ "mode": "c",
+ "quality": "high",
+ "size": "1280x960",
+ "mobile": false,
+ "initialBytes": 8959584,
+ "totalBytes": 11138645,
+ "views": [
+  {
+   "view": "01-along-street",
+   "fps": 38.8,
+   "calls": 462,
+   "tris": 1077031,
+   "geometries": 742,
+   "textures": 136,
+   "chunks": 97,
+   "heapMB": 104,
+   "v5": {
+    "mode": "c",
+    "frames": 120,
+    "avgMs": 25.72,
+    "p95Ms": 35.5,
+    "maxMs": 48,
+    "calls": 462,
+    "triangles": 1077031,
+    "geometries": 742,
+    "textures": 136,
+    "v5Triangles": 201010,
+    "v5DrawCalls": 54,
+    "v5BuildMs": 1492,
+    "v5AssetBytes": 461702,
+    "v5Glb": true,
+    "v5GeometryBytes": 13348048,
+    "v5TextureBytes": 28304474,
+    "pipelineTargetBytes": 183173120
+   }
+  },
+  {
+   "view": "02-shopfronts",
+   "fps": 33.6,
+   "calls": 650,
+   "tris": 1094743,
+   "geometries": 749,
+   "textures": 138,
+   "chunks": 97,
+   "heapMB": 104,
+   "v5": {
+    "mode": "c",
+    "frames": 120,
+    "avgMs": 27.37,
+    "p95Ms": 40.5,
+    "maxMs": 49.4,
+    "calls": 650,
+    "triangles": 1094743,
+    "geometries": 749,
+    "textures": 138,
+    "v5Triangles": 201010,
+    "v5DrawCalls": 54,
+    "v5BuildMs": 1492,
+    "v5AssetBytes": 461702,
+    "v5Glb": true,
+    "v5GeometryBytes": 13348048,
+    "v5TextureBytes": 28304474,
+    "pipelineTargetBytes": 183173120
+   }
+  },
+  {
+   "view": "03-five-foot-way",
+   "fps": 32.8,
+   "calls": 428,
+   "tris": 807154,
+   "geometries": 749,
+   "textures": 138,
+   "chunks": 97,
+   "heapMB": 131,
+   "v5": {
+    "mode": "c",
+    "frames": 120,
+    "avgMs": 26.24,
+    "p95Ms": 39.7,
+    "maxMs": 51.5,
+    "calls": 428,
+    "triangles": 807154,
+    "geometries": 749,
+    "textures": 138,
+    "v5Triangles": 201010,
+    "v5DrawCalls": 54,
+    "v5BuildMs": 1492,
+    "v5AssetBytes": 461702,
+    "v5Glb": true,
+    "v5GeometryBytes": 13348048,
+    "v5TextureBytes": 28304474,
+    "pipelineTargetBytes": 183173120
+   }
+  }
+ ],
+ "console": [
+  "[warning] THREE.WebGLProgram: Program Info Log: (198,12-86): warning X3595: gradient instruction used in a loop with varying iteration; partial derivatives may have undefined value\n(198,12-86): warning X3595: gradient instruction used in a loop with varying iteration; partial derivatives may have undefined value\n(419,1): warning X4000: use of potentially uninitialized variable (f_ApplyFXAA)"
+ ]
+}

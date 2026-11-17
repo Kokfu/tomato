@@ -81,52 +81,6 @@ export function cables(k: Kit, a: V3, b: V3, n: number, seed: number): void {
   }
 }
 
-/** A small hatchback, about 3.7 m long, facing +x. Lofted from rounded cross-sections. */
-export function car(k: Kit, body: Col): void {
-  // stations: [x, half width, sill y, belt y, roof y (0 = bonnet / boot, no cabin), cabin tumble-home]
-  const st: [number, number, number, number, number, number][] = [
-    [-1.84, 0.5, 0.42, 0.66, 0, 0], [-1.8, 0.68, 0.34, 0.8, 0, 0], [-1.66, 0.76, 0.28, 0.9, 0, 0], [-1.4, 0.79, 0.25, 0.96, 1.12, 0.05], [-1.18, 0.8, 0.24, 0.98, 1.4, 0.12],
-    [-0.7, 0.8, 0.24, 0.98, 1.46, 0.13], [0.0, 0.8, 0.24, 0.97, 1.46, 0.13], [0.35, 0.8, 0.24, 0.96, 1.42, 0.13], [0.86, 0.79, 0.24, 0.93, 0.98, 0.06],
-    [1.3, 0.77, 0.26, 0.86, 0, 0], [1.66, 0.73, 0.3, 0.78, 0, 0], [1.82, 0.64, 0.36, 0.7, 0, 0], [1.86, 0.48, 0.42, 0.62, 0, 0],
-  ];
-  const ring = (s: typeof st[number]): V3[] => {
-    const [x, hw, sill, belt, roof, tumble] = s, top = roof || belt + 0.03, cw = hw - tumble - (roof ? 0.02 : 0.1), out: V3[] = [];
-    // sill, bulging flank, shoulder, glass line, rounded roof
-    const half: [number, number][] = [[hw - 0.05, sill], [hw, sill + 0.12], [hw + 0.012, belt * 0.72], [hw - 0.02, belt], [cw, roof ? belt + (top - belt) * 0.9 : top - 0.01], [cw * 0.8, top + 0.02], [cw * 0.4, top + 0.045], [0, top + 0.05]];
-    for (const [z, y] of half) out.push([x, y, -z]);
-    for (let i = half.length - 2; i >= 0; i--) out.push([x, half[i][1], half[i][0]]);
-    return out;
-  };
-  const rings = st.map(ring);
-  k.use('paint');
-  k.grid(rings, body);
-  k.poly(rings[0], shade(body, 0.8));
-  k.poly(rings[rings.length - 1].slice().reverse(), shade(body, 0.9));
-  k.use('concrete');
-  k.quad([-1.7, 0.25, -0.72], [1.7, 0.25, -0.72], [1.7, 0.25, 0.72], [-1.7, 0.25, 0.72], hex(0x121212));
-  // glazing laid just outside the cabin skin: station pairs give the outline
-  k.use('glass');
-  const gl = hex(0x1a2226);
-  const P = (i: number, j: number, off = 0.022): V3 => { const p = rings[i][j]; return [p[0], p[1], p[2] + Math.sign(p[2]) * off]; };
-  for (const [a, b] of [[4, 5], [5, 6], [6, 7]]) {
-    k.quad(P(a, 11), P(b, 11), P(b, 10), P(a, 10), gl);        // +z side (ring index 11 = shoulder, 10 = glass line)
-    k.quad(P(b, 3), P(a, 3), P(a, 4), P(b, 4), gl);            // -z side
-  }
-  const lift = (p: V3, d: number): V3 => [p[0] + d, p[1] + 0.03, p[2]];
-  k.quad(lift(rings[8][3], 0.03), lift(rings[8][11], 0.03), lift(rings[7][10], 0.03), lift(rings[7][4], 0.03), gl); // windscreen
-  k.quad(lift(rings[3][11], -0.03), lift(rings[3][3], -0.03), lift(rings[4][4], -0.03), lift(rings[4][10], -0.03), gl); // rear window
-  // wheels with hub caps, lamps, plate, bumpers
-  for (const x of [-1.2, 1.18]) for (const s of [1, -1]) k.at({ x, y: 0.29, z: s * 0.71, rx: Math.PI / 2 }, () => {
-    k.use('concrete'); k.cyl(0, 0, -0.11, 0.11, 0.29, 0.29, 18, hex(0x151515), true);
-    k.use('gold'); k.cyl(0, 0, s > 0 ? 0.11 : -0.115, s > 0 ? 0.115 : -0.11, 0.17, 0.16, 12, hex(0xa9abad), true);
-  });
-  k.use('glow');
-  for (const s of [1, -1]) { k.box(1.83, 1.87, 0.5, 0.6, s * 0.46 - 0.13, s * 0.46 + 0.13, hex(0xe8e6d8, 0.5), 'x-'); k.box(-1.86, -1.82, 0.6, 0.74, s * 0.5 - 0.1, s * 0.5 + 0.1, hex(0x8c1410, 0.6), 'x+'); }
-  k.use('paint');
-  k.box(-1.875, -1.85, 0.44, 0.54, -0.24, 0.24, hex(0xf2f2ee), 'x+');
-  k.box(-1.88, -1.7, 0.3, 0.42, -0.7, 0.7, hex(0x2a2a2a), 'x+'); k.box(1.72, 1.9, 0.3, 0.42, -0.68, 0.68, hex(0x2a2a2a), 'x-');
-}
-
 /** Hawker pushcart with an umbrella (the mapped "Banana Fritter - pushcart in front of temple"). */
 export function pushcart(k: Kit): void {
   k.use('shutter');

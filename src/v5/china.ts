@@ -22,7 +22,9 @@ import type { Col, V3 } from './kit.ts';
 import { autoLot, buildLot, acUnit, eaveY, ARCADE, PIER, F1, UP } from './shophouse.ts';
 import type { LotSpec, SignSource } from './shophouse.ts';
 import { CHINA, CHINA_WEST, CHINA_EAST } from './geo.ts';
-import { buildApron, car, cables } from './street.ts';
+import { buildApron, cables } from './street.ts';
+import { vehicle, vehicleSize, plateFor } from './vehicles.ts';
+import type { VehicleKind } from './vehicles.ts';
 import { lanternString } from './landmarks/chinese.ts';
 
 type HeightFn = (x: number, z: number) => number;
@@ -317,8 +319,11 @@ const CARS: [number, number, number][] = [
   [7.4, 1, 0xb9b8b2], [13.2, 1, 0x6f7a88], [18.5, 1, 0x1f2226], [29, 1, 0x3a3d42], [34.3, 1, 0x8e9296], [45, 1, 0x6e1c19], [56, 1, 0x9a9da0], [67.5, 1, 0x4a4e54], [78, 1, 0xa9acae],
 ];
 
+/** Body style per parked car, in CARS order (generic compact hatchback, saloon, compact SUV). */
+const CAR_KINDS: VehicleKind[] = ['saloon', 'hatch', 'suv', 'hatch', 'saloon', 'hatch', 'saloon', 'suv', 'hatch', 'saloon', 'saloon', 'hatch', 'hatch', 'suv', 'hatch', 'saloon', 'suv', 'hatch', 'saloon'];
+
 /** Build the section into `kit`. Returns walkable five-foot-way floors and blocking outlines (piers, cars). */
-export function buildChinaStreet(kit: Kit, h: HeightFn, signs: SignSource): ChinaResult {
+export function buildChinaStreet(kit: Kit, h: HeightFn, signs: SignSource, photo = false): ChinaResult {
   const S = CHINA, floors: ChinaResult['floors'] = [], walls: ChinaResult['walls'] = [];
   const ryStreet = Math.atan2(-S.dz, S.dx);
   const ground = (s: number) => { const [x, z] = S.toWorld(s, 0); return h(x, z); };
@@ -328,8 +333,8 @@ export function buildChinaStreet(kit: Kit, h: HeightFn, signs: SignSource): Chin
   const yAt = (s: number, o: number) => ground(s) + 0.03 + 0.05 * (1 - (o / S.half) ** 2);
   const rows: V3[][] = offs.map(() => []);
   for (let i = 0; i <= N; i++) { const s = sa + ((sb - sa) * i) / N; offs.forEach((o, j) => { const [x, z] = S.toWorld(s, o); rows[j].push([x, yAt(s, o), z]); }); }
-  kit.use('asphalt');
-  const road = hex(0x5f5e5c);
+  kit.use(photo ? 'asphaltPhoto' : 'asphalt');
+  const road = hex(0x4a4a4c);
   kit.grid(rows.slice().reverse(), (i, j) => shade(road, (j === 0 || j === 4 ? 0.86 : 1) * (0.96 + 0.08 * rnd(i, j, 7))));
   // worn white bay marks along the lane edge, and a centre patch seam
   kit.use('paint');
@@ -389,12 +394,17 @@ export function buildChinaStreet(kit: Kit, h: HeightFn, signs: SignSource): Chin
   }
 
   // parked cars (blocking) and lantern strings across the street ([A], [B])
-  for (const [s, side, col] of CARS) {
+  CARS.forEach(([s, side, col], i) => {
+    const kind = CAR_KINDS[i % CAR_KINDS.length], { half, hw } = vehicleSize(kind);
     const o = side * (S.half - 0.78 - 1.02), [x, z] = S.toWorld(s, o);
-    kit.at({ x, y: yAt(s, o) - 0.01, z, ry: ryStreet + (rnd(s, 3) - 0.5) * 0.06 }, () => car(kit, hex(col)));
+    // west-side cars mostly face the Carpenter Street end and east-side cars are mixed, as in [A]
+    const back = side < 0 ? i !== 0 : rnd(i, 5) < 0.5;
+    // the street falls toward the river: the car sits on the slope, not level
+    const yf = yAt(s + 1.25, o), yr = yAt(s - 1.25, o), pitch = Math.atan2(yf - yr, 2.5);
+    kit.at({ x, y: (yf + yr) / 2 - 0.01, z, ry: ryStreet + (back ? Math.PI : 0) + (rnd(s, 3) - 0.5) * 0.05, rz: back ? -pitch : pitch }, () => vehicle(kit, kind, hex(col), signs, plateFor(10 + (i % 5))));
     const c = (ds: number, dob: number) => S.toWorld(s + ds, o + dob);
-    walls.push({ ring: [...c(-1.9, -0.85), ...c(1.9, -0.85), ...c(1.9, 0.85), ...c(-1.9, 0.85)], top: ground(s) + 1.5 });
-  }
+    walls.push({ ring: [...c(-half - 0.03, -hw - 0.03), ...c(half + 0.03, -hw - 0.03), ...c(half + 0.03, hw + 0.03), ...c(-half - 0.03, hw + 0.03)], top: ground(s) + 1.5 });
+  });
   for (const s of [13, 24, 35.5, 47, 59, 71, 83]) {
     const [ax, az] = S.toWorld(s, -S.half + 0.1), [bx, bz] = S.toWorld(s + 1.5, S.half - 0.1), y = ground(s) + 7.25;
     lanternString(kit, [ax, y, az], [bx, y, bz], 8, 0.15, 0.35);

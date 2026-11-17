@@ -46,3 +46,44 @@ At run time (`src/player/GlbCharacter.ts`) the model is scaled to 1.72 m, its ma
 | Quaternius "Universal Base Characters" + "Universal Animation Library" (CC0) | Best quality, but only distributed through itch.io / Patreon download flows and far larger; a possible future upgrade. |
 
 Screenshots of the character in the app are in `docs/screenshots/character/` (regenerate with `node tests/tools/character-shots.ts docs/screenshots/character` against a dev server on port 5183).
+
+## V7.2 real-asset proof of concept (Jalan China section)
+
+Downloaded 2026-11-17. Only the road texture set is shipped. The plaster set was tested on one facade and removed after the A/B test; the vehicle model was inspected and rejected. Neither is in the repository. The road set is used only in render mode `c` ("V7 Jalan China"); `?assets=off` (or `__k3d.v5.setRealAssets(false)`) restores the procedural road for A/B comparison.
+
+### Road: `public/textures/v7/asphalt_03_*.webp` — kept
+
+| | |
+|---|---|
+| Asset | "Asphalt 03" (photoscanned worn asphalt, 2.05 m x 2.05 m) |
+| Authors | Charlotte Baglioni (photography), Dario Barresi (processing), Poly Haven |
+| Source page | https://polyhaven.com/a/asphalt_03 |
+| Downloaded files | `https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/asphalt_03/asphalt_03_diff_1k.jpg` (788,840 bytes, SHA-256 `95ad02e2631c41cf9fdd6a37596cf75adb4fb8a8b6880567cc78ed1c41dc5681`), `..._nor_gl_1k.jpg` (974,676 bytes, `978de8349ce2e9989325099a6fd1f5ea6b2826528e1264606a5c51296b1e2888`), `..._rough_1k.jpg` (590,105 bytes, `069b6ea342aaad04fd1582f59c16fbbe5c7a6f0f3a87bc9d57648ed53336fb3a`) |
+| Licence | CC0 1.0, as labelled on the source page ("CC0 License", https://polyhaven.com/license) |
+| Attribution | Not required. Courtesy credit: "Asphalt 03 by Poly Haven (CC0)". |
+| Shipped | `asphalt_03_albedo_rough.webp` (1024 px, RGB = albedo, alpha = roughness; 313,062 bytes) and `asphalt_03_normal.webp` (1024 px, OpenGL convention; 180,650 bytes) |
+
+### Facade plaster: ambientCG "Painted Plaster 017" — tested, then removed (not shipped)
+
+| | |
+|---|---|
+| Asset | "Painted Plaster 017" (white painted plaster, surface photogrammetry) |
+| Author | ambientCG (Lennart Demes) |
+| Source page | https://ambientcg.com/view?id=PaintedPlaster017 |
+| Downloaded file | `https://ambientcg.com/get?file=PaintedPlaster017_1K-JPG.zip` (4,721,132 bytes, SHA-256 `bae0380d82b6ccac8943b4980417cb3c9de5c896218339c108056f1dfb8e886c`); the `Color`, `NormalGL` and `Roughness` maps were used |
+| Licence | CC0 1.0: "All ambientCG assets are provided under the Creative Commons CC0 1.0 Universal License." (https://docs.ambientcg.com/license/) |
+| Attribution | Not required. Courtesy credit: "Painted Plaster 017 by ambientCG (CC0)". |
+| Outcome | Tested at 512 px on facade No. 27 (174,418 bytes). The critic found it marginal to invisible from the street, so the files and its shader were removed. |
+
+### Modifications (road set)
+
+Resized with Pillow (Lanczos), roughness moved into the alpha channel of the albedo image, saved as lossy WebP. In the shader (`asphaltPhoto` in `src/v5/materials.ts`) the albedo is divided by its own mean colour and multiplied by the building's / road's existing vertex colour, so the photograph supplies surface texture, roughness and normals while the verified road colour is unchanged. Applied to the Jalan China carriageway only. The two files (493,712 bytes) are fetched only when the Jalan China section is built with real assets on; the Low preset skips the normal map.
+
+### Vehicle: Innerscene "Sedan car" — rejected, not shipped
+
+| | |
+|---|---|
+| Source page | https://www.innerscene.com/tools/library/3d-parts/sedan-car-42109739 |
+| Downloaded file | `https://www.innerscene.com/api/library/sedan-car-42109739/download` (`sedan-original.glb`, 641,908 bytes, SHA-256 `187c9935c40f952837fe2d98200b390415e695196d7b1280c9ec3ebb1bf4961b`) |
+| Licence | CC0 1.0. Page: "Public domain (CC0). Free to use, modify and redistribute for any purpose, including commercially, with no credit required." The GLB's own `asset.copyright` field says the same ("Authored by Innerscene Corp ... dedicated under CC0 1.0 Universal"). |
+| Why rejected | The licence is fine; the model is not better than the procedural cars. It is a flat-shaded low-poly sedan assembled from primitives: 16,300 triangles in 72 separate meshes, of which only 2,208 form the body and cab (the rest are bevelled boxes, wheel tori and spokes); 9 flat-colour materials, no textures, no UVs on the cab; opaque dark "glass" with no interior; headlights are white boxes; mirrors float beside the body. It would add about 16 times the triangles of a procedural car and a GLTF load for the same slab-sided look. |

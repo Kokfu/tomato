@@ -70,6 +70,8 @@ export class V5Controller {
       setWalls: (w) => world.collision.setExtraWalls(w),
     });
     const [ax, az] = STREET[1], [bx, bz] = STREET[3], l = Math.hypot(bx - ax, bz - az);
+    // V7.2 A/B: ?assets=off keeps the Jalan China section fully procedural (the photographic road textures are not fetched).
+    this.scene.realAssets = new URLSearchParams(location.search).get('assets') !== 'off';
     this.scene.materials.uniforms.uAxis.value.set((bx - ax) / l, (bz - az) / l);
     this.scene.materials.uniforms.uGroundY.value = world.height.sample(120, 3);
     this.pipeline = new V5Pipeline(renderer, { scene: world.scene, sun: world.sun, hemi: world.hemi, sunDir: world.sunDir, sky: world.sky }, camera,
@@ -128,7 +130,7 @@ export class V5Controller {
         this.world.scene.add(this.scene.group);
         // Light balance: the Jalan China section is tuned separately (softer shadow edge, more sky fill, clear air
         // so that the DUN at the end of the street keeps its colour).
-        this.pipeline.look = m === 'c' ? { sun: 6.0, hemi: 1.3, fog: 0.35, shadowRadius: 3.2, env: 1.0, exposure: 0.92 } : { sun: 6.6, hemi: 1.05, fog: 0.8, shadowRadius: 2.2, env: 0.85, exposure: 0.9 };
+        this.pipeline.look = m === 'c' ? { sun: 6.6, hemi: 1.15, fog: 0.35, shadowRadius: 2.0, env: 1.0, exposure: 1.05 } : { sun: 6.6, hemi: 1.05, fog: 0.8, shadowRadius: 2.2, env: 0.85, exposure: 0.9 };
         this.pipeline.disable();
         this.pipeline.enable();
         this.ambience.start();
@@ -141,6 +143,14 @@ export class V5Controller {
     } finally {
       this.busy = false;
     }
+  }
+
+  /** V7.2 A/B switch at run time: rebuilds the Jalan China section with or without the photographic road material. */
+  async setRealAssets(on: boolean): Promise<void> {
+    this.scene.realAssets = on;
+    if (this.mode !== 'c' || this.busy) return;
+    this.busy = true;
+    try { await this.scene.build('c'); } finally { this.busy = false; }
   }
 
   /** Follow the app's graphics preset. */
@@ -174,7 +184,7 @@ export class V5Controller {
       mode: this.mode, frames: s.length, avgMs: +(s.reduce((a, b) => a + b, 0) / Math.max(1, s.length)).toFixed(2), p95Ms: +(s[Math.floor(s.length * 0.95)] ?? 0).toFixed(2), maxMs: +(s[s.length - 1] ?? 0).toFixed(2),
       calls: i.render.calls, triangles: i.render.triangles, geometries: i.memory.geometries, textures: i.memory.textures,
       v5Triangles: this.scene.stats.triangles, v5DrawCalls: this.scene.stats.drawCalls, v5BuildMs: this.scene.stats.buildMs, v5AssetBytes: this.scene.stats.assetBytes, v5Glb: this.scene.stats.glb,
-      v5GeometryBytes: this.scene.stats.geometryBytes, v5TextureBytes: this.scene.stats.textureBytes, pipelineTargetBytes: this.pipeline.active ? this.pipeline.targetBytes() : 0,
+      v5RealAssets: this.scene.realAssets, v5GeometryBytes: this.scene.stats.geometryBytes, v5TextureBytes: this.scene.stats.textureBytes, pipelineTargetBytes: this.pipeline.active ? this.pipeline.targetBytes() : 0,
     };
   }
 }

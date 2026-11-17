@@ -20,7 +20,8 @@ import { ROWS, BLOCKS, rowFrame, V5_LANDMARK_IDS, CHINA_WEST, CHINA_EAST, CHINA_
 import { buildChinaStreet } from './china.ts';
 import type { RowDef } from './geo.ts';
 import { LOT_OVERRIDES } from './lots.ts';
-import { buildRoad, buildApron, lampPost, cables, car, pushcart, streetLanterns } from './street.ts';
+import { buildRoad, buildApron, lampPost, cables, pushcart, streetLanterns } from './street.ts';
+import { vehicle, plateFor } from './vehicles.ts';
 import { buildTemple, buildGenericTemple } from './landmarks/temple.ts';
 import { buildFoodCourt, buildGenericFoodCourt, buildOperaStage, buildGenericStage } from './landmarks/foodcourt.ts';
 import { paintAtlas, ATLAS_SIZE } from './landmarks/atlas.ts';
@@ -107,8 +108,8 @@ function bufGeometry(b: Buf): THREE.BufferGeometry {
   return g;
 }
 
-const NO_SHADOW = new Set<string>(['poly', 'glow', 'glass', 'wire']);
-const NO_RECEIVE = new Set<string>(['poly', 'glow', 'wire']);
+const NO_SHADOW = new Set<string>(['poly', 'glow', 'glass', 'wire', 'contact']);
+const NO_RECEIVE = new Set<string>(['poly', 'glow', 'wire', 'contact']);
 /** Trade words for hanging signboards, by mapped category (a description of the trade, not a claimed shop name). */
 const TRADE: Record<string, string> = { jewelry: '金铺', watches: '钟表', restaurant: '饭店', cafe: '茶室', convenience: '便利店' };
 const SIGN_STYLES: [string, string][] = [['#f6efe0', '#8c1c15'], ['#f3d98a', '#1f3f6a'], ['#ffffff', '#1f6a45'], ['#f6e7b0', '#3a2a1e'], ['#b3261e', '#f4efe2'], ['#f2c53d', '#7a1612']];
@@ -122,6 +123,10 @@ export class V5Scene {
   private signs: SignAtlas;
   private atlas: THREE.Texture | null = null;
   private places: PlaceLike[] | null = null;
+  /** V7.2 A/B switch: photographic road material in the Jalan China section (false = all procedural). */
+  realAssets = true;
+  private photoBytes = 0;
+  private photoLoad: Promise<boolean> | null = null;
   private token = 0;
 
   constructor(host: V5Host) {
@@ -170,6 +175,34 @@ export class V5Scene {
     return (this.atlas = tex);
   }
 
+  /** Photographic road set: fetched the first time the Jalan China section is built with real assets on. */
+  private loadPhotoSets(): Promise<boolean> {
+    return (this.photoLoad ??= (async () => {
+      const u = this.materials.uniforms;
+      const jobs: [{ value: THREE.Texture | null }, string, boolean, number][] = [[u.uRoadA, 'asphalt_03_albedo_rough', true, 8]];
+      if (!this.host.low) jobs.push([u.uRoadN, 'asphalt_03_normal', false, 8]);
+      try {
+        await Promise.all(jobs.map(async ([slot, name, srgb, aniso]) => {
+          const r = await fetch(`${this.host.baseUrl}textures/v7/${name}.webp`);
+          if (!r.ok || !(r.headers.get('content-type') ?? '').startsWith('image/')) throw new Error(`${name}: ${r.status}`);
+          const blob = await r.blob(), src = URL.createObjectURL(blob);
+          const tex = await new THREE.TextureLoader().loadAsync(src).finally(() => URL.revokeObjectURL(src));
+          tex.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+          tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+          tex.anisotropy = aniso;
+          tex.needsUpdate = true;
+          slot.value = tex;
+          this.stats.assetBytes += blob.size;
+          this.photoBytes += Math.round(tex.image.width * tex.image.height * 4 * 1.333);
+        }));
+        return true;
+      } catch (e) {
+        console.warn('V7.2 photographic road material unavailable, using the procedural one:', e);
+        return false;
+      }
+    })());
+  }
+
   private lotSpecs(row: RowDef, mode: V5Mode, places: PlaceLike[], len: number, fr: ReturnType<typeof rowFrame>): LotSpec[] {
     const w = len / row.lots, specs: LotSpec[] = [];
     const openEnds: Record<string, [boolean, boolean]> = { N2: [true, false], N3: [false, true] };
@@ -216,6 +249,8 @@ export class V5Scene {
     // With the Jalan China section the corner building keeps only its Carpenter Street bay depth, and the
     // simplified Jalan China frontage ("JC") is replaced by the detailed rows.
     const china = mode === 'c';
+    const photo = china && this.realAssets && (await this.loadPhotoSets());
+    if (token !== this.token) return;
     const rowDefs = china ? ROWS.filter((r) => r.id !== 'JC').map((r) => (r.id === 'N3' ? { ...r, depth: 5.5 } : r)) : ROWS;
     let walls: { ring: number[]; top: number }[] = [];
     for (const def of rowDefs) {
@@ -243,7 +278,7 @@ export class V5Scene {
         cables(kit, [fr.ox + fr.nx * 0.16, y, fr.oz + fr.nz * 0.16], [fr.ox + fr.dx * fr.len + fr.nx * 0.16, y, fr.oz + fr.dz * fr.len + fr.nz * 0.16], 3, row.lots);
       }
     }
-    if (china) { const r = buildChinaStreet(kit, h, this.signs); floors.push(...r.floors); walls = r.walls; lots += r.lots; }
+    if (china) { const r = buildChinaStreet(kit, h, this.signs, photo); floors.push(...r.floors); walls = r.walls; lots += r.lots; }
     this.yards(kit, h, china ? [...BLOCKS, CHINA_BLOCK] : BLOCKS, china ? [...rowDefs, CHINA_WEST, CHINA_EAST] : ROWS);
 
     // street lamps on the south side at lot boundaries
@@ -275,10 +310,10 @@ export class V5Scene {
       const at = (u: number, v: number, ry: number, fn: () => void) => { const x = tf.x + rx * u + nx * v, z = tf.z + rz * u + nz * v; kit.at({ x, y: h(x, z) + 0.04, z, ry: tf.yaw + ry }, fn); };
       at(-6.6, 0.9, 0.2, () => pushcart(kit));                                   // mapped banana-fritter pushcart beside the forecourt
       // cars at the kerb either side of the food court mouth (iPackTravel street-front photograph)
-      at(-7.4, 6.7, 0.03, () => car(kit, hex(0xc9cdd0)));
-      at(7.6, 6.7, Math.PI - 0.02, () => car(kit, hex(0xe9e9e6)));
-      at(-21, 1.75, Math.PI, () => car(kit, hex(0x7a1f1c)));
-      at(24, 6.6, 0, () => car(kit, hex(0x2c3e55)));
+      at(-7.4, 6.7, 0.03, () => vehicle(kit, 'saloon', hex(0xc9cdd0), this.signs, plateFor(1)));
+      at(7.6, 6.7, Math.PI - 0.02, () => vehicle(kit, 'hatch', hex(0xe9e9e6), this.signs, plateFor(2)));
+      at(-21, 1.75, Math.PI, () => vehicle(kit, 'hatch', hex(0x7a1f1c), this.signs, plateFor(3)));
+      at(24, 6.6, 0, () => vehicle(kit, 'suv', hex(0x2c3e55), this.signs, plateFor(4)));
       streetLanterns(kit, h, [0.16, 0.3, 0.72, 0.86]);
     }
 
@@ -303,7 +338,7 @@ export class V5Scene {
     this.mode = mode;
     const S = this.signs.canvas.width, det = (this.materials.uniforms.uDetail.value.image as { width: number }).width;
     this.stats = { ...this.stats, triangles: Math.round(tris), drawCalls: calls, buildMs: Math.round(performance.now() - t0), glb: glbs.length > 0, lots, geometryBytes: gbytes,
-      textureBytes: Math.round((S * S * 4 + det * det * 4 + (mode !== 'a' ? ATLAS_SIZE * ATLAS_SIZE * 4 : 0)) * 1.333) };
+      textureBytes: Math.round((S * S * 4 + det * det * 4 + (mode !== 'a' ? ATLAS_SIZE * ATLAS_SIZE * 4 : 0)) * 1.333) + (photo ? this.photoBytes : 0) };
   }
 
   /** Low zinc back-of-lot roofs over each replaced block and plain yard walls on edges without a row. */
