@@ -65,6 +65,8 @@ export class ChunkManager {
   private want = new Map<string, Detail>();
   private order: string[] = [];
   private prefetchKeys: string[] = [];
+  /** Chunks in the block ahead of a moving player: downloaded early and not unloaded while still ahead. */
+  private ahead = new Set<string>();
   private base: string;
   private frame = 0;
   private failures = new Map<string, number>();
@@ -72,6 +74,8 @@ export class ChunkManager {
   readonly places: PlaceIndex;
   /** Chunk meshes that may be built this frame (raised at vehicle speeds). */
   private buildBudget = 1;
+  /** True in the vehicle speed band (see pump). */
+  private sliceBuilds = false;
 
   constructor(manifest: Manifest, height: HeightMap, collision: CollisionWorld, mats: Materials, landmarks: LandmarkManager, places: PlaceIndex, quality: Quality) {
     this.manifest = manifest;
@@ -170,12 +174,9 @@ export class ChunkManager {
       });
     }
     const cx = Math.floor(x / CHUNK_SIZE), cz = Math.floor(z / CHUNK_SIZE);
-    if (cx !== this.centre.cx || cz !== this.centre.cz) {
-      this.centre = { cx, cz };
-      this.recomputeWanted();
-    }
     // Prefetch (download only) the chunks the player is heading toward.
     this.prefetchKeys = [];
+    this.ahead.clear();
     const sp = Math.hypot(vx, vz);
     if (sp > 0.5) {
       // Look further ahead at vehicle speeds so chunks are downloaded before they are needed.
@@ -185,11 +186,20 @@ export class ChunkManager {
         const px = Math.floor((x + (vx / sp) * ahead) / CHUNK_SIZE), pz = Math.floor((z + (vz / sp) * ahead) / CHUNK_SIZE);
         for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
           const k = chunkKey(px + dx, pz + dz);
-          if (this.available.has(k) && !this.chunks.has(k) && !this.prefetchKeys.includes(k)) this.prefetchKeys.push(k);
+          if (!this.available.has(k)) continue;
+          this.ahead.add(k);
+          if (!this.chunks.has(k) && !this.prefetchKeys.includes(k)) this.prefetchKeys.push(k);
         }
       }
     }
+    // After the look-ahead, so that crossing a chunk border does not throw away the chunks just downloaded
+    // ahead of a car (their road and collision data stay in memory until the car turns away from them).
+    if (cx !== this.centre.cx || cz !== this.centre.cz) {
+      this.centre = { cx, cz };
+      this.recomputeWanted();
+    }
     this.buildBudget = sp > 60 ? 3 : sp > 9 ? 2 : 1;
+    this.sliceBuilds = sp > 9 && sp <= 60;
     this.pump();
   }
 
@@ -215,7 +225,7 @@ export class ChunkManager {
     // Unload chunks well outside the wanted radius (hysteresis of one chunk).
     for (const c of [...this.chunks.values()]) {
       const d = Math.max(Math.abs(c.cx - cx), Math.abs(c.cz - cz));
-      if (d > R + 1) this.unload(c);
+      if (d > R + 1) { if (!this.ahead.has(c.key)) this.unload(c); }
       else if (!this.want.has(c.key) && c.built === 'high') this.disposeMesh(c);
     }
   }
@@ -229,11 +239,15 @@ export class ChunkManager {
     // 2. Build at most one chunk mesh per frame (two at vehicle speeds), nearest first, to avoid frame
     // spikes. A high-detail chunk is built in two frames: geometry first, decorations after.
     let budget = this.buildBudget;
+    // At driving speeds the second build of a frame is only started while the frame still has time for it:
+    // two heavy old-town chunks in one frame are a visible stutter, and a car does not need them that fast.
+    const t0 = performance.now();
+    const spent = () => this.sliceBuilds && performance.now() - t0 > 6;
     for (const k of this.order) {
       const c = this.chunks.get(k);
       if (c?.decor && c.group) {
         this.decorate(c);
-        if (--budget <= 0) return;
+        if (--budget <= 0 || spent()) return;
       }
     }
     for (const k of this.order) {
@@ -241,7 +255,7 @@ export class ChunkManager {
       const detail = this.want.get(k)!;
       if (c && c.state === 'loaded' && c.built !== detail) {
         this.build(c, detail);
-        if (--budget <= 0) break;
+        if (--budget <= 0 || spent()) break;
       }
     }
   }

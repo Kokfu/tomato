@@ -1,7 +1,12 @@
-# Future vehicle integration
+# Vehicle integration
 
-Driving is **not implemented**. This document records what the V2 architecture already provides
-for it and where a vehicle feature plugs in.
+**Status (V8):** a first driving prototype is implemented: one drivable car, a chase camera, enter / exit,
+oriented-box collision and road-aware streaming, in `src/vehicle/`. See `docs/V8_REPORT.md` for what
+exists and how it was tested. Of the list below, steps 2, 3 and 4 are done; step 1 (a vehicle routing
+graph with lane metadata) and step 5 (traffic) are not.
+
+The rest of this document is the original V2 design note. It records what the architecture provides
+for vehicles and where further vehicle features plug in.
 
 ## What the data already carries
 

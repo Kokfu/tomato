@@ -20,6 +20,7 @@ import type { SavedView } from './player/FlyMode.ts';
 import { ReferencePanel } from './ui/ReferencePanel.ts';
 import STREET_VIEWS from '../tools/dev/street-views.json';
 import type { V5Controller, RenderMode } from './v5/controller.ts';
+import { Driving } from './vehicle/Driving.ts';
 
 async function boot(): Promise<void> {
   const canvas = document.getElementById('scene') as HTMLCanvasElement;
@@ -148,13 +149,37 @@ async function boot(): Promise<void> {
   player.heading = Math.PI;
   tpc.yaw = 0;
 
+  // V8: one drivable car on the real road network (see src/vehicle). While it is driven the character rides
+  // along (hidden), so the map, the location read-out and the streaming keep following `player.position`.
+  const driving = new Driving(world, camera, { toast: (t) => menu.toast(t, 2) });
+  world.scene.add(driving.model.root);
+  /** Teleports and resets act on the walking character: the car is left where it stands. */
+  const leaveCar = () => {
+    if (!driving.active) return;
+    driving.exit(player, true);
+    player.visual.root.visible = !tpc.firstPerson;
+  };
+  const toggleCar = () => {
+    if (driving.active) {
+      if (driving.exit(player)) {
+        player.visual.root.visible = !tpc.firstPerson;
+        tpc.yaw = driving.camera.yaw;
+        tpc.snap();
+      }
+    } else if (driving.enter(player)) {
+      if (tpc.firstPerson) tpc.firstPerson = false;
+    }
+  };
+
   const resetLocation = () => {
+    leaveCar();
     player.teleport(spawn.x, spawn.z);
     player.heading = Math.PI;
     tpc.yaw = 0;
     tpc.snap();
   };
   const toggleView = () => {
+    if (driving.active) return; // the driving camera is third-person only
     tpc.firstPerson = !tpc.firstPerson;
     player.visual.root.visible = !tpc.firstPerson;
   };
@@ -188,11 +213,13 @@ async function boot(): Promise<void> {
         fly.yaw = tpc.yaw;
         fly.pitch = -tpc.pitch;
         player.velocity.set(0, 0, 0);
-        player.visual.root.visible = true;
+        player.visual.root.visible = !driving.active;
+        driving.hidePrompt();
       } else {
         // The character never moved: walking resumes from its last safe position, with collision and gravity.
-        player.visual.root.visible = !tpc.firstPerson;
+        player.visual.root.visible = !tpc.firstPerson && !driving.active;
         tpc.snap();
+        driving.camera.snap();
         // The comparison panel belongs to the inspection mode only.
         if (refPanel.open) refPanel.toggle(false);
       }
@@ -203,6 +230,7 @@ async function boot(): Promise<void> {
       if (!c.isLoaded(x, z) || c.inWater(x, z)) return false;
       const h = c.groundAt(x, z, 1e6).h;
       if (c.insideBuilding(x, z, h)) return false;
+      leaveCar();
       player.teleport(x, z);
       return true;
     },
@@ -222,8 +250,20 @@ async function boot(): Promise<void> {
   });
 
   input.on('interact', () => {
-    if (started && !paused && !mapOpen) placePanel.toggle();
+    if (!started || paused || mapOpen) return;
+    // E gets in and out of the car; everywhere else (and in OP mode) it inspects the nearest place as before.
+    if (!placeOpen && !fly.active && spawnReady && (driving.active || driving.canEnter(player))) toggleCar();
+    else if (!driving.active) placePanel.toggle();
   });
+  input.on('reset', () => {
+    if (input.enabled && !fly.active) driving.resetToRoad();
+  });
+  for (const id of ['car-prompt', 'speedo-exit']) {
+    document.getElementById(id)!.addEventListener('click', (e) => {
+      (e.currentTarget as HTMLElement).blur();
+      if (started && !paused && !mapOpen && !placeOpen && !fly.active) toggleCar();
+    });
+  }
 
   input.on('pause', () => {
     if (placeOpen) placePanel.close();
@@ -284,7 +324,7 @@ async function boot(): Promise<void> {
     // The world streams around the walking character, or around the free camera in OP fly mode.
     const flying = fly.active;
     const focus = flying ? fly.focus : player.position;
-    world.update(dt, focus, flying ? fly.velocity : player.velocity, camera);
+    world.update(dt, focus, flying ? fly.velocity : driving.active ? driving.velocity : player.velocity, camera);
     v5?.update(dt, rawDt, focus.x, focus.z);
 
     if (!spawnReady) {
@@ -296,15 +336,30 @@ async function boot(): Promise<void> {
     }
 
     input.poll();
+    if (spawnReady) driving.tryPlace();
     if (flying) {
-      if (!paused) fly.update(dt, input);
+      if (!paused) {
+        fly.update(dt, input);
+        driving.coast(dt);
+      }
+    } else if (driving.active) {
+      if (!paused) for (let i = 0; i < stepsPerFrame; i++) driving.drive(dt, input);
+      driving.camera.update(dt, driving.car, input);
+      // The walking camera keeps the same bearing, so the heading-up minimap and getting out are seamless.
+      tpc.yaw = driving.camera.yaw;
     } else {
       if (spawnReady && !paused) for (let i = 0; i < stepsPerFrame; i++) player.update(dt, input, tpc.yaw);
       tpc.update(dt, player, input);
+      driving.idle(dt, player, input.enabled);
+    }
+    if (driving.active) {
+      player.position.copy(driving.position);
+      player.velocity.copy(driving.velocity);
+      player.heading = driving.car.heading;
     }
     input.endFrame();
 
-    blob.visible = quality.shadowMap === 0 && !tpc.firstPerson;
+    blob.visible = quality.shadowMap === 0 && !tpc.firstPerson && !driving.active;
     if (blob.visible) blob.position.set(player.position.x, world.collision.groundAt(player.position.x, player.position.z, player.position.y).h + 0.08, player.position.z);
 
     minimap.update(dt);
@@ -317,7 +372,9 @@ async function boot(): Promise<void> {
       menu.setLocation(road ?? 'Kuching, Sarawak', lat, lon);
       menu.setChunkLoading(world.chunks.progress() < 0.999);
       placePanel.update();
-      if (player.blocked === 'water') menu.toast('The river blocks the way – use a bridge');
+      driving.refreshHud();
+      if (driving.active) { /* the car reports its own obstacles */ }
+      else if (player.blocked === 'water') menu.toast('The river blocks the way – use a bridge');
       else if (player.blocked === 'edge') menu.toast('Edge of the mapped area');
       else if (player.blocked === 'loading') menu.toast('Loading the next area…');
       if (menu.showStats) {
@@ -394,7 +451,7 @@ async function boot(): Promise<void> {
 
   // Debug / automated-test hook.
   (window as any).__k3d = {
-    world, player, camera, tpc, input, renderer, minimap, menu, placePanel, steps, v5, fly, refPanel,
+    world, player, camera, tpc, input, renderer, minimap, menu, placePanel, steps, v5, fly, refPanel, driving,
     geoToWorld, worldToGeo,
     /** Protected landmarks that reached a generic building generator (must stay empty). */
     landmarkGuard: guardViolations,

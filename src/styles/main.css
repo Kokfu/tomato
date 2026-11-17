@@ -164,3 +164,25 @@ input[type='range'] { width: 100%; accent-color: var(--accent); }
 #ref-panel .ref-bar select { max-width: 210px; background: #1a2028; } #ref-panel .ref-bar button:hover { border-color: var(--accent); } #ref-panel .ref-bar button:disabled { opacity: 0.4; }
 #ref-panel .ref-bar input[type=range] { width: 110px; }
 #ref-panel .ref-credit { flex: 1 1 100%; color: var(--muted); line-height: 1.35; } #ref-panel .ref-credit a { color: var(--accent); }
+
+/* Driving (V8) */
+#car-prompt { position: absolute; left: 50%; bottom: calc(76px + var(--safe-b)); transform: translateX(-50%); padding: 9px 16px; font-weight: 600; font-size: 15px; white-space: nowrap; }
+#car-prompt:hover { border-color: var(--accent); }
+#car-prompt kbd { display: inline-block; min-width: 22px; padding: 1px 6px; margin-right: 8px; border-radius: 5px; background: var(--accent); color: var(--accent-ink); font: 700 12px/1.5 system-ui, sans-serif; text-align: center; }
+/* E belongs to the car while it is in reach or being driven. */
+#hud.near-car #place-prompt, #hud.driving #place-prompt { display: none !important; }
+#speedo {
+  position: absolute; right: 12px; bottom: calc(34px + var(--safe-b)); padding: 8px 14px 9px; min-width: 132px;
+  display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: baseline; pointer-events: none;
+}
+#speedo-gear { grid-row: 1 / span 2; align-self: center; width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; font-weight: 800; font-size: 14px; background: rgba(255, 255, 255, 0.12); }
+#speedo-gear[data-gear='D'] { background: var(--river); color: #06242a; }
+#speedo-gear[data-gear='R'] { background: #d9694f; color: #2a0d06; }
+#speedo-kmh { font-size: 30px; font-weight: 700; line-height: 1; text-align: right; font-variant-numeric: tabular-nums; }
+#speedo-unit { grid-column: 2; color: var(--muted); font-size: 11px; text-align: right; letter-spacing: 0.06em; }
+#speedo-note { grid-column: 1 / -1; color: var(--accent); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-align: right; min-height: 12px; }
+#speedo-exit { display: none; grid-column: 1 / -1; margin-top: 6px; padding: 7px 0; border-radius: 8px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.08); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; pointer-events: auto; }
+@media (pointer: coarse) {
+  #speedo { right: auto; left: 50%; transform: translateX(-50%); bottom: calc(40px + var(--safe-b)); }
+  #speedo-exit { display: block; }
+}

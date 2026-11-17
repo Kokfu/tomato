@@ -1,0 +1,171 @@
+{
+  "url": "http://localhost:3000/",
+  "size": "1280x720",
+  "mode": "v4 (default)",
+  "quality": "medium",
+  "drive": {
+    "reached": true,
+    "frames": 3994,
+    "seconds": 67.25280000001192,
+    "distance": 386.2800785410017,
+    "avgKmh": 20.647069124233308,
+    "roads": [
+      "Jalan China",
+      "Jalan Carpenter",
+      "Jalan Bishopgate",
+      "Jalan Main Bazaar"
+    ],
+    "x": 206.06396725473599,
+    "z": -53.42972069219275,
+    "everInBuilding": false,
+    "everInWater": false,
+    "blocked": [],
+    "impacts": 0,
+    "maxImpact": 0,
+    "offRoadFrames": 0,
+    "maxHeightError": 0.1287675756316231,
+    "maxPitch": 0.10997480434511098,
+    "maxRoll": 0.08346139532403496,
+    "unbuiltFrames": 0,
+    "maxChunks": 52,
+    "maxFrameMs": 109,
+    "maxKmh": 32.60920572858444,
+    "recoveries": 0,
+    "impactsAt": [],
+    "trace": []
+  },
+  "walkedAway": true,
+  "shots": [
+    {
+      "shot": "01-walking-to-the-car",
+      "note": "on foot on Jalan China, the car is marked ahead",
+      "driving": false,
+      "road": "Jalan China",
+      "kmh": 0,
+      "x": 207.7,
+      "z": -53.9,
+      "fps": 60
+    },
+    {
+      "shot": "02-at-the-car-prompt",
+      "note": "beside the driver door: the \"E Drive\" prompt",
+      "driving": false,
+      "road": "Jalan China",
+      "kmh": 0,
+      "x": 207.7,
+      "z": -53.9,
+      "fps": 60
+    },
+    {
+      "shot": "03-in-the-car",
+      "note": "E pressed: chase camera and speedometer",
+      "driving": true,
+      "road": "Jalan China",
+      "kmh": 0,
+      "x": 207.7,
+      "z": -53.9,
+      "fps": 60
+    },
+    {
+      "shot": "04-driving-jalan-china",
+      "note": "driving down Jalan China",
+      "driving": true,
+      "road": "Jalan China",
+      "kmh": 31,
+      "x": 185,
+      "z": -21.2,
+      "fps": 60
+    },
+    {
+      "shot": "05-junction-carpenter",
+      "note": "left turn into Jalan Carpenter",
+      "driving": true,
+      "road": "Jalan Carpenter",
+      "kmh": 30,
+      "x": 172,
+      "z": 33.8,
+      "fps": 60
+    },
+    {
+      "shot": "06-jalan-carpenter",
+      "note": "Jalan Carpenter",
+      "driving": true,
+      "road": "Jalan Carpenter",
+      "kmh": 32,
+      "x": 226.6,
+      "z": 49.6,
+      "fps": 58
+    },
+    {
+      "shot": "07-junction-bishopgate",
+      "note": "left turn into Jalan Bishopgate",
+      "driving": true,
+      "road": "Jalan Bishopgate",
+      "kmh": 32,
+      "x": 270.7,
+      "z": 35.4,
+      "fps": 60
+    },
+    {
+      "shot": "08-junction-main-bazaar",
+      "note": "left turn into Jalan Main Bazaar",
+      "driving": true,
+      "road": "Jalan Main Bazaar",
+      "kmh": 12,
+      "x": 268.6,
+      "z": -34.6,
+      "fps": 60
+    },
+    {
+      "shot": "09-jalan-main-bazaar",
+      "note": "Jalan Main Bazaar, along the waterfront",
+      "driving": true,
+      "road": "Jalan Main Bazaar",
+      "kmh": 26,
+      "x": 228.1,
+      "z": -63.5,
+      "fps": 60
+    },
+    {
+      "shot": "10-back-into-jalan-china",
+      "note": "left turn back into Jalan China",
+      "driving": true,
+      "road": "Jalan China",
+      "kmh": 25,
+      "x": 213,
+      "z": -63.1,
+      "fps": 60
+    },
+    {
+      "shot": "11-stopped",
+      "note": "stopped on Jalan China after the loop",
+      "driving": true,
+      "road": "Jalan China",
+      "kmh": 0,
+      "x": 206.1,
+      "z": -53.4,
+      "fps": 60
+    },
+    {
+      "shot": "12-out-of-the-car",
+      "note": "E pressed: on foot again beside the car",
+      "driving": false,
+      "road": "Jalan China",
+      "kmh": 0,
+      "x": 206.1,
+      "z": -53.4,
+      "fps": 60
+    },
+    {
+      "shot": "13-walking-away",
+      "note": "walking away; the car stays parked",
+      "driving": false,
+      "road": "Jalan China",
+      "kmh": 0,
+      "x": 206.1,
+      "z": -53.4,
+      "fps": 60
+    }
+  ],
+  "errors": []
+}

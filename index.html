@@ -31,6 +31,14 @@
         <b>WASD</b> move &middot; <b>Shift</b> run &middot; <b>Space</b> jump &middot; <b>Mouse</b> look &middot; <b>Wheel</b> zoom &middot; <b>E</b> inspect shop &middot; <b>M</b> map &middot; <b>V</b> view &middot; <b>Esc</b> pause
       </div>
       <button id="place-prompt" class="panel hidden" aria-label="Inspect place"></button>
+      <button id="car-prompt" class="panel hidden" aria-label="Get in the car"><kbd>E</kbd>Drive</button>
+      <div id="speedo" class="panel hidden" aria-label="Speedometer">
+        <div id="speedo-gear" data-gear="N">N</div>
+        <div id="speedo-kmh">0</div>
+        <div id="speedo-unit">km/h</div>
+        <div id="speedo-note"></div>
+        <button id="speedo-exit" title="Get out (E)">EXIT</button>
+      </div>
       <div id="toast" class="panel hidden"></div>
       <div id="chunk-loading" class="panel hidden">Loading area&hellip;</div>
       <div id="stats" class="hidden"></div>

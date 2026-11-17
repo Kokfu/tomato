@@ -12,6 +12,8 @@ export const KEY_BINDINGS = {
   view: ['KeyV'],
   interact: ['KeyE', 'Enter'],
   pause: ['Escape'],
+  /** Driving only: put the car back on the last valid road position. */
+  reset: ['KeyR'],
 };
 export type Action = keyof typeof KEY_BINDINGS;
 
@@ -22,6 +24,8 @@ export class Input {
   run = false;
   /** Set for one frame when jump is requested. */
   jump = false;
+  /** Held state of the jump key (Space): the handbrake while driving. */
+  handbrake = false;
   /** Accumulated look deltas (radians), consumed by the camera each frame. */
   lookYaw = 0;
   lookPitch = 0;
@@ -107,6 +111,7 @@ export class Input {
       this.moveX = this.moveY = 0;
       this.run = false;
       this.jump = false;
+      this.handbrake = false;
       return;
     }
     let x = (this.pressed('right') ? 1 : 0) - (this.pressed('left') ? 1 : 0);
@@ -123,6 +128,7 @@ export class Input {
     this.moveX = x;
     this.moveY = y;
     this.run = this.pressed('run') || this.touchRun;
+    this.handbrake = this.pressed('jump');
   }
 
   /** Clear one-shot values at the end of a frame. */

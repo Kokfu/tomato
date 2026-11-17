@@ -33,6 +33,24 @@ under `public/data/kuching/`, so the app runs without fetching anything.
 | M | Map |
 | Esc | Pause / release the mouse |
 
+### Driving (V8 prototype)
+
+One car waits at the mouth of Jalan China, just off Jalan Main Bazaar (yellow, with a marker above it).
+Walk up to it and press **E**.
+
+| Desktop | Action |
+|---|---|
+| E | Get in / get out (the car must be stopped) |
+| W | Accelerate |
+| S | Brake, then reverse |
+| A / D | Steer |
+| Space | Handbrake |
+| Mouse / wheel | Rotate the chase camera / camera distance |
+| R | Put the car back on the last valid road position |
+| P | OP fly mode (unchanged; the car brakes to a stop while it is on) |
+
+See `docs/V8_REPORT.md`.
+
 On touch devices: left joystick to move, drag anywhere else to look, pinch to zoom, **RUN** toggles
 running, **JUMP** jumps. Key bindings live in `KEY_BINDINGS` in `src/player/Input.ts`.
 

@@ -82,7 +82,13 @@ function halfRing(hw: number, bot: number, deck: number): [number, number][] {
   return [[hw - 0.12, bot], [hw - 0.03, bot + 0.05], [hw, bot + (deck - bot) * 0.45], [hw - 0.012, deck - 0.11], [hw - 0.04, deck - 0.035], [hw - 0.11, deck], [hw * 0.5, deck + CROWN * 0.75], [0, deck + CROWN]];
 }
 
-function wheel(k: Kit, rw: number): void {
+/** Wheel positions and radius of a body style (the drivable car builds its wheels as separate, turning meshes). */
+export function vehicleWheels(kind: VehicleKind): { axles: [number, number]; rw: number; hw: [number, number] } {
+  const S = SPECS[kind], hwAt = (x: number) => { const st = S.body; let i = 1; while (i < st.length - 1 && st[i][0] < x) i++; const a = st[i - 1], b = st[i]; return a[1] + (b[1] - a[1]) * Math.min(1, Math.max(0, (x - a[0]) / (b[0] - a[0]))); };
+  return { axles: S.axles, rw: S.rw, hw: [hwAt(S.axles[0]), hwAt(S.axles[1])] };
+}
+
+export function wheel(k: Kit, rw: number): void {
   // local +y is the axle, pointing out of the car; y = 0 is the outer face of the tyre
   const rr = rw * 0.64;
   k.use('wire');
@@ -96,8 +102,11 @@ function wheel(k: Kit, rw: number): void {
   }
 }
 
-/** Build one parked car at the current kit transform. `plate` supplies number-plate text (optional). */
-export function vehicle(k: Kit, kind: VehicleKind, body: Col, plate?: PlateSource | null, plateText = ''): void {
+/**
+ * Build one parked car at the current kit transform. `plate` supplies number-plate text (optional).
+ * `bare` leaves out the wheels and the baked contact shadow (the drivable car adds its own, moving ones).
+ */
+export function vehicle(k: Kit, kind: VehicleKind, body: Col, plate?: PlateSource | null, plateText = '', bare = false): void {
   const S = SPECS[kind], st = S.body, n = st.length, half = st[n - 1][0], cab = S.cab;
   const at = (x: number): { hw: number; bot: number; deck: number } => {
     let i = 1;
@@ -194,7 +203,7 @@ export function vehicle(k: Kit, kind: VehicleKind, body: Col, plate?: PlateSourc
       for (let i = 0; i <= 10; i++) { const a = a0 + ((Math.PI - 2 * a0) * i) / 10; arc.push([xw + Math.cos(a) * R, S.rw + Math.sin(a) * R, z]); }
       k.use('wire');
       face(k, arc, [0, 0, s], hex(0x0a0a0a));
-      k.at({ x: xw, y: S.rw, z: s * (p.hw + 0.01), rx: (s * Math.PI) / 2 }, () => wheel(k, S.rw));
+      if (!bare) k.at({ x: xw, y: S.rw, z: s * (p.hw + 0.01), rx: (s * Math.PI) / 2 }, () => wheel(k, S.rw));
     }
   }
   const ws: V3[] = [[cab.xf0, yf0, -wb], [cab.xf0, yf0, wb], [cab.xf1, roof, wt], [cab.xf1, roof, -wt]], nw = normalOf(ws, [1, 1, 0]);
@@ -210,6 +219,7 @@ export function vehicle(k: Kit, kind: VehicleKind, body: Col, plate?: PlateSourc
   if (kind === 'suv') { k.use('wire'); for (const s of [1, -1]) k.box(cab.xr1 + 0.15, cab.xf1 - 0.15, roof + 0.015, roof + 0.05, s * (wt - 0.08) - 0.02, s * (wt - 0.08) + 0.02, BLACK); }
 
   // --- soft contact shadow on the road under the car -------------------------------------------------------
+  if (bare) return;
   k.use('contact');
   const bx = half + 0.3, bz = vehicleSize(kind).hw + 0.25;
   face(k, [[-bx, 0.016, -bz], [bx, 0.016, -bz], [bx, 0.016, bz], [-bx, 0.016, bz]], [0, 1, 0], [0, 0, 0], [[0, 0], [1, 0], [1, 1], [0, 1]]);

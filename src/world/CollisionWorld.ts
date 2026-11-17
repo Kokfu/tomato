@@ -90,6 +90,13 @@ export class CollisionWorld {
   setExtraWalls(walls: { ring: number[]; top: number }[]): void {
     this.extraWalls = walls.map((w) => { const ring = Float32Array.from(w.ring); return { ...bbox(ring), rings: [ring], top: w.top }; });
   }
+  /** Movable obstacles (the parked drivable car): block walking and the walking camera; a vehicle ignores them. */
+  private dynWalls = new Map<string, Wall>();
+  setDynamicWall(id: string, ring: number[] | null, top = 0): void {
+    if (!ring) { this.dynWalls.delete(id); return; }
+    const r = Float32Array.from(ring);
+    this.dynWalls.set(id, { ...bbox(r), rings: [r], top });
+  }
   setExtraFloors(floors: { ring: number[]; h: number }[]): void {
     this.extraFloors = floors.map((f) => { const ring = Float32Array.from(f.ring); return { ring, h: f.h, ...bbox(ring) }; });
   }
@@ -235,7 +242,7 @@ export class CollisionWorld {
     return false;
   }
 
-  private forNearWalls(x: number, z: number, pad: number, fn: (w: Wall) => void): void {
+  private forNearWalls(x: number, z: number, pad: number, fn: (w: Wall) => void, dynamic = true): void {
     const cx = Math.floor(x / CHUNK_SIZE), cz = Math.floor(z / CHUNK_SIZE);
     for (let dz = -1; dz <= 1; dz++)
       for (let dx = -1; dx <= 1; dx++) {
@@ -252,6 +259,60 @@ export class CollisionWorld {
       if (x < w.minX - pad || x > w.maxX + pad || z < w.minZ - pad || z > w.maxZ + pad) continue;
       fn(w);
     }
+    if (dynamic) for (const w of this.dynWalls.values()) {
+      if (x < w.minX - pad || x > w.maxX + pad || z < w.minZ - pad || z > w.maxZ + pad) continue;
+      fn(w);
+    }
+  }
+
+  /**
+   * Deepest overlap of an oriented box (a vehicle: centre (x, z), unit forward (fx, fz), half length a, half
+   * width b, underside at height y) with the blocking outlines. Returns the smallest translation that
+   * separates the box from that edge (px, pz) and the contact point on the edge (cx, cz), or null when the
+   * box is clear. Separating-axis test of the box against each outline edge; movable obstacles are skipped.
+   */
+  boxContact(x: number, z: number, fx: number, fz: number, a: number, b: number, y: number): { px: number; pz: number; cx: number; cz: number } | null {
+    if (this.inPassage(x, z)) return null;
+    // Side axis: left of forward (see PlayerController heading convention).
+    const sx = fz, sz = -fx;
+    let best = 0, out: { px: number; pz: number; cx: number; cz: number } | null = null;
+    this.forNearWalls(x, z, Math.hypot(a, b), (w) => {
+      if (y >= w.top - 0.05) return;
+      for (const ring of w.rings) {
+        const n = ring.length;
+        for (let i = 0, j = n - 2; i < n; j = i, i += 2) {
+          // Edge end points in the box frame (u along forward, v along side).
+          const ax = ring[j] - x, az = ring[j + 1] - z, bx = ring[i] - x, bz = ring[i + 1] - z;
+          const u0 = ax * fx + az * fz, v0 = ax * sx + az * sz, u1 = bx * fx + bz * fz, v1 = bx * sx + bz * sz;
+          const du = u1 - u0, dv = v1 - v0, len = Math.hypot(du, dv);
+          if (len < 1e-4) continue;
+          // Four candidate axes: box forward, box side, edge normal, edge direction. (mu, mv) = box shift along the axis.
+          let depth = Infinity, mu = 0, mv = 0;
+          const tryAxis = (nu: number, nv: number, lo: number, hi: number): boolean => {
+            const r = a * Math.abs(nu) + b * Math.abs(nv);
+            const neg = r - lo, pos = hi + r; // shift needed toward -axis / +axis
+            if (neg <= 0 || pos <= 0) return false;
+            const d = Math.min(neg, pos);
+            if (d < depth) { depth = d; const s = neg < pos ? -neg : pos; mu = nu * s; mv = nv * s; }
+            return true;
+          };
+          if (!tryAxis(1, 0, Math.min(u0, u1), Math.max(u0, u1))) continue;
+          if (!tryAxis(0, 1, Math.min(v0, v1), Math.max(v0, v1))) continue;
+          const nu = -dv / len, nv = du / len, k = u0 * nu + v0 * nv;
+          if (!tryAxis(nu, nv, k, k)) continue;
+          const tu = du / len, tv = dv / len, k0 = u0 * tu + v0 * tv;
+          if (!tryAxis(tu, tv, Math.min(k0, k0 + len), Math.max(k0, k0 + len))) continue;
+          if (depth > best) {
+            best = depth;
+            let t = -(u0 * du + v0 * dv) / (len * len);
+            t = t < 0 ? 0 : t > 1 ? 1 : t;
+            const cu = u0 + du * t, cv = v0 + dv * t;
+            out = { px: mu * fx + mv * sx, pz: mu * fz + mv * sz, cx: x + cu * fx + cv * sx, cz: z + cu * fz + cv * sz };
+          }
+        }
+      }
+    }, false);
+    return out;
   }
 
   /** True inside the corridor of a mapped passage through a building (tunnel=building_passage, covered ways). */
@@ -302,13 +363,13 @@ export class CollisionWorld {
     return [x, z];
   }
 
-  /** True when the point lies inside a building footprint (below its roof). */
-  insideBuilding(x: number, z: number, y: number): boolean {
+  /** True when the point lies inside a building footprint (below its roof). `dynamic` = false ignores movable obstacles. */
+  insideBuilding(x: number, z: number, y: number, dynamic = true): boolean {
     let hit = false;
     if (this.inPassage(x, z)) return false;
     this.forNearWalls(x, z, 0, (w) => {
       if (!hit && y < w.top && pointInRings(x, z, w.rings)) hit = true;
-    });
+    }, dynamic);
     return hit;
   }
 

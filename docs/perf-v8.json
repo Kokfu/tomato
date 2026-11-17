@@ -1,0 +1,42 @@
+{
+  "road": "Jalan Tun Abang Haji Openg (northbound carriageway)",
+  "routeMetres": 2119,
+  "drivenMetres": 2120,
+  "seconds": 95.5,
+  "maxKmh": 92.7,
+  "avgKmh": 79.9,
+  "fps": 58.7,
+  "maxFrameMs": 132.6,
+  "quality": "medium",
+  "chunksFetched": 125,
+  "chunksBuilt": 103,
+  "chunksDisposed": 73,
+  "maxChunkMeshes": 55,
+  "chunkMeshesAtEnd": 52,
+  "chunkDataAtEnd": 96,
+  "chunkBuildMsMax": 89.6,
+  "geometries": [
+    162,
+    418
+  ],
+  "textures": [
+    40,
+    74
+  ],
+  "heapMB": [
+    62,
+    67
+  ],
+  "unbuiltFrames": 0,
+  "blocked": [],
+  "impacts": 0,
+  "maxImpact": 0,
+  "impactsAt": [],
+  "recoveries": 0,
+  "offRoadFrames": 0,
+  "frames": 5602,
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  }
+}
