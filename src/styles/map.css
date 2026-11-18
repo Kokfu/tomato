@@ -90,6 +90,46 @@
 .fm-scale i { display: block; height: 5px; border: 2px solid #eef3f5; border-top: 0; box-shadow: 0 1px 1px rgba(0, 0, 0, 0.5); margin-top: 2px; }
 .fm-attrib { position: absolute; right: 8px; bottom: calc(6px + var(--safe-b)); font-size: 11px; color: #e8eef1; background: rgba(13, 27, 36, 0.6); padding: 2px 7px; border-radius: 6px; pointer-events: none; }
 
+/* --- V8.4 GPS (driving) -------------------------------------------------------------------- */
+#nav-hint.nav-drive .nav-arrow { background: #d22bd8; }
+#nav-hint.nav-drive.nav-off .nav-arrow { background: #7a6a3a; }
+#nav-hint .nav-glyph { display: none; font-size: 22px; font-weight: 800; line-height: 1; color: #fff; }
+#nav-hint.nav-has-glyph .nav-arrow svg { display: none; }
+#nav-hint.nav-has-glyph .nav-glyph { display: block; }
+#gps-btn {
+  position: absolute; right: 12px; bottom: calc(122px + var(--safe-b)); min-width: 58px; height: 34px; padding: 0 12px;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.08em; touch-action: manipulation;
+}
+#gps-btn.gps-active { border-color: #d22bd8; box-shadow: inset 0 0 0 1px #d22bd8; }
+#gps-panel {
+  position: absolute; right: 12px; bottom: calc(164px + var(--safe-b)); width: min(320px, calc(100vw - 24px));
+  max-height: min(56vh, 420px); overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px;
+}
+#gps-panel .gps-head { display: flex; align-items: baseline; gap: 8px; padding: 0 2px 2px 4px; }
+#gps-panel .gps-head span { flex: 1; color: var(--muted); font-size: 11px; }
+#gps-panel .gps-close { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); padding: 0; }
+#gps-panel .gps-list { display: flex; flex-direction: column; gap: 4px; }
+#gps-panel .gps-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; padding: 7px 10px; min-height: 40px;
+  border-radius: 8px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05); touch-action: manipulation;
+}
+#gps-panel .gps-item:not(:disabled):hover { border-color: #d22bd8; }
+#gps-panel .gps-item.current { border-color: #d22bd8; background: rgba(210, 43, 216, 0.16); }
+#gps-panel .gps-item:disabled { cursor: default; }
+#gps-panel .gps-item.none { opacity: 0.6; }
+#gps-panel .gps-name { font-weight: 600; font-size: 13px; }
+#gps-panel .gps-meta { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+#gps-panel .gps-item.none .gps-meta { color: #f2c14e; }
+#gps-panel .gps-status { color: var(--muted); font-size: 11px; padding: 0 4px; }
+#gps-panel .gps-cancel { min-height: 34px; border-radius: 8px; border: 1px solid rgba(210, 43, 216, 0.6); background: rgba(210, 43, 216, 0.18); font-size: 12px; font-weight: 700; }
+#gps-panel .gps-cancel.hidden { display: none; }
+@media (pointer: coarse) {
+  /* The speedometer sits bottom centre on touch: GPS goes just above it. */
+  #gps-btn { right: auto; left: 50%; transform: translateX(-50%); bottom: calc(162px + var(--safe-b)); height: 38px; }
+  #gps-panel { right: auto; left: 50%; transform: translateX(-50%); bottom: calc(208px + var(--safe-b)); max-height: 46vh; }
+}
+.fm-route.drive { border-color: rgba(210, 43, 216, 0.6); }
+
 /* --- Small screens ------------------------------------------------------------------------- */
 @media (max-width: 720px), (max-height: 520px) {
   #minimap-ctl { right: 52px; top: calc(126px + var(--safe-t)); }

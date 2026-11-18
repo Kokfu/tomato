@@ -1,4 +1,5 @@
-// Pedestrian routing core: graph decoding, nearest-edge snapping, A* and turn hints.
+// Routing core (pedestrian graph.json and, since V8.4, the car's drive-graph.json): graph decoding,
+// nearest-edge snapping, A* (one-way aware) and turn hints.
 // Pure TypeScript with no DOM or three.js dependency, so the browser, the offline graph builder
 // (tools/generate-world/build-graph.ts) and the Node unit tests all import this same module.
 // The graph itself is generated offline from OpenStreetMap ways; nothing here invents geometry.
@@ -23,20 +24,28 @@ export interface GraphFile {
   geom: number[];
   /** OSM way id of bridge / pier edges, keyed by edge index. */
   ways: Record<string, number>;
+  /** 'drive' for the car graph (drive-graph.json, V8.4); absent for the pedestrian graph. */
+  profile?: string;
 }
 
 /** Edge flag: bridge or pier - the only edges allowed over water. */
 export const EDGE_BRIDGE = 1;
 /** Edge flag: tunnel or covered way. */
 export const EDGE_TUNNEL = 2;
+/** Edge flag (drive graph): one-way, travel only from node a to node b. */
+export const EDGE_ONEWAY = 4;
 
 /** Real-world walking pace used for time estimates (m/s). */
 export const WALK_SPEED = 1.35;
 
 /** Cost multiplier per road type (>= 1 so straight-line distance stays an admissible heuristic). */
-const TYPE_COST: Record<string, number> = {
+const WALK_COST: Record<string, number> = {
   motorway: 4, trunk: 1.5, primary: 1.4, secondary: 1.25, tertiary: 1.15, residential: 1.05, service: 1.1,
   pedestrian: 1, footway: 1, path: 1, steps: 1.15, cycleway: 1.05, track: 1.1, pier: 1,
+};
+/** Drive profile: prefer through roads to lanes and driveways (all >= 1, as above). */
+const DRIVE_COST: Record<string, number> = {
+  motorway: 1, trunk: 1, primary: 1, secondary: 1.05, tertiary: 1.1, residential: 1.25, service: 1.8,
 };
 
 export interface Snap {
@@ -86,6 +95,22 @@ export interface RouteOptions {
   maxSnap?: number;
   /** Return true when the straight connector between an off-network point and the network is not walkable (e.g. crosses water). */
   blocked?: (x0: number, z0: number, x1: number, z1: number) => boolean;
+  /** Maximum distance from the start point to the network (default maxSnap). */
+  maxSnapStart?: number;
+  /** Direction of travel at the start (unit x, z). Setting off the other way costs `uTurnCost` metres. */
+  heading?: [number, number];
+  uTurnCost?: number;
+  /** Edges the destination may snap to (default: any). */
+  endEdge?: (edge: number) => boolean;
+}
+
+/**
+ * Drive profile: where a trip may end. Only an open public carriageway: not a service road (driveways,
+ * parking aisles and lanes inside landmark grounds cannot be confirmed as public) and not a covered way or
+ * building passage.
+ */
+export function isStoppingEdge(g: RouteGraph, edge: number): boolean {
+  return g.typeOf(edge) !== 'service' && (g.eflags[edge] & EDGE_TUNNEL) === 0;
 }
 
 const CELL = 64;
@@ -148,6 +173,7 @@ export class RouteGraph {
   /** Connected-component id per node. */
   readonly comp: Int32Array;
   readonly degree: Uint16Array;
+  readonly profile: string;
   private ways: Record<string, number>;
   private adjStart: Int32Array;
   private adjEdge: Int32Array;
@@ -162,6 +188,8 @@ export class RouteGraph {
     this.names = file.names;
     this.types = file.types;
     this.ways = file.ways;
+    this.profile = file.profile ?? 'walk';
+    const cost = this.profile === 'drive' ? DRIVE_COST : WALK_COST;
     this.nx = new Float64Array(N);
     this.nz = new Float64Array(N);
     for (let i = 0; i < N; i++) { this.nx[i] = file.nodes[i * 2] / s; this.nz[i] = file.nodes[i * 2 + 1] / s; }
@@ -186,7 +214,7 @@ export class RouteGraph {
       for (let i = 2; i < pts.length; i += 2) len += Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1]);
       this.epts[e] = pts;
       this.elen[e] = len;
-      this.ecost[e] = len * (TYPE_COST[file.types[this.etype[e]]] ?? 1.2);
+      this.ecost[e] = len * (cost[file.types[this.etype[e]]] ?? 1.2);
       this.degree[a]++; this.degree[b]++;
     }
     // CSR adjacency
@@ -226,6 +254,7 @@ export class RouteGraph {
   }
 
   isBridge(edge: number): boolean { return (this.eflags[edge] & EDGE_BRIDGE) !== 0; }
+  isOneWay(edge: number): boolean { return (this.eflags[edge] & EDGE_ONEWAY) !== 0; }
   nameOf(edge: number): string | undefined { return this.ename[edge] >= 0 ? this.names[this.ename[edge]] : undefined; }
   typeOf(edge: number): string { return this.types[this.etype[edge]]; }
   /** OSM way id (bridge / pier edges only, 0 otherwise). */
@@ -235,7 +264,7 @@ export class RouteGraph {
    * Nearest point on the network for each connected component within `maxDist`, closest first.
    * Candidates whose straight connector is `blocked` are skipped.
    */
-  snap(x: number, z: number, maxDist = 220, blocked?: RouteOptions['blocked']): Snap[] {
+  snap(x: number, z: number, maxDist = 220, blocked?: RouteOptions['blocked'], accept?: (edge: number) => boolean): Snap[] {
     const best = new Map<number, Snap>();
     const r = Math.ceil(maxDist / CELL);
     const cx0 = Math.floor(x / CELL), cz0 = Math.floor(z / CELL);
@@ -245,6 +274,7 @@ export class RouteGraph {
       if (!cell) continue;
       for (let k = 0; k < cell.length; k += 2) {
         const e = cell[k], si = cell[k + 1];
+        if (accept && !accept(e)) continue;
         const id = e * 65536 + si;
         if (seen.has(id)) continue;
         seen.add(id);
@@ -274,27 +304,50 @@ export class RouteGraph {
    */
   route(sx: number, sz: number, dx: number, dz: number, opts: RouteOptions = {}): Route | null {
     const maxSnap = opts.maxSnap ?? 220;
-    const starts = this.snap(sx, sz, maxSnap, opts.blocked);
-    const ends = this.snap(dx, dz, maxSnap, opts.blocked);
-    let start: Snap | null = null, end: Snap | null = null, bestScore = Infinity;
-    for (const s of starts) for (const e of ends) {
-      if (s.component !== e.component) continue;
-      const score = s.dist + e.dist;
-      if (score < bestScore) { bestScore = score; start = s; end = e; }
+    const starts = this.snap(sx, sz, opts.maxSnapStart ?? maxSnap, opts.blocked);
+    const ends = this.snap(dx, dz, maxSnap, opts.blocked, opts.endEdge);
+    // Candidate pairs on the same (undirected) component, nearest first. On a directed (one-way) graph a
+    // shared component does not guarantee a path, so the next pairs are tried when A* finds none.
+    const pairs: [Snap, Snap, number][] = [];
+    for (const s of starts) for (const e of ends) if (s.component === e.component) pairs.push([s, e, s.dist + e.dist]);
+    pairs.sort((a, b) => a[2] - b[2]);
+    for (const [start, end] of pairs.slice(0, 4)) {
+      const path = this.astar(start, end, opts);
+      if (path) return this.assemble(sx, sz, dx, dz, start, end, path);
     }
-    if (!start || !end) return null;
-    const path = this.astar(start, end);
-    if (!path) return null;
-    return this.assemble(sx, sz, dx, dz, start, end, path);
+    return null;
+  }
+
+  /** Unit direction of an edge's polyline at an offset (metres from node a), in a -> b order. */
+  private tangent(edge: number, offset: number): [number, number] {
+    const p = this.epts[edge];
+    let acc = 0;
+    for (let i = 2; i < p.length; i += 2) {
+      const l = Math.hypot(p[i] - p[i - 2], p[i + 1] - p[i - 1]);
+      if (acc + l >= offset || i === p.length - 2) return l > 0 ? [(p[i] - p[i - 2]) / l, (p[i + 1] - p[i - 1]) / l] : [1, 0];
+      acc += l;
+    }
+    return [1, 0];
   }
 
   /** A* between two snapped positions. Returns the node sequence and the edges between them. */
-  private astar(start: Snap, end: Snap): { nodes: number[]; edges: number[]; direct: boolean } | null {
+  private astar(start: Snap, end: Snap, opts: RouteOptions = {}): { nodes: number[]; edges: number[]; direct: boolean } | null {
     const N = this.nodeCount;
     const es = start.edge, eg = end.edge;
     const fs = this.ecost[es] / this.elen[es], fg = this.ecost[eg] / this.elen[eg];
+    const oneS = this.isOneWay(es), oneG = this.isOneWay(eg);
+    // Setting off against the current direction of travel (towards node a when heading a -> b) costs a U-turn.
+    let penA = 0, penB = 0;
+    if (opts.heading) {
+      const [tx, tz] = this.tangent(es, start.offset);
+      const dot = tx * opts.heading[0] + tz * opts.heading[1], pen = opts.uTurnCost ?? 80;
+      if (dot > 0.3) penA = pen; else if (dot < -0.3) penB = pen;
+    }
     let bestGoal = Infinity, goalNode = -1, direct = false;
-    if (es === eg) { bestGoal = Math.abs(start.offset - end.offset) * fs; direct = true; }
+    if (es === eg && (!oneS || end.offset >= start.offset)) {
+      bestGoal = Math.abs(start.offset - end.offset) * fs + (end.offset >= start.offset ? penB : penA);
+      direct = true;
+    }
     const dist = new Float64Array(N).fill(Infinity);
     const prevNode = new Int32Array(N).fill(-1);
     const prevEdge = new Int32Array(N).fill(-1);
@@ -304,8 +357,8 @@ export class RouteGraph {
     const seed = (n: number, d: number) => {
       if (d < dist[n]) { dist[n] = d; heap.push(n, d + h(n)); }
     };
-    seed(this.ea[es], start.offset * fs);
-    seed(this.eb[es], (this.elen[es] - start.offset) * fs);
+    if (!oneS) seed(this.ea[es], start.offset * fs + penA);
+    seed(this.eb[es], (this.elen[es] - start.offset) * fs + penB);
     const ga = this.ea[eg], gb = this.eb[eg];
     while (heap.size) {
       const [u, f] = heap.pop();
@@ -314,10 +367,11 @@ export class RouteGraph {
       done[u] = 1;
       const d = dist[u];
       if (u === ga && d + end.offset * fg < bestGoal) { bestGoal = d + end.offset * fg; goalNode = u; direct = false; }
-      if (u === gb && d + (this.elen[eg] - end.offset) * fg < bestGoal) { bestGoal = d + (this.elen[eg] - end.offset) * fg; goalNode = u; direct = false; }
+      if (u === gb && !oneG && d + (this.elen[eg] - end.offset) * fg < bestGoal) { bestGoal = d + (this.elen[eg] - end.offset) * fg; goalNode = u; direct = false; }
       for (let k = this.adjStart[u]; k < this.adjStart[u + 1]; k++) {
         const e = this.adjEdge[k];
-        const v = this.ea[e] === u ? this.eb[e] : this.ea[e];
+        if (this.eflags[e] & EDGE_ONEWAY && this.ea[e] !== u) continue;
+        const v =this.ea[e] === u ? this.eb[e] : this.ea[e];
         if (done[v]) continue;
         const nd = d + this.ecost[e];
         if (nd < dist[v]) { dist[v] = nd; prevNode[v] = u; prevEdge[v] = e; heap.push(v, nd + h(v)); }
@@ -383,7 +437,7 @@ export class RouteGraph {
       const first = path.nodes[0], last = path.nodes[path.nodes.length - 1];
       // Leave the start edge towards the first node (for a loop edge pick the shorter side).
       const es = start.edge;
-      const toA = this.ea[es] === first && (this.eb[es] !== first || start.offset <= this.elen[es] - start.offset);
+      const toA = !this.isOneWay(es) && this.ea[es] === first && (this.eb[es] !== first || start.offset <= this.elen[es] - start.offset);
       add(this.slice(es, start.offset, toA ? 0 : this.elen[es]), es);
       for (let i = 0; i < path.edges.length; i++) {
         const e = path.edges[i], from = path.nodes[i];
@@ -391,7 +445,7 @@ export class RouteGraph {
         add(fwd ? this.epts[e] : this.slice(e, this.elen[e], 0), e);
       }
       const eg = end.edge;
-      const fromA = this.ea[eg] === last && (this.eb[eg] !== last || end.offset <= this.elen[eg] - end.offset);
+      const fromA = this.ea[eg] === last && (this.isOneWay(eg) || this.eb[eg] !== last || end.offset <= this.elen[eg] - end.offset);
       add(this.slice(eg, fromA ? 0 : this.elen[eg], end.offset), eg);
     }
     add([end.x, end.z], end.edge);
@@ -507,9 +561,26 @@ export function compassPoint(bearing: number): string {
   return COMPASS[Math.round((((bearing % 360) + 360) % 360) / 45) % 8];
 }
 
-let graphPromise: Promise<RouteGraph> | null = null;
-/** Lazy-load and decode the routing graph (first route request only). */
+/**
+ * The route without its final off-network hop (a driving route ends at the stopping point on the road;
+ * the rest is on foot). Returns the trimmed route and the straight length of the removed hop.
+ */
+export function trimEndConnector(r: Route): { route: Route; hop: number } {
+  const n = r.segEdge.length;
+  if (n < 2 || r.segEdge[n - 1] >= 0) return { route: r, hop: 0 };
+  const hop = r.cum[n] - r.cum[n - 1];
+  const length = r.cum[n - 1];
+  const maneuvers = r.maneuvers.map((m) => (m.kind === 'arrive' ? { ...m, at: length } : m)).filter((m) => m.at <= length);
+  return {
+    route: { ...r, points: r.points.slice(0, n * 2), segEdge: r.segEdge.slice(0, n - 1), cum: r.cum.slice(0, n), length, maneuvers },
+    hop,
+  };
+}
+
+const graphPromises = new Map<string, Promise<RouteGraph>>();
+/** Lazy-load and decode a routing graph (first route request only; one cache entry per URL). */
 export function loadRouteGraph(url: string): Promise<RouteGraph> {
+  let graphPromise = graphPromises.get(url);
   if (!graphPromise) {
     graphPromise = fetch(url)
       .then((r) => {
@@ -518,9 +589,10 @@ export function loadRouteGraph(url: string): Promise<RouteGraph> {
       })
       .then((f) => new RouteGraph(f))
       .catch((e) => {
-        graphPromise = null;
+        graphPromises.delete(url);
         throw e;
       });
+    graphPromises.set(url, graphPromise);
   }
   return graphPromise;
 }

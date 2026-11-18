@@ -188,3 +188,60 @@ otherwise they are left out, so nothing is ever drawn through a building or acro
 - The straight-line distance and bearing use the local Transverse Mercator frame (grid bearing);
   within this area the difference from the geodesic values is far below the displayed precision.
 - North-up only on the full map.
+
+## GPS driving navigation (V8.4)
+
+At the wheel, `G` or the **GPS** button (above the speedometer; bottom centre on touch) opens a small destination
+list: Kuching Waterfront, Main Bazaar, Lau Ya Keng Food Court, Fort Margherita and the Sarawak State Legislative
+Assembly (`GPS_DESTINATIONS` in `src/ui/GpsPanel.ts`). Each entry shows its road distance from the car and the walk
+left after parking, or why it is unavailable (disabled). Choosing one plans a driving route; the route is magenta
+on both maps, with a magenta-and-white disc at the stopping point. The HUD hint shows the next instruction with a
+turn glyph ("95 m: Turn left onto Jalan Carpenter"), the remaining road distance and the destination; `X`, its `✕`
+or *Cancel navigation* in the panel cancel it. The full-map card offers *Drive here* for any landmark while driving.
+
+| Piece | File |
+| --- | --- |
+| Destination panel, G key | `src/ui/GpsPanel.ts` |
+| Drive mode of the route state, HUD hint, re-planning, arrival | `src/ui/Minimap.ts` (`planDrive`, `updateDriveNav`, `setDriving`) |
+| One-way-aware A*, heading preference, stopping-point filter | `src/ui/Router.ts` |
+| Car graph builder | `tools/generate-world/build-graph.ts --drive` (part of `npm run data:graph`) |
+| Tests | `tests/unit/drive-router.test.ts`, `tests/e2e/gps.spec.ts`, screenshots in `docs/screenshots/gps/` |
+
+### `drive-graph.json`
+
+Same format as `graph.json` plus `"profile": "drive"` and edge flag `4` = one-way (travel from node a to node b
+only). ~474 kB (loaded the first time the GPS opens, not at start-up). Current build: 9 813 nodes, 12 043 edges,
+633 km, 4 073 one-way edges, 27 bridge edges, 43 components (the largest holds 97.5 % of the length).
+
+Built from the cached OSM extract with the same topology, water and building rules as the walking graph, but:
+
+- only `DRIVABLE_CLASSES` (motorway ... service, the classes the car's road query accepts) wide enough for the car
+  (the `RoadQuery.isDrivable` width rule); pedestrian streets, footways, paths, steps, cycleways, tracks and piers
+  are never in it;
+- out: `access=no|private` (unless `motor_vehicle` / `motorcar` / `vehicle` says otherwise), those tags `=no|private`,
+  `service=emergency_access` (99 ways);
+- directed: `oneway=yes|true|1`, `oneway=-1` (reversed), `junction=roundabout|circular` and motorways; a one-way
+  chain is contracted only while its direction continues and is stored in its direction of travel;
+- no `--decks` rule: only bridge-tagged ways cross water.
+
+### Planning a drive
+
+- **Start**: the nearest drivable centre line within 40 m of the car. Further away (car park, open ground) the GPS
+  says *Drive onto a mapped road to start the route* and retries once the car is back near one. The car's lateral
+  position in its lane does not matter: snapping is to the nearest point of the centre line, and progress is measured
+  against the route polyline with a 22 m off-route threshold (V7 Jalan China's mapped line runs 2.6 m east of the
+  street middle, and inferred road widths put real lanes several metres off the line).
+- **Direction**: the edge the car is on may be left in either allowed direction, but setting off against the car's
+  direction of travel costs 120 m (40 m when stopped), so a moving car is not sent into a U-turn when the road ahead
+  also leads there. One-way edges are never entered against their direction.
+- **Stopping point**: the destination snaps to the nearest *public, uncovered* carriageway within 400 m whose straight
+  hop to the landmark does not cross water: not `service` (driveways, parking aisles and lanes inside landmark grounds
+  cannot be confirmed as public) and not a tunnel / covered way / building passage. The route ends there; the walk
+  from there to the landmark is measured on the walking graph and shown ("+ 530 m walk").
+- **Cost**: length times 1.0 (trunk, primary), 1.05 secondary, 1.1 tertiary, 1.25 residential, 1.8 service.
+- **While driving** (every 0.25 s): progress on the route, remaining road distance, next maneuver. More than 22 m
+  off the route for 3 checks re-plans it from the car's position and heading. Within 15 m of the stopping point:
+  *Arrived* with the remaining walk; getting out turns the route into a walking route to the landmark, getting back
+  in turns an unfinished walking route into a drive.
+- Routes are planned on the whole-area graph, independent of which 3D chunks are loaded; streaming keeps following
+  the car only.

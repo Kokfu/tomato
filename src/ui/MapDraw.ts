@@ -20,6 +20,8 @@ export const MAP_COLORS = {
   roof: '#b9b2a4',
   ink: '#1b2a33',
   route: '#1a73e8',
+  /** V8.4 GPS (driving) route: magenta, distinct from the blue walking route and from every map fill. */
+  driveRoute: '#d22bd8',
   routeCasing: '#ffffff',
   player: '#f2c14e',
 };
@@ -258,7 +260,7 @@ export function drawChunks(g: CanvasRenderingContext2D, chunks: ChunkData[], pxP
 }
 
 /** Stroke the active route. `toScreen` maps world metres to canvas pixels. */
-export function drawRoute(g: CanvasRenderingContext2D, route: Route, toScreen: (x: number, z: number) => [number, number], width: number, drawConnector: (i: number) => boolean): void {
+export function drawRoute(g: CanvasRenderingContext2D, route: Route, toScreen: (x: number, z: number) => [number, number], width: number, drawConnector: (i: number) => boolean, color: string = MAP_COLORS.route): void {
   const p = route.points, n = route.segEdge.length;
   g.lineJoin = 'round';
   g.lineCap = 'round';
@@ -277,7 +279,7 @@ export function drawRoute(g: CanvasRenderingContext2D, route: Route, toScreen: (
   g.strokeStyle = MAP_COLORS.routeCasing;
   g.lineWidth = width + 3;
   g.stroke();
-  g.strokeStyle = MAP_COLORS.route;
+  g.strokeStyle = color;
   g.lineWidth = width;
   g.stroke();
   // Off-network connectors (start point -> nearest way, nearest way -> destination): thin dotted line.
@@ -286,6 +288,21 @@ export function drawRoute(g: CanvasRenderingContext2D, route: Route, toScreen: (
   g.lineWidth = Math.max(2, width * 0.7);
   g.stroke();
   g.setLineDash([]);
+}
+
+/** GPS stopping point: a white-ringed magenta disc with a dark centre (the "park here" spot of a driving route). */
+export function drawStop(g: CanvasRenderingContext2D, x: number, y: number, r: number): void {
+  g.beginPath();
+  g.arc(x, y, r, 0, Math.PI * 2);
+  g.fillStyle = MAP_COLORS.driveRoute;
+  g.fill();
+  g.lineWidth = Math.max(1.5, r * 0.4);
+  g.strokeStyle = '#ffffff';
+  g.stroke();
+  g.beginPath();
+  g.arc(x, y, r * 0.38, 0, Math.PI * 2);
+  g.fillStyle = MAP_COLORS.ink;
+  g.fill();
 }
 
 /** Player arrow at (x, y), pointing along `rotation` radians clockwise from screen-up. */

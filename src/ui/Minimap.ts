@@ -5,9 +5,9 @@ import type { WorldManager } from '../world/WorldManager.ts';
 import type { PlayerController } from '../player/PlayerController.ts';
 import type { ThirdPersonCamera } from '../player/ThirdPersonCamera.ts';
 import { worldToGeo, worldDirToBearing } from '../world/GeoProjection.ts';
-import { MAP_COLORS, Overview, drawChunks, drawLabel, drawMarker, drawPlayer, drawRoute, landmarkColor } from './MapDraw.ts';
+import { MAP_COLORS, Overview, drawChunks, drawLabel, drawMarker, drawPlayer, drawRoute, drawStop, landmarkColor } from './MapDraw.ts';
 import type { OverviewFile } from './MapDraw.ts';
-import { compassPoint, describeManeuver, formatDistance, formatDuration, loadRouteGraph, progressOnRoute, WALK_SPEED } from './Router.ts';
+import { compassPoint, describeManeuver, formatDistance, formatDuration, isStoppingEdge, loadRouteGraph, progressOnRoute, trimEndConnector, TURN_GLYPH, WALK_SPEED } from './Router.ts';
 import type { Route, RouteGraph } from './Router.ts';
 
 export interface MinimapDeps {
@@ -18,7 +18,11 @@ export interface MinimapDeps {
   onFullMapToggle: (open: boolean) => void;
   /** Teleport the player back to the spawn point. */
   onResetLocation: () => void;
+  /** V8.4: true while the player is at the wheel (routes are then planned on the drive graph). */
+  isDriving?: () => boolean;
 }
+
+export type NavMode = 'walk' | 'drive';
 
 /** Outcome of a route request. `route` is null when no mapped walking connection exists. */
 export interface NavState {
@@ -27,7 +31,24 @@ export interface NavState {
   /** Which off-network connector segments are safe to draw (clear of water and buildings). */
   connectorOk: boolean[];
   arrivedAt: number;
+  /** 'drive': GPS route on mapped carriageways (drive-graph.json) to a stopping point on a public road. */
+  mode: NavMode;
+  /** Drive mode: the road-side stopping point the route ends at. */
+  stop: { x: number; z: number } | null;
+  /** Drive mode: walking distance from the stopping point to the landmark (metres), and whether it follows mapped ways. */
+  walkAfter: number;
+  walkMapped: boolean;
+  /** Why there is no route (drive mode), shown instead of a line. */
+  reason: string;
 }
+
+/** Drive mode: how far the car may be from a mapped carriageway's centre line to start a route (metres). */
+const DRIVE_START_SNAP = 40;
+/** Drive mode: how far from the landmark a stopping point may be (metres). */
+const DRIVE_END_SNAP = 400;
+/** Drive mode: off the route by more than this (metres, centre line to car) for OFF_TICKS checks re-plans it. */
+const DRIVE_OFF_ROUTE = 22;
+const DRIVE_OFF_TICKS = 3;
 
 const MIN_RANGE = 50, MAX_RANGE = 700;
 const FULL_MAX_SCALE = 6;
@@ -115,8 +136,18 @@ export class Minimap {
   private routeBusy = false;
   private routeNote = '';
   private graph: RouteGraph | null = null;
+  private driveGraph: RouteGraph | null = null;
+  /** Walk from a stopping point to its landmark (drive mode), keyed by landmark and stopping point. */
+  private walkCache = new Map<string, { len: number; mapped: boolean }>();
+  /** Number of route (re)computations, for tests and the report. */
+  routeCount = 0;
+  /** Duration of the last route computation (ms). */
+  lastRouteMs = 0;
+  /** Called after every route change (GPS panel refresh). */
+  onNavChange: (() => void) | null = null;
   private navEl!: HTMLElement;
   private navArrow!: SVGElement;
+  private navGlyph!: HTMLElement;
   private navMain!: HTMLElement;
   private navSub!: HTMLElement;
   private navAcc = 0;
@@ -226,16 +257,16 @@ export class Minimap {
    * target. Resolves to the navigation state; its `route` is null when no mapped walking
    * connection exists (the HUD then shows straight-line distance and bearing instead).
    */
-  async routeTo(l: Landmark | string): Promise<NavState | null> {
+  async routeTo(l: Landmark | string, mode?: NavMode): Promise<NavState | null> {
     const lm = typeof l === 'string' ? this.deps.world.landmarks.landmarks.find((x) => x.id === l) : l;
     if (!lm || this.routeBusy) return null;
+    const m: NavMode = mode ?? (this.deps.isDriving?.() ? 'drive' : 'walk');
     this.routeBusy = true;
     this.routeNote = '';
     this.renderInfo();
     try {
-      const [graph] = await Promise.all([loadRouteGraph(`${import.meta.env.BASE_URL}${DATA_ROOT}/graph.json`), this.loadOverview()]);
-      this.graph = graph;
-      this.nav = { target: lm, route: null, connectorOk: [], arrivedAt: 0 };
+      await this.loadGraphs(m);
+      this.nav = { target: lm, route: null, connectorOk: [], arrivedAt: 0, mode: m, stop: null, walkAfter: 0, walkMapped: false, reason: '' };
       this.computeRoute();
       this.routeBusy = false;
       this.renderInfo(); // the card's final height feeds the route framing
@@ -251,10 +282,35 @@ export class Minimap {
     this.acc = 1;
     this.renderInfo();
     this.fmOverlayDirty = true;
+    this.onNavChange?.();
     return this.nav;
   }
 
+  /** Load the routing graphs a mode needs (drive mode also uses the walking graph for the last stretch on foot). */
+  async loadGraphs(mode: NavMode): Promise<void> {
+    const base = `${import.meta.env.BASE_URL}${DATA_ROOT}`;
+    const [graph, drive] = await Promise.all([
+      loadRouteGraph(`${base}/graph.json`),
+      mode === 'drive' ? loadRouteGraph(`${base}/drive-graph.json`) : Promise.resolve(this.driveGraph),
+      this.loadOverview(),
+    ]);
+    this.graph = graph;
+    this.driveGraph = drive;
+  }
+
+  /**
+   * Plan (without activating) a driving route from the car to a landmark: for the GPS destination list.
+   * Needs loadGraphs('drive') first; returns null when the graphs are not loaded.
+   */
+  previewDrive(lm: Landmark): { length: number; walk: number; reason: string } | null {
+    if (!this.driveGraph) return null;
+    const p = this.deps.player.position;
+    const plan = this.planDrive(p.x, p.z, lm);
+    return { length: plan.route?.length ?? 0, walk: plan.walkAfter, reason: plan.reason };
+  }
+
   clearRoute(): void {
+    const had = !!this.nav;
     this.nav = null;
     this.aim = null;
     this.routeNote = '';
@@ -262,6 +318,17 @@ export class Minimap {
     this.renderInfo();
     this.fmOverlayDirty = true;
     this.acc = 1;
+    if (had) this.onNavChange?.();
+  }
+
+  /**
+   * The player got into (true) or out of (false) the car. An active route switches profile: in the car it is
+   * planned on the drive graph, on foot as a walking route (after parking at the stopping point, the walk).
+   */
+  setDriving(driving: boolean): void {
+    const nav = this.nav;
+    if (!nav || nav.mode === (driving ? 'drive' : 'walk')) return;
+    if (!driving || !nav.arrivedAt) void this.routeTo(nav.target, driving ? 'drive' : 'walk');
   }
 
   update(dt: number): void {
@@ -430,7 +497,8 @@ export class Minimap {
     g.setTransform(1, 0, 0, 1, 0, 0);
 
     const nav = this.nav;
-    if (nav?.route) drawRoute(g, nav.route, toScreen, 4 * dpr, (i) => nav.connectorOk[i] === true);
+    if (nav?.route) drawRoute(g, nav.route, toScreen, 4 * dpr, (i) => nav.connectorOk[i] === true, this.routeColor(nav));
+    if (nav?.stop) { const [sx, sy] = toScreen(nav.stop.x, nav.stop.z); drawStop(g, sx, sy, 5 * dpr); }
 
     // Landmarks
     g.font = `600 ${10 * dpr}px system-ui, sans-serif`;
@@ -454,7 +522,8 @@ export class Minimap {
         g.save();
         g.translate(R + ux * rr, R + uy * rr);
         g.rotate(Math.atan2(uy, ux) + Math.PI / 2);
-        g.fillStyle = nav ? MAP_COLORS.route : landmarkColor(focus);
+        // Magenta means a real road route: a GPS target without one gets the amber "no route" colour of the HUD.
+        g.fillStyle = nav ? (nav.mode === 'drive' && !nav.route ? '#c9a227' : this.routeColor(nav)) : landmarkColor(focus);
         g.strokeStyle = '#ffffff';
         g.lineWidth = 1.5 * dpr;
         g.beginPath();
@@ -488,9 +557,10 @@ export class Minimap {
     const arrow = h('div', 'nav-arrow');
     arrow.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 16-7-4-7 4z" fill="#fff"/></svg>';
     this.navArrow = arrow.firstElementChild as SVGElement;
+    arrow.append((this.navGlyph = h('span', 'nav-glyph')));
     const text = h('div', 'nav-text');
     text.append((this.navMain = h('div', 'nav-main')), (this.navSub = h('div', 'nav-sub')));
-    el.append(arrow, text, button('nav-clear', '✕', 'Clear route (X)', () => this.clearRoute()));
+    el.append(arrow, text, button('nav-clear', '✕', 'Cancel navigation (X)', () => this.clearRoute()));
     el.addEventListener('pointerdown', (e) => e.stopPropagation());
     document.getElementById('hud')!.append(el);
   }
@@ -526,11 +596,52 @@ export class Minimap {
     nav.connectorOk = r.segEdge.map((e, i) => e < 0 && this.connectorClear(r.points[i * 2], r.points[i * 2 + 1], r.points[i * 2 + 2], r.points[i * 2 + 3]));
   }
 
+  private routeColor(nav: NavState): string {
+    return nav.mode === 'drive' ? MAP_COLORS.driveRoute : MAP_COLORS.route;
+  }
+
+  /**
+   * Driving route from (x, z) to a landmark on the drive graph: it starts on the carriageway the car is on
+   * (or within DRIVE_START_SNAP of), respects one-way edges, prefers carrying on in the car's direction of travel
+   * and ends at the nearest public, uncovered carriageway point from which the landmark can be reached on foot
+   * without crossing water. The walk from there is measured on the pedestrian graph.
+   */
+  private planDrive(x: number, z: number, lm: Landmark): Pick<NavState, 'route' | 'stop' | 'walkAfter' | 'walkMapped' | 'reason'> {
+    const g = this.driveGraph!;
+    const none = { route: null, stop: null, walkAfter: 0, walkMapped: false };
+    if (!g.snap(x, z, DRIVE_START_SNAP).length) return { ...none, reason: 'Drive onto a mapped road to start the route' };
+    const h = this.deps.player.heading;
+    const moving = Math.hypot(this.deps.player.velocity.x, this.deps.player.velocity.z) > 0.5;
+    const r = g.route(x, z, lm.x, lm.z, {
+      maxSnapStart: DRIVE_START_SNAP, maxSnap: DRIVE_END_SNAP, blocked: this.connectorBlocked,
+      endEdge: (e) => isStoppingEdge(g, e),
+      // Heading 0 faces +z. A parked car can set off either way without a penalty for turning.
+      heading: [Math.sin(h), Math.cos(h)], uTurnCost: moving ? 120 : 40,
+    });
+    if (!r) return { ...none, reason: 'No mapped road connection from here' };
+    const { route } = trimEndConnector(r);
+    const stop = { x: r.end.x, z: r.end.z };
+    // Re-planning usually keeps the same stopping point: reuse its walk instead of a second A* per re-plan.
+    const key = `${lm.id}|${stop.x.toFixed(1)}|${stop.z.toFixed(1)}`;
+    let w = this.walkCache.get(key);
+    if (!w) {
+      const walk = this.graph?.route(stop.x, stop.z, lm.x, lm.z, { blocked: this.connectorBlocked }) ?? null;
+      w = { len: walk ? walk.length : Math.hypot(lm.x - stop.x, lm.z - stop.z), mapped: !!walk };
+      if (this.walkCache.size > 64) this.walkCache.clear();
+      this.walkCache.set(key, w);
+    }
+    return { route, stop, walkAfter: w.len, walkMapped: w.mapped, reason: '' };
+  }
+
   private computeRoute(): void {
     const nav = this.nav;
     if (!nav || !this.graph) return;
+    const t0 = performance.now();
     const p = this.deps.player.position;
-    nav.route = this.graph.route(p.x, p.z, nav.target.x, nav.target.z, { blocked: this.connectorBlocked });
+    if (nav.mode === 'drive' && this.driveGraph) Object.assign(nav, this.planDrive(p.x, p.z, nav.target));
+    else nav.route = this.graph.route(p.x, p.z, nav.target.x, nav.target.z, { blocked: this.connectorBlocked });
+    this.lastRouteMs = performance.now() - t0;
+    this.routeCount++;
     this.checkConnectors();
     this.fmOverlayDirty = true;
   }
@@ -538,6 +649,7 @@ export class Minimap {
   private updateNav(): void {
     const nav = this.nav;
     if (!nav) return;
+    if (nav.mode === 'drive') return this.updateDriveNav(nav);
     const { player, camera } = this.deps;
     const px = player.position.x, pz = player.position.z;
     const t = nav.target;
@@ -602,8 +714,87 @@ export class Minimap {
     if (this.navMain.textContent !== main) this.navMain.textContent = main;
     if (this.navSub.textContent !== sub) this.navSub.textContent = sub;
     this.navEl.classList.toggle('nav-off', !nav.route);
-    this.navEl.classList.remove('hidden');
+    this.navEl.classList.remove('hidden', 'nav-drive', 'nav-has-glyph');
     // Arrow: direction to walk relative to where the camera is looking.
+    let rel = worldDirToBearing(this.aim[0] - px, this.aim[1] - pz) - worldDirToBearing(-Math.sin(camera.yaw), -Math.cos(camera.yaw));
+    rel = ((rel + 540) % 360) - 180;
+    this.navArrow.style.transform = `rotate(${rel.toFixed(0)}deg)`;
+  }
+
+  /** HUD hint for a GPS (driving) route: next turn, remaining road distance, re-planning and arrival. */
+  private updateDriveNav(nav: NavState): void {
+    const { player, camera } = this.deps;
+    const px = player.position.x, pz = player.position.z;
+    const t = nav.target;
+    let main: string, sub: string, glyph = '';
+    const walkText = () => (nav.walkAfter >= 15 ? ` · ${formatDistance(nav.walkAfter)} walk${nav.walkMapped ? '' : ' (straight line)'}` : '');
+    this.aim = nav.stop ? [nav.stop.x, nav.stop.z] : [t.x, t.z];
+    if (nav.arrivedAt) {
+      main = `Arrived: ${t.name}`;
+      sub = nav.walkAfter >= 15 ? `Park here${walkText()} to the entrance area` : 'Park here';
+      glyph = TURN_GLYPH.arrive;
+      this.aim = [t.x, t.z];
+      // Without walking left the hint clears itself; otherwise it stays until the player gets out or cancels.
+      if (nav.walkAfter < 15 && performance.now() - nav.arrivedAt > 8000) { this.clearRoute(); return; }
+    } else if (nav.route) {
+      let prog = progressOnRoute(nav.route, px, pz);
+      this.offRoute = prog.off > DRIVE_OFF_ROUTE ? this.offRoute + 1 : 0;
+      if (this.offRoute >= DRIVE_OFF_TICKS && !this.fullOpen) {
+        this.offRoute = 0;
+        this.computeRoute();
+        this.renderInfo();
+        this.onNavChange?.();
+        if (!nav.route) return this.updateDriveNav(nav);
+        prog = progressOnRoute(nav.route, px, pz);
+      }
+      const route = nav.route!;
+      const remaining = Math.max(0, route.length - prog.along);
+      const toStop = nav.stop ? Math.hypot(nav.stop.x - px, nav.stop.z - pz) : Infinity;
+      if ((remaining < 15 && prog.off < DRIVE_OFF_ROUTE) || toStop < 10) {
+        nav.arrivedAt = performance.now();
+        this.onNavChange?.();
+        return this.updateDriveNav(nav);
+      }
+      const ahead = Math.min(route.length, prog.along + 25);
+      let i = prog.seg;
+      while (i < route.segEdge.length - 1 && route.cum[i + 1] < ahead) i++;
+      const sl = route.cum[i + 1] - route.cum[i], f = sl > 0 ? Math.max(0, Math.min(1, (ahead - route.cum[i]) / sl)) : 1;
+      this.aim = [route.points[i * 2] + (route.points[i * 2 + 2] - route.points[i * 2]) * f, route.points[i * 2 + 1] + (route.points[i * 2 + 3] - route.points[i * 2 + 1]) * f];
+      const next = route.maneuvers.find((m) => m.kind !== 'depart' && m.at > prog.along + 3) ?? route.maneuvers[route.maneuvers.length - 1];
+      const depart = route.maneuvers[0];
+      const left = `${formatDistance(remaining)} to ${t.name}`;
+      if (prog.off > 15) {
+        main = 'Return to the highlighted route';
+        sub = `${formatDistance(prog.off)} away · ${left}`;
+      } else if (next.kind === 'arrive') {
+        main = `${formatDistance(next.at - prog.along)}: stopping point ahead`;
+        sub = `${left}${walkText()}`;
+        glyph = TURN_GLYPH.arrive;
+      } else if (depart.kind === 'depart' && prog.along < depart.at + 20 && next.at - prog.along > 200) {
+        const dir = compassPoint(worldDirToBearing(this.aim[0] - px, this.aim[1] - pz));
+        main = `Drive ${dir}${depart.name ? ` on ${depart.name}` : ''}`;
+        sub = left;
+      } else {
+        main = `${formatDistance(next.at - prog.along)}: ${describeManeuver(next, t.name)}`;
+        sub = left;
+        glyph = TURN_GLYPH[next.kind];
+      }
+    } else {
+      main = `${t.name}: no driving route`;
+      sub = nav.reason || 'No mapped road connection from here';
+      if (nav.reason.startsWith('Drive onto')) {
+        // The car is off the mapped carriageways (car park, kerb): try again once it is back on a road.
+        if (++this.offRoute >= 8) { this.offRoute = 0; this.computeRoute(); this.onNavChange?.(); }
+      }
+    }
+    if (this.navMain.textContent !== main) this.navMain.textContent = main;
+    if (this.navSub.textContent !== sub) this.navSub.textContent = sub;
+    this.navEl.classList.toggle('nav-off', !nav.route);
+    this.navEl.classList.add('nav-drive');
+    this.navEl.classList.remove('hidden');
+    // Turn glyph for the next instruction; otherwise the arrow points along the route relative to the camera.
+    if (this.navGlyph.textContent !== glyph) this.navGlyph.textContent = glyph;
+    this.navEl.classList.toggle('nav-has-glyph', glyph !== '');
     let rel = worldDirToBearing(this.aim[0] - px, this.aim[1] - pz) - worldDirToBearing(-Math.sin(camera.yaw), -Math.cos(camera.yaw));
     rel = ((rel + 540) % 360) - 180;
     this.navArrow.style.transform = `rotate(${rel.toFixed(0)}deg)`;
@@ -720,9 +911,20 @@ export class Minimap {
     el.append(head, h('div', 'fm-info-kind', l.kind), rows);
 
     const isTarget = this.nav?.target === l;
-    if (this.routeBusy) el.append(h('div', 'fm-route', 'Finding a walking route…'));
+    const driving = this.deps.isDriving?.() ?? false;
+    if (this.routeBusy) el.append(h('div', 'fm-route', driving ? 'Finding a driving route…' : 'Finding a walking route…'));
     else if (this.routeNote) el.append(h('div', 'fm-route none', this.routeNote));
-    else if (isTarget && this.nav!.route) {
+    else if (isTarget && this.nav!.mode === 'drive') {
+      const n = this.nav!;
+      if (n.route) {
+        const box = h('div', 'fm-route drive');
+        box.append(h('b', '', `Driving route ${formatDistance(n.route.length)}`));
+        if (n.walkAfter >= 15) box.append(document.createTextNode(` · then ${formatDistance(n.walkAfter)} on foot`));
+        const bridges = [...new Set(n.route.maneuvers.filter((m) => m.kind === 'bridge').map((m) => m.name ?? 'a mapped bridge'))];
+        if (bridges.length) box.append(h('div', '', `Crosses ${bridges.join(', ')}`));
+        el.append(box);
+      } else el.append(h('div', 'fm-route none', `${n.reason || 'No mapped road connection from here'}.`));
+    } else if (isTarget && this.nav!.route) {
       const r = this.nav!.route;
       const box = h('div', 'fm-route');
       const b = h('b', '', `Walking route ${formatDistance(r.length)}`);
@@ -734,7 +936,7 @@ export class Minimap {
       el.append(h('div', 'fm-route none', `No mapped walking connection from here. Straight line ${formatDistance(dist)}, bearing ${pad3(bearing)}° ${compassPoint(bearing)}.`));
     }
     const btns = h('div', 'fm-info-btns');
-    const routeBtn = button('fm-btn primary fm-route-btn', isTarget ? 'Re-route' : 'Route', 'Walking route from your position', () => void this.routeTo(l));
+    const routeBtn = button('fm-btn primary fm-route-btn', isTarget ? 'Re-route' : driving ? 'Drive here' : 'Route', driving ? 'Driving route from the car' : 'Walking route from your position', () => void this.routeTo(l));
     routeBtn.disabled = this.routeBusy;
     btns.append(routeBtn);
     if (this.nav) btns.append(button('fm-btn fm-clear-btn', 'Clear route', 'Remove the active route', () => this.clearRoute()));
@@ -940,7 +1142,8 @@ export class Minimap {
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.drawImage(this.fmStatic, 0, 0);
     const nav = this.nav;
-    if (nav?.route) drawRoute(g, nav.route, toScreen, 5 * dpr, (i) => nav.connectorOk[i] === true);
+    if (nav?.route) drawRoute(g, nav.route, toScreen, 5 * dpr, (i) => nav.connectorOk[i] === true, this.routeColor(nav));
+    if (nav?.stop) { const [sx, sy] = toScreen(nav.stop.x, nav.stop.z); drawStop(g, sx, sy, 6 * dpr); }
 
     // Landmark markers and labels (labels skip each other instead of piling up).
     const { world, player } = this.deps;

@@ -8,6 +8,16 @@
 //   --decks  also accept untagged ways over water where build.ts already generated a walkable deck
 //            (boardwalks / jetties mapped inside the river polygon). Off by default.
 //   --debug  print every segment dropped for crossing water or a building.
+//   --drive  V8.4: build the car routing graph (public/data/kuching/drive-graph.json) instead.
+//
+// Drive profile (--drive):
+//  - only carriageway classes a car may use (src/vehicle/RoadQuery.ts DRIVABLE_CLASSES) that are wide
+//    enough for the car (the same width rule as RoadQuery.isDrivable); pedestrian streets, footways,
+//    paths, steps, cycleways, tracks and piers are never part of it;
+//  - access=no|private, motor_vehicle / motorcar / vehicle = no|private and service=emergency_access are out;
+//  - oneway=yes|true|1, oneway=-1, junction=roundabout|circular and motorways are directed edges (flag 4:
+//    travel from node a to node b only); no deck rule (only bridge-tagged ways cross water);
+//  - turn restrictions are not available: the OSM extract holds no type=restriction relations.
 //
 // Rules:
 //  - only walkable highway ways (osm.ts isWalkable) and open man_made=pier ways, inside the manifest area;
@@ -21,7 +31,10 @@ import { ROAD_TYPES, BUILDING_KINDS } from '../../src/world/types.ts';
 import type { ChunkData, Manifest, RoadType } from '../../src/world/types.ts';
 import type { GraphFile } from '../../src/ui/Router.ts';
 import { GRAPH_SCALE, GRAPH_VERSION } from '../../src/ui/Router.ts';
-import { loadOsm, project, roadTypeOf, isWalkable, isBridge, isTunnel, isClosedWay } from './osm.ts';
+import { loadOsm, project, roadTypeOf, isWalkable, isBridge, isTunnel, isClosedWay, roadWidth } from './osm.ts';
+import { DRIVABLE_CLASSES, SIDE_CLEARANCE } from '../../src/vehicle/RoadQuery.ts';
+import { CAR } from '../../src/vehicle/VehiclePhysics.ts';
+import { EDGE_ONEWAY } from '../../src/ui/Router.ts';
 import type { Pt } from './osm.ts';
 
 const OUT = 'public/data/kuching';
@@ -50,6 +63,24 @@ let nBuildings = 0;
 const deckWays = new Set<number>();
 const ALLOW_DECKS = process.argv.includes('--decks');
 const DEBUG = process.argv.includes('--debug');
+const DRIVE = process.argv.includes('--drive');
+const NO = new Set(['no', 'private']);
+/** Drive profile: may a car use this way, and in which direction (0 = both, 1 = node order, -1 = against it)? */
+function driveAccess(tags: Record<string, string>, type: RoadType): { ok: boolean; dir: 0 | 1 | -1 } {
+  const no = { ok: false, dir: 0 as const };
+  if (!DRIVABLE_CLASSES.has(type)) return no;
+  if (tags.service === 'emergency_access') return no;
+  const motor = tags.motorcar ?? tags.motor_vehicle ?? tags.vehicle;
+  if (motor !== undefined ? NO.has(motor) : NO.has(tags.access ?? '')) return no;
+  if (roadWidth(tags, type).w < CAR.halfWid * 2 + 2 * SIDE_CLEARANCE) return no;
+  const ow = tags.oneway;
+  if (ow === '-1' || ow === 'reverse') return { ok: true, dir: -1 };
+  if (ow === 'yes' || ow === 'true' || ow === '1') return { ok: true, dir: 1 };
+  if (ow === 'no') return { ok: true, dir: 0 };
+  if (tags.junction === 'roundabout' || tags.junction === 'circular' || tags.highway === 'motorway' || tags.highway === 'motorway_link') return { ok: true, dir: 1 };
+  return { ok: true, dir: 0 };
+}
+const driveStats = { excludedAccess: 0, excludedNarrow: 0, onewayWays: 0 };
 for (const key of manifest.chunks) {
   const c = JSON.parse(readFileSync(`${OUT}/chunks/${key}.json`, 'utf8')) as ChunkData;
   for (const r of c.roads) if (r.f & 1) deckWays.add(r.id);
@@ -132,7 +163,20 @@ for (const el of elements) {
   if (el.type !== 'way' || !tags || !el.geometry || !el.nodes) continue;
   let type: RoadType | null = null;
   let bridge = false;
-  if (tags.man_made === 'pier') {
+  let dir: 0 | 1 | -1 = 0;
+  if (DRIVE) {
+    if (!tags.highway || (tags.area === 'yes' && isClosedWay(el))) continue;
+    type = roadTypeOf(tags);
+    if (!type || !DRIVABLE_CLASSES.has(type)) continue;
+    const acc = driveAccess(tags, type);
+    if (!acc.ok) {
+      if (roadWidth(tags, type).w < CAR.halfWid * 2 + 2 * SIDE_CLEARANCE) driveStats.excludedNarrow++; else driveStats.excludedAccess++;
+      continue;
+    }
+    dir = acc.dir;
+    if (dir) driveStats.onewayWays++;
+    bridge = isBridge(tags);
+  } else if (tags.man_made === 'pier') {
     if (isClosedWay(el)) continue;
     type = 'pier';
     bridge = true;
@@ -150,7 +194,7 @@ for (const el of elements) {
     n = nameIdx.get(tags.name) ?? -1;
     if (n < 0) { n = names.length; names.push(tags.name); nameIdx.set(tags.name, n); }
   }
-  const f = (bridge ? 1 : 0) | (isTunnel(tags) ? 2 : 0);
+  const f = (bridge ? 1 : 0) | (isTunnel(tags) ? 2 : 0) | (dir ? EDGE_ONEWAY : 0);
   // The OSM way id is kept for bridge / pier edges only (it identifies the crossing and keeps the file small).
   const way = bridge ? el.id : 0;
   const ak = `${ROAD_TYPES.indexOf(type)}|${f}|${n}|${way}`;
@@ -177,7 +221,7 @@ for (const el of elements) {
     if (!bridge && ((inWater(a[0], a[1]) && inWater(b[0], b[1])) || anySample(a, b, 2, inWater))) {
       // Untagged way over water. By default it never becomes an edge; with --decks it is accepted only
       // where the main build already made this way a walkable deck (boardwalks, jetties, pontoons).
-      if (ALLOW_DECKS && deckWays.has(wayId)) { deck = true; stats.untaggedDeckSegments++; }
+      if (ALLOW_DECKS && !DRIVE && deckWays.has(wayId)) { deck = true; stats.untaggedDeckSegments++; }
       else {
         stats.droppedWater++;
         if (DEBUG) console.log('water', wayId, tags.highway, a.map(Math.round), b.map(Math.round));
@@ -191,7 +235,9 @@ for (const el of elements) {
     }
     pos.set(el.nodes[i - 1], a);
     pos.set(el.nodes[i], b);
-    segs.push({ a: el.nodes[i - 1], b: el.nodes[i], attr: deck && !bridge ? deckAttrOf() : ai, len });
+    // Directed (one-way) segments run from a to b in the direction of travel.
+    const [na, nb] = dir === -1 ? [el.nodes[i], el.nodes[i - 1]] : [el.nodes[i - 1], el.nodes[i]];
+    segs.push({ a: na, b: nb, attr: deck && !bridge ? deckAttrOf() : ai, len });
     if (deck) stats.bridgeSegments++;
     used = true;
   }
@@ -204,7 +250,7 @@ stats.segments = segs.length;
   const seen = new Set<string>();
   let w = 0;
   for (const s of segs) {
-    const k = s.a < s.b ? `${s.a}_${s.b}_${s.attr}` : `${s.b}_${s.a}_${s.attr}`;
+    const k = s.a < s.b || attrs[s.attr].f & EDGE_ONEWAY ? `${s.a}_${s.b}_${s.attr}` : `${s.b}_${s.a}_${s.attr}`;
     if (seen.has(k)) continue;
     seen.add(k);
     segs[w++] = s;
@@ -229,7 +275,10 @@ const isJunction = (n: number): boolean => {
   if (segs[l[0]].attr !== segs[l[1]].attr) return true;
   // a two-segment loop back to the same neighbour must stay split
   const o0 = segs[l[0]].a === n ? segs[l[0]].b : segs[l[0]].a, o1 = segs[l[1]].a === n ? segs[l[1]].b : segs[l[1]].a;
-  return o0 === o1;
+  if (o0 === o1) return true;
+  // One-way chains contract only where the flow continues (one segment ends here, the other starts here).
+  if (attrs[segs[l[0]].attr].f & EDGE_ONEWAY) return (segs[l[0]].b === n) === (segs[l[1]].b === n);
+  return false;
 };
 interface Edge { a: number; b: number; attr: number; mid: number[] }
 const edges: Edge[] = [];
@@ -237,12 +286,14 @@ const usedSeg = new Uint8Array(segs.length);
 const walk = (start: number, first: number): void => {
   const mid: number[] = [];
   let node = start, si = first;
+  // A one-way chain walked against its direction is stored reversed, so that a -> b is the direction of travel.
+  const rev = (attrs[segs[first].attr].f & EDGE_ONEWAY) !== 0 && segs[first].a !== start;
   for (;;) {
     usedSeg[si] = 1;
     const s = segs[si];
     const next = s.a === node ? s.b : s.a;
     if (next === start || isJunction(next)) {
-      edges.push({ a: start, b: next, attr: s.attr, mid });
+      edges.push(rev ? { a: next, b: start, attr: s.attr, mid: mid.reverse() } : { a: start, b: next, attr: s.attr, mid });
       return;
     }
     mid.push(next);
@@ -332,10 +383,12 @@ const graph: GraphFile = {
   geom: geomOut,
   ways,
 };
+if (DRIVE) graph.profile = 'drive';
 const json = JSON.stringify(graph);
-writeFileSync(`${OUT}/graph.json`, json);
+const FILE = DRIVE ? 'drive-graph.json' : 'graph.json';
+writeFileSync(`${OUT}/${FILE}`, json);
 log('stats', JSON.stringify({
-  ...stats, nodes: nodesOut.length / 2, edges: edges.length, shapeVertices: vertices, bridgeEdges, names: names.length,
+  ...stats, ...(DRIVE ? driveStats : {}), nodes: nodesOut.length / 2, edges: edges.length, shapeVertices: vertices, bridgeEdges, names: names.length,
   lengthKm: +totalKm.toFixed(1), edgesTouchingObstacleAfterQuantisation: wetAfterQuant, bytes: json.length,
 }));
-log(`wrote ${OUT}/graph.json (${(json.length / 1024).toFixed(0)} KiB)`);
+log(`wrote ${OUT}/${FILE} (${(json.length / 1024).toFixed(0)} KiB)`);

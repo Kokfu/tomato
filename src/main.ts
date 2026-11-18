@@ -11,6 +11,7 @@ import { loadCharacter } from './player/CharacterLoader.ts';
 import { ThirdPersonCamera } from './player/ThirdPersonCamera.ts';
 import { GameMenu } from './ui/GameMenu.ts';
 import { Minimap } from './ui/Minimap.ts';
+import { GpsPanel } from './ui/GpsPanel.ts';
 import { MobileControls } from './ui/MobileControls.ts';
 import { QUALITY, defaultQuality, isTouchDevice, AdaptiveResolution } from './ui/GraphicsSettings.ts';
 import type { QualityName } from './ui/GraphicsSettings.ts';
@@ -178,6 +179,7 @@ async function boot(): Promise<void> {
     if (!driving.active) return;
     driving.exit(player, true);
     player.visual.root.visible = !tpc.firstPerson;
+    minimap.setDriving(false);
   };
   const toggleCar = () => {
     if (driving.active) {
@@ -185,9 +187,11 @@ async function boot(): Promise<void> {
         player.visual.root.visible = !tpc.firstPerson;
         tpc.yaw = driving.camera.yaw;
         tpc.snap();
+        minimap.setDriving(false);
       }
     } else if (driving.enter(player)) {
       if (tpc.firstPerson) tpc.firstPerson = false;
+      minimap.setDriving(true);
     }
   };
 
@@ -267,6 +271,13 @@ async function boot(): Promise<void> {
       syncInput();
     },
     onResetLocation: resetLocation,
+    isDriving: () => driving.active,
+  });
+  // V8.4 GPS: destination list for the driver (G / the GPS button while driving).
+  const gps = new GpsPanel({
+    minimap,
+    landmarks: () => world.landmarks.landmarks,
+    available: () => started && !paused && !mapOpen && driving.active && !fly.active,
   });
 
   const placePanel = new PlacePanel({
@@ -450,6 +461,7 @@ async function boot(): Promise<void> {
     if (blob.visible) blob.position.set(player.position.x, world.collision.groundAt(player.position.x, player.position.z, player.position.y).h + 0.08, player.position.z);
 
     minimap.update(dt);
+    gps.update();
 
     hudTimer += dt;
     if (hudTimer > 0.25 && started) {
@@ -538,7 +550,7 @@ async function boot(): Promise<void> {
 
   // Debug / automated-test hook.
   (window as any).__k3d = {
-    world, player, camera, tpc, input, renderer, minimap, menu, placePanel, steps, v5, fly, refPanel, driving,
+    world, player, camera, tpc, input, renderer, minimap, gps, menu, placePanel, steps, v5, fly, refPanel, driving,
     geoToWorld, worldToGeo,
     /** Protected landmarks that reached a generic building generator (must stay empty). */
     landmarkGuard: guardViolations,

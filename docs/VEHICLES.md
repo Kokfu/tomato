@@ -2,8 +2,9 @@
 
 **Status (V8):** a first driving prototype is implemented: one drivable car, a chase camera, enter / exit,
 oriented-box collision and road-aware streaming, in `src/vehicle/`. See `docs/V8_REPORT.md` for what
-exists and how it was tested. Of the list below, steps 2, 3 and 4 are done; step 1 (a vehicle routing
-graph with lane metadata) and step 5 (traffic) are not.
+exists and how it was tested. Of the list below, steps 2, 3 and 4 are done; step 1 is half done since V8.4
+(`drive-graph.json`, a vehicle routing graph with one-way directions and access rules, used by the GPS; see
+`docs/NAVIGATION.md`), without lane metadata; step 5 (traffic) is not.
 
 The rest of this document is the original V2 design note. It records what the architecture provides
 for vehicles and where further vehicle features plug in.

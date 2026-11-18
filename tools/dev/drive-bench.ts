@@ -27,6 +27,8 @@ const DEV = process.argv.includes('--dev');
 const TRACE = opt('trace', '');
 /** --cpu=4: CPU throttling through the DevTools protocol (low frame-rate runs). */
 const CPU = +opt('cpu', '1');
+/** --gps=fort-margherita: V8.4 builds only: keep a GPS (driving) route to this landmark active during every scenario. */
+const GPS = opt('gps', '');
 
 const BLOCK_LOOP: [number, number][] = [
   [176, 34], [180.2, 36.4], [183, 37.4], [256, 54.8], [264, 56.7],
@@ -281,6 +283,15 @@ try {
         await placeCar(page, start.x, start.z, start.h);
       }
       await toCar(page);
+      if (GPS) {
+        const ok = await page.evaluate(async (id) => {
+          const k = (window as any).__k3d;
+          if (!k.gps) return 'no GPS in this build';
+          const nav = await k.minimap.routeTo(id, 'drive');
+          return nav?.route ? 'ok' : `no route: ${nav?.reason}`;
+        }, GPS);
+        if (ok !== 'ok') console.log('bench: GPS', ok);
+      }
       await page.waitForTimeout(1500);
       const tracing = TRACE && runNo === 1 && sc === SCEN[0];
       if (tracing) await browser.startTracing(page, { path: TRACE, categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'toplevel', 'v8', 'disabled-by-default-v8.gc', 'gpu', 'gpu.angle', 'disabled-by-default-gpu.angle', 'gpu.service', 'gpu.decoder', 'cc', 'viz', 'blink.user_timing'] });
@@ -289,6 +300,10 @@ try {
       if (sc === 'C') results.push(await run(page, `C block loop ${tag}`, () => driveRoute(page, BLOCK_LOOP_V7, { speed: 9, realTime: true, maxSeconds: 200 })));
       if (sc === 'D') results.push(await run(page, `D high-speed 2 km ${tag}`, () => driveRoute(page, hs, { speed: 27, cornerSpeed: 9, realTime: true, maxSeconds: 300, tolerance: 8 })));
       if (tracing) await browser.stopTracing();
+      if (GPS) {
+        const g = await page.evaluate(() => { const m = (window as any).__k3d.minimap; return m ? { routes: m.routeCount, lastRouteMs: m.lastRouteMs } : null; });
+        if (g) results[results.length - 1].gps = g;
+      }
     }
   }
   const meta = await page.evaluate(() => { const k = (window as any).__k3d; return { loadMs: 0, programsAtReady: 0, quality: k.world.chunks.quality.name, pixelRatio: k.renderer.getPixelRatio(), mode: k.v5?.mode, gl: (() => { const g = k.renderer.getContext(); const e = g.getExtension('WEBGL_debug_renderer_info'); return e ? g.getParameter(e.UNMASKED_RENDERER_WEBGL) : ''; })() }; });
