@@ -53,10 +53,16 @@ const getIn = async (page: Page) => {
   await page.keyboard.press('KeyE');
   expect((await carState(page)).active).toBe(true);
 };
-/** Hold keys for n frames while watching the car every frame. */
+/**
+ * Hold keys for n frames while watching the car every frame. The key events are dispatched inside the page, at the
+ * start and on the last counted frame: pressed through Playwright's keyboard, each press and release took a round
+ * trip during which the fixed-step simulation drove 2-11 extra frames (measured in V8.6), so a "45-frame" brake
+ * varied from run to run.
+ */
 const hold = async (page: Page, codes: string[], n: number) => {
-  for (const c of codes) await page.keyboard.down(c);
-  const seen = await page.evaluate((n) => new Promise<{ everInBuilding: boolean; everInWater: boolean; maxImpact: number; blocked: string[]; maxKmh: number }>((resolve) => {
+  return page.evaluate(([codes, n]) => new Promise<{ everInBuilding: boolean; everInWater: boolean; maxImpact: number; blocked: string[]; maxKmh: number }>((resolve) => {
+    const key = (type: string) => { for (const code of codes) window.dispatchEvent(new KeyboardEvent(type, { code, bubbles: true })); };
+    key('keydown');
     const k = (window as any).__k3d, car = k.driving.car, c = k.world.collision;
     const res = { everInBuilding: false, everInWater: false, maxImpact: 0, blocked: [] as string[], maxKmh: 0 };
     const tick = () => {
@@ -68,12 +74,10 @@ const hold = async (page: Page, codes: string[], n: number) => {
       res.maxImpact = Math.max(res.maxImpact, car.impact);
       res.maxKmh = Math.max(res.maxKmh, car.kmh);
       if (car.blocked && !res.blocked.includes(car.blocked)) res.blocked.push(car.blocked);
-      if (n-- <= 0) resolve(res); else requestAnimationFrame(tick);
+      if (n-- <= 0) { key('keyup'); resolve(res); } else requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-  }), n);
-  for (const c of codes) await page.keyboard.up(c);
-  return seen;
+  }), [codes, n] as const);
 };
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
@@ -126,12 +130,22 @@ test.describe('V8 driving prototype', () => {
     expect(go.maxImpact).toBe(0);
     expect(go.blocked).toEqual([]);
     expect(Math.abs(street(a)[1])).toBeLessThan(0.1);
-    await frames(page, 20); // the HUD refreshes four times a second
-    expect(Number(await page.locator('#speedo-kmh').textContent())).toBeGreaterThan(15);
-    await expect(page.locator('#speedo-gear')).toHaveText('D');
+    // The HUD refreshes four times a second: read it 20 frames on, in the page and in one go. (Polled through round
+    // trips, the car coasted on meanwhile, in slow runs to a stop before the last check: V8.6 diagnosis.)
+    const hud = await page.evaluate(() => new Promise<{ kmh: number; gear: string; prompt: boolean; help: string }>((resolve) => {
+      let n = 20;
+      const tick = () => {
+        if (n-- > 0) { requestAnimationFrame(tick); return; }
+        const el = (id: string) => document.getElementById(id)!;
+        resolve({ kmh: Number(el('speedo-kmh').textContent), gear: el('speedo-gear').textContent!, prompt: el('car-prompt').checkVisibility(), help: el('help').textContent! });
+      };
+      requestAnimationFrame(tick);
+    }));
+    expect(hud.kmh).toBeGreaterThan(15);
+    expect(hud.gear).toBe('D');
     // Moving: no "Exit Car" prompt.
-    await expect(page.locator('#car-prompt')).toBeHidden();
-    await expect(page.locator('#help')).not.toContainText('exit car');
+    expect(hud.prompt).toBe(false);
+    expect(hud.help).not.toContain('exit car');
     // The character rides along: the map, the location read-out and the streaming follow the car.
     expect(await k3d(page, (k) => Math.hypot(k.player.position.x - k.driving.car.x, k.player.position.z - k.driving.car.z))).toBeLessThan(0.5);
     expect(await k3d(page, (k) => k.world.chunks.nearestRoadName(k.player.position.x, k.player.position.z))).toBe('Jalan China');
@@ -141,8 +155,20 @@ test.describe('V8 driving prototype', () => {
     expect((await carState(page)).active).toBe(true);
     await expect(page.locator('#toast')).toContainText('Stop the car');
 
-    // S: brake to a stop, then reverse.
-    await hold(page, ['KeyS'], 45);
+    // S: brake to a stop, then reverse. The car coasted while the checks above ran (for as long as they took), so it
+    // is first brought back to 8 m/s with W and S follows on the same frame: the brake always starts at that speed.
+    await page.evaluate(() => new Promise<void>((resolve) => {
+      const car = (window as any).__k3d.driving.car, key = (type: string, code: string) => window.dispatchEvent(new KeyboardEvent(type, { code, bubbles: true }));
+      let n = 300, braking = -1;
+      key('keydown', 'KeyW');
+      const tick = () => {
+        if (braking < 0 && (car.vf >= 8 || n-- <= 0)) { key('keyup', 'KeyW'); key('keydown', 'KeyS'); braking = 45; }
+        if (braking === 0) { key('keyup', 'KeyS'); resolve(); return; }
+        if (braking > 0) braking--;
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }));
     expect(Math.abs((await carState(page)).vf)).toBeLessThan(1.6);
     await hold(page, ['KeyS'], 90);
     const r = await carState(page);
@@ -169,7 +195,17 @@ test.describe('V8 driving prototype', () => {
     const d = Math.hypot(foot.x - s.x, foot.z - s.z);
     expect(d).toBeGreaterThan(HALF_WID + 0.3);
     expect(d).toBeLessThan(HALF_LEN + 1.6);
-    const away = await walk(page, [[foot.x - fwd[0] * 6 - left[0] * 1.5, foot.z - fwd[1] * 6 - left[1] * 1.5]], { tolerance: 1, maxSeconds: 20 });
+    // Walk away into the free lane, 6 m behind the car. Where the car stops depends on how long the assertions above
+    // took (it coasts meanwhile), and from some stops a parked car of the V7 rows stands right behind the exit spot
+    // (V8.6 diagnosis: a straight walk 6 m back then ran into it, 1 run in 8). Then the way out is ahead of the car.
+    const cs = street(s), side = Math.sign(street(foot)[1] - cs[1]);
+    const lane = (dir: number) => [CHINA.toWorld(cs[0] + dir * 2.8, cs[1] + side * 1.2), CHINA.toWorld(cs[0] + dir * 6, cs[1])];
+    let away = await walk(page, lane(1), { tolerance: 0.6, maxSeconds: 20 });
+    if (!away.reached) {
+      const ahead = await walk(page, lane(-1), { tolerance: 0.6, maxSeconds: 20 });
+      ahead.everInBuilding ||= away.everInBuilding;
+      away = ahead;
+    }
     expect(away.reached).toBe(true);
     expect(away.everInBuilding).toBe(false);
     // The car stayed where it was left, and can be entered again.

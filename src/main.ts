@@ -54,7 +54,9 @@ async function boot(): Promise<void> {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    renderer.shadowMap.enabled = quality.shadowMap > 0;
+    // While the V5 pipeline draws, it owns the shadow state (V5_TIERS); changing it here would change every shader
+    // program variant behind the back of the shader preparation (src/world/prepareDraw.ts).
+    if (!v5?.usesPipeline) renderer.shadowMap.enabled = quality.shadowMap > 0;
     v5?.setSize(w, h, renderer.getPixelRatio());
   };
 
@@ -72,6 +74,11 @@ async function boot(): Promise<void> {
   let world: WorldManager;
   // V5 rendering experiment (A/B comparison of the Carpenter Street section); created once the world is loaded.
   let v5: V5Controller | null = null;
+  /** Upload textures and start compiling programs of `o` for the render path in use (src/world/prepareDraw.ts). */
+  const prepareObject = (o: THREE.Object3D) => (v5?.usesPipeline ? v5.pipeline.prepare(o) : prepareForDraw(renderer, o, camera, world.scene));
+  /** True while a preset change's programs compile (the last frame stays on screen); see onQuality. */
+  let holdDraw = false;
+  let prepareToken = 0;
   const menu = new GameMenu(
     {
       onStart: () => {
@@ -117,6 +124,13 @@ async function boot(): Promise<void> {
         camera.far = world.viewDistance;
         camera.updateProjectionMatrix();
         applyResolution();
+        // V8.6: the preset decides program variants (shadows; tone mapping in the materials or in the HDR output
+        // pass). Compile the new variants of everything in the scene together, in the background, instead of one
+        // stall per material as each is drawn; chunks rebuilt for the new preset prepare their own (ChunkManager).
+        const token = ++prepareToken;
+        holdDraw = true;
+        void Promise.race([whenCompiled(renderer, prepareObject(world.scene)), new Promise((r) => window.setTimeout(r, 3000))])
+          .then(() => { if (token === prepareToken) holdDraw = false; });
       },
       onAdaptive: (on) => {
         adaptive.enabled = on;
@@ -143,7 +157,7 @@ async function boot(): Promise<void> {
   world.chunks.renderer = renderer;
   // A streamed landmark model joins the scene only once its programs are compiled (for whichever render path is in
   // use) and its textures are uploaded, so it never stalls the frame it first appears in.
-  world.landmarkModels.prepare = (o) => whenCompiled(renderer, v5?.usesPipeline ? v5.pipeline.prepare(o) : prepareForDraw(renderer, o, camera, world.scene));
+  world.landmarkModels.prepare = (o) => whenCompiled(renderer, prepareObject(o));
   // The V5 code (generators, materials, post-processing) is a separate chunk: it does not add to the first download.
   const v5Ready = import('./v5/controller.ts').then((m) => {
     v5 = new m.V5Controller(world, renderer, camera, qualityName, document.getElementById('dev-render')!);
@@ -173,7 +187,7 @@ async function boot(): Promise<void> {
   // along (hidden), so the map, the location read-out and the streaming keep following `player.position`.
   const driving = new Driving(world, camera, { toast: (t) => menu.toast(t, 2) });
   world.scene.add(driving.model.root);
-  driving.prepare = (o) => { if (v5?.usesPipeline) v5.pipeline.prepare(o); else prepareForDraw(renderer, o, camera, world.scene); };
+  driving.prepare = (o) => { prepareObject(o); };
   /** Teleports and resets act on the walking character: the car is left where it stands. */
   const leaveCar = () => {
     if (!driving.active) return;
@@ -490,9 +504,10 @@ async function boot(): Promise<void> {
     }
 
     renderer.info.reset();
-    if (v5?.usesPipeline) v5.pipeline.render();
+    // After a preset change the previous frame stays on screen until the new program variants have compiled.
+    if (holdDraw) { /* compiling */ } else if (v5?.usesPipeline) v5.pipeline.render();
     else renderer.render(world.scene, camera);
-    if (wantShot) {
+    if (wantShot && !holdDraw) {
       // Same task as the render, so the drawing buffer is still valid.
       wantShot = false;
       canvas.toBlob((blob) => {

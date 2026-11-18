@@ -96,7 +96,21 @@ function instrument(): void {
       });
       // Names of the shader programs compiled during this frame.
       const progs = info.programs ?? [];
-      if (P.progN !== undefined && progs.length > P.progN) { const f = P.frames[P.frames.length - 1]; f.pn = progs.slice(P.progN).map((p: any) => p.name || String(p.cacheKey).split(',').slice(0, 3).join('/').slice(0, 60)); f.at = [Math.round(car.x), Math.round(car.z)]; }
+      if (P.progN !== undefined && progs.length > P.progN) {
+        const f = P.frames[P.frames.length - 1], fresh = progs.slice(P.progN);
+        f.pn = fresh.map((p: any) => p.name || String(p.cacheKey).split(',').slice(0, 3).join('/').slice(0, 60)); f.at = [Math.round(car.x), Math.round(car.z)];
+        // V8.6: which drawn objects use the new programs (material, object path), and the full program keys.
+        const set = new Set(fresh), who: string[] = [];
+        k.world.scene.traverse((o: any) => {
+          if (!o.material) return;
+          for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+            if (!set.has(k.renderer.properties.get(m).currentProgram)) continue;
+            const path: string[] = []; for (let a = o; a && path.length < 5; a = a.parent) path.push(a.name || a.type);
+            if (who.length < 12) who.push(`${m.type}:${m.name || '-'} @ ${path.join('<')}`);
+          }
+        });
+        f.who = [...new Set(who)]; f.keys = fresh.map((p: any) => String(p.cacheKey));
+      }
       P.progN = progs.length;
     }
     P.acc = {};
@@ -104,6 +118,27 @@ function instrument(): void {
     const t = performance.now();
     try { return upd.apply(this, a); } finally { P.acc['world.update'] = performance.now() - t; }
   };
+  // --who-render (V8.6): name the object drawn when a program is created, in any scene (Object3D.onAfterRender).
+  if (w.__whoRender) {
+    let o3 = Object.getPrototypeOf(W.scene); while (o3 && !Object.prototype.hasOwnProperty.call(o3, 'onAfterRender')) o3 = Object.getPrototypeOf(o3);
+    let n0 = k.renderer.info.programs.length;
+    P.drawn = [];
+    // Streamed landmark models: when each is prepared (sync part timed) and whether the program count rose then.
+    const lmp = W.landmarkModels.prepare;
+    if (lmp) W.landmarkModels.prepare = (o: any) => {
+      const t = performance.now(), p0 = k.renderer.info.programs.length;
+      const r = lmp(o);
+      P.drawn.push(`${Math.round(t)} landmark-prepare ${o.name || o.children?.[0]?.name || '?'} sync ${(performance.now() - t).toFixed(1)} ms, programs ${p0} -> ${k.renderer.info.programs.length}`);
+      return r;
+    };
+    o3.onAfterRender = function (_r: any, scene: any, _c: any, _g: any, m: any) {
+      const n = k.renderer.info.programs.length;
+      if (n <= n0) { n0 = n; return; }
+      n0 = n;
+      const path: string[] = []; for (let a: any = this; a && path.length < 6; a = a.parent) path.push(a.name || a.type);
+      P.drawn.push(`${Math.round(performance.now())} programs=${n} ${m?.type}:${m?.name || '-'} map=${!!m?.map} side=${m?.side} @ ${path.join('<')} scene=${scene === W.scene ? 'world' : scene?.name || scene?.type}`);
+    };
+  }
   wrap(ch, 'update', 'chunks.update');
   wrap(ch, 'recomputeWanted', 'recompute');
   // Per-stage time of each build (V8.2): the delta of ChunkManager.buildProfile across the call.
@@ -202,7 +237,7 @@ function summarise(frames: any[], builds: any[], loaf: any[]) {
     msPerFrame: Object.fromEntries(Object.entries(attrib(frames)).map(([key, v]) => [key, +((v as number) / frames.length).toFixed(2)])),
     slowFrameAttribution: { n: slow.length, totalMs: +sum('dt', slow).toFixed(0), ...attrib(slow) },
     worst,
-    compiles: frames.filter((f) => f.pn).map((f) => ({ dt: f.dt, t: Math.round(f.t), at: f.at, programs: f.pn.join(' | ') })),
+    compiles: frames.filter((f) => f.pn).map((f) => ({ dt: f.dt, t: Math.round(f.t), at: f.at, programs: f.pn.join(' | '), who: f.who, keys: f.keys })),
     loaf: loaf.sort((a, c) => c.ms - a.ms).slice(0, 6),
   };
 }
@@ -223,7 +258,7 @@ async function run(page: Page, name: string, fn: () => Promise<any>) {
   console.log(`\n=== ${name}\n${JSON.stringify({ ...s, worst: undefined, loaf: undefined, collision })}`);
   for (const w of s.worst.slice(0, 5)) console.log('  worst', JSON.stringify(w));
   for (const b of s.worstBuilds) console.log('  build', JSON.stringify(b));
-  for (const c of s.compiles) console.log('  compile', JSON.stringify(c));
+  for (const c of s.compiles) console.log('  compile', JSON.stringify({ ...c, keys: undefined }));
   return { name, ...s, collision, frameTimes: frames.map((f: any) => [Math.round(f.t), f.dt, f.sp]) };
 }
 
@@ -266,6 +301,7 @@ try {
   await page.click('#btn-start');
   await page.evaluate(() => { const el = document.getElementById('opt-adaptive') as HTMLInputElement | null; if (el?.checked) { el.checked = false; el.dispatchEvent(new Event('change')); } });
   await page.waitForFunction(() => (window as any).__k3d.driving.placed, null, { timeout: 60_000 });
+  if (process.argv.includes('--who-render')) await page.evaluate(() => { (window as any).__whoRender = true; });
   await page.evaluate(instrument);
   const start = await page.evaluate(() => { const c = (window as any).__k3d.driving.car; return { x: c.x, z: c.z, h: c.heading }; });
   const hs = highSpeedRoute();
@@ -310,8 +346,10 @@ try {
   }
   const meta = await page.evaluate(() => { const k = (window as any).__k3d; return { loadMs: 0, programsAtReady: 0, quality: k.world.chunks.quality.name, pixelRatio: k.renderer.getPixelRatio(), mode: k.v5?.mode, gl: (() => { const g = k.renderer.getContext(); const e = g.getExtension('WEBGL_debug_renderer_info'); return e ? g.getParameter(e.UNMASKED_RENDERER_WEBGL) : ''; })() }; });
   meta.loadMs = loadMs; meta.programsAtReady = programsAtReady;
+  (meta as any).programKeys = await page.evaluate(() => (window as any).__k3d.renderer.info.programs.map((p: any) => String(p.cacheKey)));
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify({ meta, dist: DIST, when: new Date().toISOString(), results }, null, 1));
+  if (process.argv.includes('--who-render')) for (const d of await page.evaluate(() => (window as any).__prof.drawn)) console.log('  drawn-new-program', d);
   console.log('\nmeta', JSON.stringify(meta), '\nwritten', OUT);
 } finally {
   await browser.close();

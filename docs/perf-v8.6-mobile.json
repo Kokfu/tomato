@@ -1,0 +1,1126 @@
+{
+ "note": "V8.6 emulated phone (Edge, 390x844 CSS px, DPR 3, touch, CPU throttled 4x, Intel UHD integrated GPU, ANGLE D3D11), Low preset, GPS route active, fresh browser per run, alternating builds V8.6/V8.5/V8.6/V8.5. Not a real phone. Tool: tools/dev/drive-bench.ts --mobile --quality=low --cpu=4 --gps=fort-margherita --scenarios=B,C,D --runs=2; tools/dev/preset-probe.ts.",
+ "drive": [
+  {
+   "build": "V8.6",
+   "file": "m-final-1.json",
+   "scenario": "B Jalan China lane cold",
+   "frames": 813,
+   "seconds": 28.1,
+   "avgFps": 28.9,
+   "medianMs": 29.3,
+   "p95Ms": 74.4,
+   "p99Ms": 99.7,
+   "worstMs": 135.6,
+   "over50": 173,
+   "over100": 8,
+   "over200": 0,
+   "peakHeapMB": 104.3,
+   "maxCalls": 129,
+   "maxTrisK": 322,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 1,
+    "lastRouteMs": 108.29999995231628
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.6",
+   "file": "m-final-1.json",
+   "scenario": "C block loop cold",
+   "frames": 2547,
+   "seconds": 82.1,
+   "avgFps": 31,
+   "medianMs": 24.2,
+   "p95Ms": 76.5,
+   "p99Ms": 102.7,
+   "worstMs": 182.9,
+   "over50": 457,
+   "over100": 28,
+   "over200": 0,
+   "peakHeapMB": 106,
+   "maxCalls": 150,
+   "maxTrisK": 348,
+   "lateCompiles": [
+    {
+     "dt": 70.7,
+     "at": [
+      236,
+      -58
+     ],
+     "programs": "lambert/highp/srgb",
+     "who": []
+    }
+   ],
+   "gps": {
+    "routes": 2,
+    "lastRouteMs": 71.5
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.6",
+   "file": "m-final-1.json",
+   "scenario": "D high-speed 2 km cold",
+   "frames": 3956,
+   "seconds": 95.3,
+   "avgFps": 41.5,
+   "medianMs": 19.3,
+   "p95Ms": 54.6,
+   "p99Ms": 77.9,
+   "worstMs": 259,
+   "over50": 249,
+   "over100": 14,
+   "over200": 1,
+   "peakHeapMB": 104.3,
+   "maxCalls": 144,
+   "maxTrisK": 266,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 8,
+    "lastRouteMs": 42.40000003576279
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.6",
+   "file": "m-final-1.json",
+   "scenario": "B Jalan China lane warm1",
+   "frames": 920,
+   "seconds": 28.2,
+   "avgFps": 32.7,
+   "medianMs": 25.3,
+   "p95Ms": 64.6,
+   "p99Ms": 78.5,
+   "worstMs": 123.1,
+   "over50": 138,
+   "over100": 5,
+   "over200": 0,
+   "peakHeapMB": 113.5,
+   "maxCalls": 140,
+   "maxTrisK": 329,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 10,
+    "lastRouteMs": 45.69999998807907
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.6",
+   "file": "m-final-1.json",
+   "scenario": "C block loop warm1",
+   "frames": 3319,
+   "seconds": 81.8,
+   "avgFps": 40.6,
+   "medianMs": 18.6,
+   "p95Ms": 57.7,
+   "p99Ms": 79.9,
+   "worstMs": 141.1,
+   "over50": 260,
+   "over100": 5,
+   "over200": 0,
+   "peakHeapMB": 119.8,
+   "maxCalls": 150,
+   "maxTrisK": 349,
+   "lateCompiles": [
+    {
+     "dt": 65.8,
+     "at": [
+      237,
+      -58
+     ],
+     "programs": "lambert/highp/srgb",
+     "who": []
+    }
+   ],
+   "gps": {
+    "routes": 11,
+    "lastRouteMs": 15
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.6",
+   "file": "m-final-1.json",
+   "scenario": "D high-speed 2 km warm1",
+   "frames": 4196,
+   "seconds": 95,
+   "avgFps": 44.2,
+   "medianMs": 18.9,
+   "p95Ms": 47.7,
+   "p99Ms": 73.6,
+   "worstMs": 138.9,
+   "over50": 186,
+   "over100": 10,
+   "over200": 0,
+   "peakHeapMB": 122.7,
+   "maxCalls": 146,
+   "maxTrisK": 266,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 17,
+    "lastRouteMs": 20.5
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.5",
+   "file": "m-base-5.json",
+   "scenario": "B Jalan China lane cold",
+   "frames": 890,
+   "seconds": 28.9,
+   "avgFps": 30.8,
+   "medianMs": 24.3,
+   "p95Ms": 68.4,
+   "p99Ms": 104.2,
+   "worstMs": 645.1,
+   "over50": 161,
+   "over100": 11,
+   "over200": 3,
+   "peakHeapMB": 99.1,
+   "maxCalls": 129,
+   "maxTrisK": 322,
+   "lateCompiles": [
+    {
+     "dt": 259.2,
+     "at": [
+      205,
+      -54
+     ],
+     "programs": "physical/STANDARD/",
+     "who": [
+      "MeshStandardMaterial:- @ Mesh<v5-scene<Scene",
+      "MeshStandardMaterial:- @ foodcourt-lod0_6<foodcourt-lod0<Group<lau-ya-keng-food-court:v5<v5-scene",
+      "MeshStandardMaterial:- @ stage-lod0_4<stage-lod0<Group<yang-choon-tai-opera-stage:v5<v5-scene"
+     ]
+    },
+    {
+     "dt": 259.9,
+     "at": [
+      205,
+      -54
+     ],
+     "programs": "physical/STANDARD/",
+     "who": [
+      "MeshStandardMaterial:- @ Mesh<v5-scene<Scene",
+      "MeshStandardMaterial:- @ foodcourt-lod0_5<foodcourt-lod0<Group<lau-ya-keng-food-court:v5<v5-scene"
+     ]
+    },
+    {
+     "dt": 645.1,
+     "at": [
+      205,
+      -54
+     ],
+     "programs": "physical/STANDARD/ | physical/STANDARD/ | physical/STANDARD/",
+     "who": [
+      "MeshStandardMaterial:- @ Mesh<v5-scene<Scene",
+      "MeshStandardMaterial:- @ temple-lod0_7<temple-lod0<Group<hiang-thian-siang-ti-temple:v5<v5-scene",
+      "MeshStandardMaterial:- @ foodcourt-lod0_7<foodcourt-lod0<Group<lau-ya-keng-food-court:v5<v5-scene",
+      "MeshStandardMaterial:- @ stage-lod0_3<stage-lod0<Group<yang-choon-tai-opera-stage:v5<v5-scene"
+     ]
+    }
+   ],
+   "gps": {
+    "routes": 1,
+    "lastRouteMs": 107.90000003576279
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.5",
+   "file": "m-base-5.json",
+   "scenario": "C block loop cold",
+   "frames": 2721,
+   "seconds": 82.2,
+   "avgFps": 33.1,
+   "medianMs": 20.4,
+   "p95Ms": 75.3,
+   "p99Ms": 101.3,
+   "worstMs": 291.5,
+   "over50": 463,
+   "over100": 31,
+   "over200": 2,
+   "peakHeapMB": 113.2,
+   "maxCalls": 150,
+   "maxTrisK": 348,
+   "lateCompiles": [
+    {
+     "dt": 291.5,
+     "at": [
+      264,
+      53
+     ],
+     "programs": "dun-gold",
+     "who": [
+      "MeshStandardMaterial:dun-gold @ dun-roof<dun<Group<chunks<Scene"
+     ]
+    },
+    {
+     "dt": 126,
+     "at": [
+      236,
+      -58
+     ],
+     "programs": "lambert/highp/srgb",
+     "who": []
+    }
+   ],
+   "gps": {
+    "routes": 2,
+    "lastRouteMs": 65.30000001192093
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.5",
+   "file": "m-base-5.json",
+   "scenario": "D high-speed 2 km cold",
+   "frames": 4212,
+   "seconds": 95.1,
+   "avgFps": 44.3,
+   "medianMs": 18.4,
+   "p95Ms": 50.3,
+   "p99Ms": 76.5,
+   "worstMs": 171.7,
+   "over50": 213,
+   "over100": 8,
+   "over200": 0,
+   "peakHeapMB": 102,
+   "maxCalls": 149,
+   "maxTrisK": 266,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 8,
+    "lastRouteMs": 28.899999976158142
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.5",
+   "file": "m-base-5.json",
+   "scenario": "B Jalan China lane warm1",
+   "frames": 863,
+   "seconds": 28,
+   "avgFps": 30.8,
+   "medianMs": 26.3,
+   "p95Ms": 70.7,
+   "p99Ms": 93.1,
+   "worstMs": 135,
+   "over50": 164,
+   "over100": 3,
+   "over200": 0,
+   "peakHeapMB": 112.5,
+   "maxCalls": 140,
+   "maxTrisK": 329,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 10,
+    "lastRouteMs": 80.10000002384186
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.5",
+   "file": "m-base-5.json",
+   "scenario": "C block loop warm1",
+   "frames": 3181,
+   "seconds": 82,
+   "avgFps": 38.8,
+   "medianMs": 19.2,
+   "p95Ms": 60.4,
+   "p99Ms": 84,
+   "worstMs": 192.5,
+   "over50": 316,
+   "over100": 11,
+   "over200": 0,
+   "peakHeapMB": 121.8,
+   "maxCalls": 150,
+   "maxTrisK": 349,
+   "lateCompiles": [
+    {
+     "dt": 19,
+     "at": [
+      236,
+      -58
+     ],
+     "programs": "lambert/highp/srgb",
+     "who": []
+    }
+   ],
+   "gps": {
+    "routes": 11,
+    "lastRouteMs": 32
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.5",
+   "file": "m-base-5.json",
+   "scenario": "D high-speed 2 km warm1",
+   "frames": 4270,
+   "seconds": 95.2,
+   "avgFps": 44.9,
+   "medianMs": 18.2,
+   "p95Ms": 47.2,
+   "p99Ms": 77.7,
+   "worstMs": 154.3,
+   "over50": 191,
+   "over100": 17,
+   "over200": 0,
+   "peakHeapMB": 92.3,
+   "maxCalls": 146,
+   "maxTrisK": 266,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 17,
+    "lastRouteMs": 46.69999998807907
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.6",
+   "file": "m-final-2.json",
+   "scenario": "B Jalan China lane cold",
+   "frames": 956,
+   "seconds": 28.4,
+   "avgFps": 33.7,
+   "medianMs": 21.7,
+   "p95Ms": 66.1,
+   "p99Ms": 116.7,
+   "worstMs": 206.7,
+   "over50": 120,
+   "over100": 16,
+   "over200": 1,
+   "peakHeapMB": 148.3,
+   "maxCalls": 129,
+   "maxTrisK": 322,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 1,
+    "lastRouteMs": 153.4000000357628
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.6",
+   "file": "m-final-2.json",
+   "scenario": "C block loop cold",
+   "frames": 2939,
+   "seconds": 82,
+   "avgFps": 35.8,
+   "medianMs": 20.1,
+   "p95Ms": 64.6,
+   "p99Ms": 91.4,
+   "worstMs": 191.5,
+   "over50": 351,
+   "over100": 18,
+   "over200": 0,
+   "peakHeapMB": 101.1,
+   "maxCalls": 150,
+   "maxTrisK": 349,
+   "lateCompiles": [
+    {
+     "dt": 123.8,
+     "at": [
+      236,
+      -59
+     ],
+     "programs": "lambert/highp/srgb",
+     "who": []
+    }
+   ],
+   "gps": {
+    "routes": 2,
+    "lastRouteMs": 31.5
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.6",
+   "file": "m-final-2.json",
+   "scenario": "D high-speed 2 km cold",
+   "frames": 4107,
+   "seconds": 95.1,
+   "avgFps": 43.2,
+   "medianMs": 18.5,
+   "p95Ms": 51.2,
+   "p99Ms": 78.3,
+   "worstMs": 170.4,
+   "over50": 222,
+   "over100": 13,
+   "over200": 0,
+   "peakHeapMB": 101.8,
+   "maxCalls": 143,
+   "maxTrisK": 266,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 8,
+    "lastRouteMs": 45.09999996423721
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.6",
+   "file": "m-final-2.json",
+   "scenario": "B Jalan China lane warm1",
+   "frames": 948,
+   "seconds": 28.2,
+   "avgFps": 33.7,
+   "medianMs": 23.8,
+   "p95Ms": 63.1,
+   "p99Ms": 74.8,
+   "worstMs": 107.3,
+   "over50": 132,
+   "over100": 1,
+   "over200": 0,
+   "peakHeapMB": 115.5,
+   "maxCalls": 140,
+   "maxTrisK": 329,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 10,
+    "lastRouteMs": 33.19999998807907
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.6",
+   "file": "m-final-2.json",
+   "scenario": "C block loop warm1",
+   "frames": 3306,
+   "seconds": 82.1,
+   "avgFps": 40.3,
+   "medianMs": 19.1,
+   "p95Ms": 56.3,
+   "p99Ms": 76.7,
+   "worstMs": 169.7,
+   "over50": 248,
+   "over100": 10,
+   "over200": 0,
+   "peakHeapMB": 124.1,
+   "maxCalls": 150,
+   "maxTrisK": 349,
+   "lateCompiles": [
+    {
+     "dt": 63.3,
+     "at": [
+      237,
+      -58
+     ],
+     "programs": "lambert/highp/srgb",
+     "who": []
+    }
+   ],
+   "gps": {
+    "routes": 11,
+    "lastRouteMs": 31.899999976158142
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.6",
+   "file": "m-final-2.json",
+   "scenario": "D high-speed 2 km warm1",
+   "frames": 3211,
+   "seconds": 96.5,
+   "avgFps": 33.3,
+   "medianMs": 23.8,
+   "p95Ms": 78.7,
+   "p99Ms": 116.5,
+   "worstMs": 217.5,
+   "over50": 377,
+   "over100": 79,
+   "over200": 1,
+   "peakHeapMB": 99.2,
+   "maxCalls": 149,
+   "maxTrisK": 266,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 17,
+    "lastRouteMs": 61.19999998807907
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.5",
+   "file": "m-base-6.json",
+   "scenario": "B Jalan China lane cold",
+   "frames": 603,
+   "seconds": 29.3,
+   "avgFps": 20.6,
+   "medianMs": 45.7,
+   "p95Ms": 90.8,
+   "p99Ms": 121.6,
+   "worstMs": 557.3,
+   "over50": 253,
+   "over100": 18,
+   "over200": 3,
+   "peakHeapMB": 115.1,
+   "maxCalls": 129,
+   "maxTrisK": 322,
+   "lateCompiles": [
+    {
+     "dt": 557.3,
+     "at": [
+      205,
+      -54
+     ],
+     "programs": "physical/STANDARD/ | physical/STANDARD/",
+     "who": [
+      "MeshStandardMaterial:- @ Mesh<v5-scene<Scene",
+      "MeshStandardMaterial:- @ foodcourt-lod0_5<foodcourt-lod0<Group<lau-ya-keng-food-court:v5<v5-scene",
+      "MeshStandardMaterial:- @ foodcourt-lod0_6<foodcourt-lod0<Group<lau-ya-keng-food-court:v5<v5-scene",
+      "MeshStandardMaterial:- @ stage-lod0_4<stage-lod0<Group<yang-choon-tai-opera-stage:v5<v5-scene"
+     ]
+    },
+    {
+     "dt": 358.5,
+     "at": [
+      205,
+      -54
+     ],
+     "programs": "physical/STANDARD/",
+     "who": [
+      "MeshStandardMaterial:- @ Mesh<v5-scene<Scene",
+      "MeshStandardMaterial:- @ temple-lod0_7<temple-lod0<Group<hiang-thian-siang-ti-temple:v5<v5-scene",
+      "MeshStandardMaterial:- @ stage-lod0_3<stage-lod0<Group<yang-choon-tai-opera-stage:v5<v5-scene"
+     ]
+    },
+    {
+     "dt": 527.1,
+     "at": [
+      205,
+      -54
+     ],
+     "programs": "physical/STANDARD/ | physical/STANDARD/",
+     "who": [
+      "MeshStandardMaterial:- @ foodcourt-lod0_7<foodcourt-lod0<Group<lau-ya-keng-food-court:v5<v5-scene"
+     ]
+    }
+   ],
+   "gps": {
+    "routes": 1,
+    "lastRouteMs": 149.0999999642372
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.5",
+   "file": "m-base-6.json",
+   "scenario": "C block loop cold",
+   "frames": 1758,
+   "seconds": 82.8,
+   "avgFps": 21.2,
+   "medianMs": 45.6,
+   "p95Ms": 94.3,
+   "p99Ms": 114.2,
+   "worstMs": 303.2,
+   "over50": 774,
+   "over100": 63,
+   "over200": 1,
+   "peakHeapMB": 110.3,
+   "maxCalls": 150,
+   "maxTrisK": 348,
+   "lateCompiles": [
+    {
+     "dt": 303.2,
+     "at": [
+      264,
+      52
+     ],
+     "programs": "dun-gold",
+     "who": [
+      "MeshStandardMaterial:dun-gold @ dun-roof<dun<Group<chunks<Scene"
+     ]
+    },
+    {
+     "dt": 67.8,
+     "at": [
+      236,
+      -58
+     ],
+     "programs": "lambert/highp/srgb",
+     "who": []
+    }
+   ],
+   "gps": {
+    "routes": 2,
+    "lastRouteMs": 47.69999998807907
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.5",
+   "file": "m-base-6.json",
+   "scenario": "D high-speed 2 km cold",
+   "frames": 3058,
+   "seconds": 95.5,
+   "avgFps": 32,
+   "medianMs": 26.4,
+   "p95Ms": 71.1,
+   "p99Ms": 98.1,
+   "worstMs": 185.6,
+   "over50": 411,
+   "over100": 28,
+   "over200": 0,
+   "peakHeapMB": 93.9,
+   "maxCalls": 149,
+   "maxTrisK": 266,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 8,
+    "lastRouteMs": 73.59999996423721
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.5",
+   "file": "m-base-6.json",
+   "scenario": "B Jalan China lane warm1",
+   "frames": 544,
+   "seconds": 28.5,
+   "avgFps": 19.1,
+   "medianMs": 51.8,
+   "p95Ms": 102.3,
+   "p99Ms": 126.3,
+   "worstMs": 155.6,
+   "over50": 278,
+   "over100": 35,
+   "over200": 0,
+   "peakHeapMB": 120.1,
+   "maxCalls": 140,
+   "maxTrisK": 329,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 10,
+    "lastRouteMs": 107.5
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.5",
+   "file": "m-base-6.json",
+   "scenario": "C block loop warm1",
+   "frames": 1806,
+   "seconds": 82.8,
+   "avgFps": 21.8,
+   "medianMs": 42.7,
+   "p95Ms": 95.4,
+   "p99Ms": 119.7,
+   "worstMs": 189.3,
+   "over50": 730,
+   "over100": 76,
+   "over200": 0,
+   "peakHeapMB": 128.7,
+   "maxCalls": 150,
+   "maxTrisK": 348,
+   "lateCompiles": [
+    {
+     "dt": 163.7,
+     "at": [
+      236,
+      -58
+     ],
+     "programs": "lambert/highp/srgb",
+     "who": []
+    }
+   ],
+   "gps": {
+    "routes": 11,
+    "lastRouteMs": 32.60000002384186
+   },
+   "reached": true
+  },
+  {
+   "build": "V8.5",
+   "file": "m-base-6.json",
+   "scenario": "D high-speed 2 km warm1",
+   "frames": 3410,
+   "seconds": 95.9,
+   "avgFps": 35.6,
+   "medianMs": 22.2,
+   "p95Ms": 66.7,
+   "p99Ms": 97.5,
+   "worstMs": 230.3,
+   "over50": 348,
+   "over100": 32,
+   "over200": 2,
+   "peakHeapMB": 84.8,
+   "maxCalls": 146,
+   "maxTrisK": 266,
+   "lateCompiles": [],
+   "gps": {
+    "routes": 17,
+    "lastRouteMs": 16.900000035762787
+   },
+   "reached": true
+  }
+ ],
+ "preset": [
+  {
+   "dist": "V8.6",
+   "run": 1,
+   "loadMs": 21871,
+   "transferKB": 2025,
+   "progsReady": 98,
+   "phases": [
+    {
+     "label": "low look-round",
+     "frames": 216,
+     "avgFps": 26.9,
+     "medianMs": 31.2,
+     "p95Ms": 70.9,
+     "p99Ms": 160.7,
+     "worstMs": 629.4,
+     "over50": 23,
+     "over100": 6,
+     "over200": 1,
+     "newPrograms": 0,
+     "heldMs": 0,
+     "heldUntilMs": 0,
+     "geometries": 273,
+     "textures": 42,
+     "shadows": false,
+     "targetMB": 14.3
+    },
+    {
+     "label": "-> medium",
+     "frames": 10,
+     "avgFps": 1.2,
+     "medianMs": 152.7,
+     "p95Ms": 1954.4,
+     "p99Ms": 1954.4,
+     "worstMs": 1954.4,
+     "over50": 8,
+     "over100": 6,
+     "over200": 3,
+     "newPrograms": 61,
+     "heldMs": 39,
+     "heldUntilMs": 4590,
+     "geometries": 105,
+     "textures": 19,
+     "shadows": true,
+     "targetMB": 50.6
+    },
+    {
+     "label": "-> high",
+     "frames": 11,
+     "avgFps": 1.4,
+     "medianMs": 79.4,
+     "p95Ms": 1496.2,
+     "p99Ms": 1496.2,
+     "worstMs": 1496.2,
+     "over50": 7,
+     "over100": 4,
+     "over200": 4,
+     "newPrograms": 73,
+     "heldMs": 135,
+     "heldUntilMs": 4014,
+     "geometries": 106,
+     "textures": 27,
+     "shadows": true,
+     "targetMB": 177.7
+    },
+    {
+     "label": "-> low",
+     "frames": 273,
+     "avgFps": 34.1,
+     "medianMs": 22,
+     "p95Ms": 91.8,
+     "p99Ms": 152.3,
+     "worstMs": 233.2,
+     "over50": 30,
+     "over100": 9,
+     "over200": 2,
+     "newPrograms": 0,
+     "heldMs": 0,
+     "heldUntilMs": 0,
+     "geometries": 273,
+     "textures": 49,
+     "shadows": false,
+     "targetMB": 14.3
+    }
+   ]
+  },
+  {
+   "dist": "V8.5",
+   "run": 1,
+   "loadMs": 21191,
+   "transferKB": 2025,
+   "progsReady": 85,
+   "phases": [
+    {
+     "label": "low look-round",
+     "frames": 63,
+     "avgFps": 7.9,
+     "medianMs": 45.7,
+     "p95Ms": 170.5,
+     "p99Ms": 4379.8,
+     "worstMs": 4379.8,
+     "over50": 23,
+     "over100": 5,
+     "over200": 3,
+     "newPrograms": 25,
+     "heldMs": 0,
+     "heldUntilMs": 0,
+     "geometries": 229,
+     "textures": 41,
+     "shadows": false,
+     "targetMB": 22.3
+    },
+    {
+     "label": "-> medium",
+     "frames": 85,
+     "avgFps": 10.5,
+     "medianMs": 58.6,
+     "p95Ms": 281,
+     "p99Ms": 862.7,
+     "worstMs": 862.7,
+     "over50": 55,
+     "over100": 19,
+     "over200": 6,
+     "newPrograms": 0,
+     "heldMs": 0,
+     "heldUntilMs": 0,
+     "geometries": 181,
+     "textures": 29,
+     "shadows": true,
+     "targetMB": 50.6
+    },
+    {
+     "label": "-> high",
+     "frames": 13,
+     "avgFps": 1.5,
+     "medianMs": 90,
+     "p95Ms": 4239.6,
+     "p99Ms": 4239.6,
+     "worstMs": 4239.6,
+     "over50": 11,
+     "over100": 5,
+     "over200": 2,
+     "newPrograms": 33,
+     "heldMs": 0,
+     "heldUntilMs": 0,
+     "geometries": 100,
+     "textures": 26,
+     "shadows": true,
+     "targetMB": 177.7
+    },
+    {
+     "label": "-> low",
+     "frames": 68,
+     "avgFps": 8.4,
+     "medianMs": 39.8,
+     "p95Ms": 113.3,
+     "p99Ms": 2930.9,
+     "worstMs": 2930.9,
+     "over50": 23,
+     "over100": 6,
+     "over200": 2,
+     "newPrograms": 26,
+     "heldMs": 0,
+     "heldUntilMs": 0,
+     "geometries": 181,
+     "textures": 34,
+     "shadows": false,
+     "targetMB": 22.3
+    }
+   ]
+  },
+  {
+   "dist": "V8.6",
+   "run": 2,
+   "loadMs": 16694,
+   "transferKB": 2025,
+   "progsReady": 98,
+   "phases": [
+    {
+     "label": "low look-round",
+     "frames": 214,
+     "avgFps": 26.7,
+     "medianMs": 31.1,
+     "p95Ms": 69.4,
+     "p99Ms": 143.5,
+     "worstMs": 569.9,
+     "over50": 23,
+     "over100": 5,
+     "over200": 1,
+     "newPrograms": 0,
+     "heldMs": 0,
+     "heldUntilMs": 0,
+     "geometries": 273,
+     "textures": 42,
+     "shadows": false,
+     "targetMB": 14.3
+    },
+    {
+     "label": "-> medium",
+     "frames": 9,
+     "avgFps": 1.1,
+     "medianMs": 103.7,
+     "p95Ms": 1715.6,
+     "p99Ms": 1715.6,
+     "worstMs": 1715.6,
+     "over50": 7,
+     "over100": 5,
+     "over200": 4,
+     "newPrograms": 61,
+     "heldMs": 63,
+     "heldUntilMs": 4474,
+     "geometries": 105,
+     "textures": 19,
+     "shadows": true,
+     "targetMB": 50.6
+    },
+    {
+     "label": "-> high",
+     "frames": 9,
+     "avgFps": 1.1,
+     "medianMs": 36,
+     "p95Ms": 1856.9,
+     "p99Ms": 1856.9,
+     "worstMs": 1856.9,
+     "over50": 4,
+     "over100": 4,
+     "over200": 3,
+     "newPrograms": 73,
+     "heldMs": 246,
+     "heldUntilMs": 4071,
+     "geometries": 106,
+     "textures": 27,
+     "shadows": true,
+     "targetMB": 177.7
+    },
+    {
+     "label": "-> low",
+     "frames": 123,
+     "avgFps": 15.4,
+     "medianMs": 50.6,
+     "p95Ms": 161.7,
+     "p99Ms": 309.1,
+     "worstMs": 417.2,
+     "over50": 62,
+     "over100": 13,
+     "over200": 3,
+     "newPrograms": 0,
+     "heldMs": 0,
+     "heldUntilMs": 0,
+     "geometries": 273,
+     "textures": 49,
+     "shadows": false,
+     "targetMB": 14.3
+    }
+   ]
+  },
+  {
+   "dist": "V8.5",
+   "run": 2,
+   "loadMs": 16042,
+   "transferKB": 2025,
+   "progsReady": 85,
+   "phases": [
+    {
+     "label": "low look-round",
+     "frames": 168,
+     "avgFps": 21,
+     "medianMs": 17.4,
+     "p95Ms": 62.8,
+     "p99Ms": 338.1,
+     "worstMs": 3882.7,
+     "over50": 14,
+     "over100": 4,
+     "over200": 3,
+     "newPrograms": 25,
+     "heldMs": 0,
+     "heldUntilMs": 0,
+     "geometries": 229,
+     "textures": 41,
+     "shadows": false,
+     "targetMB": 22.3
+    },
+    {
+     "label": "-> medium",
+     "frames": 202,
+     "avgFps": 25.1,
+     "medianMs": 27.7,
+     "p95Ms": 86.8,
+     "p99Ms": 201.6,
+     "worstMs": 645.5,
+     "over50": 33,
+     "over100": 9,
+     "over200": 3,
+     "newPrograms": 0,
+     "heldMs": 0,
+     "heldUntilMs": 0,
+     "geometries": 360,
+     "textures": 59,
+     "shadows": true,
+     "targetMB": 50.6
+    },
+    {
+     "label": "-> high",
+     "frames": 8,
+     "avgFps": 0.6,
+     "medianMs": 49.9,
+     "p95Ms": 9913.7,
+     "p99Ms": 9913.7,
+     "worstMs": 9913.7,
+     "over50": 3,
+     "over100": 3,
+     "over200": 2,
+     "newPrograms": 67,
+     "heldMs": 0,
+     "heldUntilMs": 0,
+     "geometries": 106,
+     "textures": 27,
+     "shadows": true,
+     "targetMB": 177.7
+    },
+    {
+     "label": "-> low",
+     "frames": 56,
+     "avgFps": 5.5,
+     "medianMs": 42.3,
+     "p95Ms": 555.4,
+     "p99Ms": 4509.4,
+     "worstMs": 4509.4,
+     "over50": 23,
+     "over100": 9,
+     "over200": 6,
+     "newPrograms": 36,
+     "heldMs": 0,
+     "heldUntilMs": 0,
+     "geometries": 193,
+     "textures": 35,
+     "shadows": false,
+     "targetMB": 22.3
+    }
+   ]
+  }
+ ],
+ "meta": {
+  "m-final-1.json": {
+   "programsAtReady": 98,
+   "programsAtEnd": 96,
+   "gl": "ANGLE (Intel, Intel(R) UHD Graphics (0x0000A7A8) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "m-base-5.json": {
+   "programsAtReady": 85,
+   "programsAtEnd": 138,
+   "gl": "ANGLE (Intel, Intel(R) UHD Graphics (0x0000A7A8) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "m-final-2.json": {
+   "programsAtReady": 98,
+   "programsAtEnd": 96,
+   "gl": "ANGLE (Intel, Intel(R) UHD Graphics (0x0000A7A8) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "m-base-6.json": {
+   "programsAtReady": 85,
+   "programsAtEnd": 138,
+   "gl": "ANGLE (Intel, Intel(R) UHD Graphics (0x0000A7A8) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  }
+ }
+}

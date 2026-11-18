@@ -35,9 +35,12 @@ export const GATE_VIEWS = [
  * low / medium draw straight to the canvas (its own MSAA) and stay above 60 fps; high adds an HDR
  * target, half-resolution ambient occlusion, FXAA and a 4096 px shadow map (about 35-40 fps on that
  * integrated GPU). 4x MSAA on the HDR target was measured too: 4-8 fps there, so it is not used.
+ * V8.6: low has no shadows, like the app's low preset (src/ui/GraphicsSettings.ts). Until V8.5 this tier turned
+ * shadows on and the next resize turned them off again, so every program prepared for the street section had to be
+ * compiled a second time, shadow-less, when it came into view (250-700 ms stalls on a throttled phone profile).
  */
 export const V5_TIERS = {
-  low: { ao: false, msaa: 0, shadowMap: 1024, shadowRange: 40 },
+  low: { ao: false, msaa: 0, shadowMap: 0, shadowRange: 40 },
   medium: { ao: false, msaa: 0, shadowMap: 2048, shadowRange: 46 },
   high: { ao: true, msaa: 0, shadowMap: 4096, shadowRange: 46 },
 };
@@ -154,12 +157,14 @@ export class V5Controller {
         this.pipeline.look = m === 'c' ? { sun: 6.6, hemi: 1.15, fog: 0.35, shadowRadius: 2.0, env: 1.0, exposure: 1.05 } : { sun: 6.6, hemi: 1.05, fog: 0.8, shadowRadius: 2.2, env: 0.85, exposure: 0.9 };
         this.pipeline.disable();
         this.pipeline.enable();
-        // Upload the section's textures and compile its programs now, not on the frame it first comes into view
-        // (which may be from a car 1.3 km away, after a teleport): src/world/prepareDraw.ts.
-        this.pipeline.prepare(this.scene.group);
         this.ambience.start();
         if (m === 'c' && this.pedsEnabled) void this.startPeds(); else this.stopPeds();
       }
+      // Upload the section's textures and compile its programs now, not on the frame it first comes into view
+      // (which may be from a car 1.3 km away, after a teleport): src/world/prepareDraw.ts. V8.6: the whole world
+      // scene, not only the section: the mode changes tone mapping and lighting, so chunks built before the switch
+      // (the DUN roof, built at start-up in the default V7 mode) need new program variants too.
+      this.pipeline.prepare(this.world.scene);
       // The two chunks that hold the section are rebuilt with / without the replaced blocks.
       this.world.chunks.invalidate(CHUNKS);
       this.mode = m;
