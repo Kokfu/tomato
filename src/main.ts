@@ -172,6 +172,7 @@ async function boot(): Promise<void> {
   // along (hidden), so the map, the location read-out and the streaming keep following `player.position`.
   const driving = new Driving(world, camera, { toast: (t) => menu.toast(t, 2) });
   world.scene.add(driving.model.root);
+  driving.prepare = (o) => { if (v5?.usesPipeline) v5.pipeline.prepare(o); else prepareForDraw(renderer, o, camera, world.scene); };
   /** Teleports and resets act on the walking character: the car is left where it stands. */
   const leaveCar = () => {
     if (!driving.active) return;
@@ -251,7 +252,8 @@ async function boot(): Promise<void> {
   const controls = new ControlsHelp();
 
   const toggleView = () => {
-    if (driving.active) return; // the driving camera is third-person only
+    // The driving camera is third-person only: at the wheel V steps the chase distance (near, standard, far).
+    if (driving.active) { driving.camera.cycleDistance(); return; }
     tpc.firstPerson = !tpc.firstPerson;
     player.visual.root.visible = !tpc.firstPerson;
   };

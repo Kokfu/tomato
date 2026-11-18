@@ -215,7 +215,7 @@ test.describe('V8 driving prototype', () => {
     };
     const coast = await stopDist(null), hand = await stopDist('Space');
     expect(hand.vf).toBeLessThan(0.1);
-    expect(coast.vf).toBeGreaterThan(3);
+    expect(coast.vf).toBeGreaterThan(2); // still rolling (V8.3 lift-off engine braking: was > 3 before it)
     expect(hand.dist).toBeLessThan(coast.dist * 0.75);
 
     // R: from wherever the car ended up (here: the riverside promenade, off any carriageway) back to the road.
@@ -637,9 +637,14 @@ test.describe('V8 driving prototype', () => {
     expect(cam.visible).toBe(false);
     await hold(page, ['KeyW'], 40);
     expect((await carState(page)).vf).toBeGreaterThan(2);
-    // V (first person) does nothing in the car.
+    // V does not switch to first person in the car: it steps the chase distance (V8.3), and back after three presses.
+    const d0 = await k3d(page, (k) => k.driving.camera.distance);
     await page.keyboard.press('KeyV');
     expect(await k3d(page, (k) => k.tpc.firstPerson)).toBe(false);
+    expect(await k3d(page, (k) => k.driving.camera.distance)).not.toBe(d0);
+    await page.keyboard.press('KeyV');
+    await page.keyboard.press('KeyV');
+    expect(await k3d(page, (k) => k.driving.camera.distance)).toBe(d0);
     // Esc pauses the car too.
     await page.keyboard.press('Escape');
     await expect(page.locator('#pause')).toBeVisible();

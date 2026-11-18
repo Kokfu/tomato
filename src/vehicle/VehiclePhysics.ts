@@ -25,6 +25,8 @@ export const CAR = {
   /** Rolling resistance (m/s^2) and aerodynamic drag coefficient (1/m). */
   rolling: 0.35,
   drag: 0.0012,
+  /** V8.3: engine braking with the throttle released (m/s^2), so that a coasting car slows within a street, not a block. */
+  engineBrake: 0.6,
   /** Extra resistance off the carriageway (verges, paving, grass): constant and speed-proportional parts. */
   offRoad: 1.5,
   offRoadV: 0.32,
@@ -32,6 +34,12 @@ export const CAR = {
   maxSteer: 0.6,
   steerRate: 2.4,
   steerReturn: 4.2,
+  /**
+   * V8.3: the wheels turn at a rate in proportion to the lock available, so a tap at speed builds up to the grip limit
+   * over a moment instead of in one frame: full lock takes steerRate / maxSteer = 0.25 s when slow, up to
+   * (1 + steerEaseFast) times that at speed.
+   */
+  steerEaseFast: 0.6,
   lateralGrip: 8.5,
   /** How fast sideways slip is scrubbed off (1/s): tyres gripping / rear wheels locked by the handbrake. */
   slipGrip: 12,
@@ -136,6 +144,9 @@ export class VehicleBody {
   accelLat = 0;
   /** Distance rolled by the wheels (metres, signed) for wheel spin. */
   travel = 0;
+  /** Lamps: the service brake or the handbrake is applied; reverse is engaged (backing, or S held from a standstill). */
+  braking = false;
+  reverseGear = false;
   onRoad = false;
   onDeck = false;
   road: RoadHit | null = null;
@@ -164,6 +175,7 @@ export class VehicleBody {
   place(x: number, z: number, heading: number): void {
     this.x = x; this.z = z; this.heading = heading;
     this.vf = this.vl = this.steer = this.yawRate = this.accelLong = this.accelLat = 0;
+    this.braking = this.reverseGear = false;
     this.blocked = '';
     this.road = this.env.road(x, z);
     this.onRoad = onRoad(this.road);
@@ -259,7 +271,8 @@ export class VehicleBody {
     // --- steering: the lock available falls with speed so that lateral acceleration stays within the tyres' grip
     const lock = Math.min(C.maxSteer, Math.atan((C.lateralGrip * C.wheelBase) / Math.max(1, this.vf * this.vf)));
     const wantSteer = -clamp(c.steer, -1, 1) * lock;
-    this.steer = toward(this.steer, wantSteer, (c.steer !== 0 ? C.steerRate : C.steerReturn) * dt);
+    const ease = (lock / C.maxSteer) / (1 + C.steerEaseFast * clamp((Math.abs(this.vf) - 8) / 17, 0, 1));
+    this.steer = toward(this.steer, wantSteer, (c.steer !== 0 ? C.steerRate : C.steerReturn) * ease * dt);
     this.steer = clamp(this.steer, -lock, lock);
 
     // --- longitudinal: engine, brakes, resistances, slope
@@ -273,7 +286,9 @@ export class VehicleBody {
       else drive = C.engine * 0.7 * th * Math.max(0, 1 + this.vf / C.maxReverse);
     }
     if (c.handbrake) braking += C.handbrake;
-    let resist = C.rolling + C.drag * this.vf * this.vf + braking;
+    this.braking = braking > 0;
+    this.reverseGear = this.vf < -0.3 || (th < 0 && this.vf <= 0.3);
+    let resist = C.rolling + C.drag * this.vf * this.vf + braking + (th === 0 ? C.engineBrake : 0);
     if (!this.onRoad && !this.onDeck) resist += C.offRoad + C.offRoadV * Math.abs(this.vf);
     // Slope: only while rolling or driving, so a parked car does not creep on the noise of the terrain model.
     const slope = Math.abs(this.vf) > 0.15 || th !== 0 ? -C.gravity * Math.sin(this.pitch) : 0;

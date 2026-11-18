@@ -11,7 +11,7 @@
 // rebuilt as they stream in again).
 import { chromium } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { spawn } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { driveRoute, waysNamed, placeCar } from '../../tests/e2e/driving-helpers.ts';
@@ -25,6 +25,8 @@ const SCEN = opt('scenarios', 'A,B,C,D').split(','), QUALITY = opt('quality', 'm
 const DEV = process.argv.includes('--dev');
 /** --trace=file.json: record a Chrome trace (all processes, GPU included) of the first scenario of the first run. */
 const TRACE = opt('trace', '');
+/** --cpu=4: CPU throttling through the DevTools protocol (low frame-rate runs). */
+const CPU = +opt('cpu', '1');
 
 const BLOCK_LOOP: [number, number][] = [
   [176, 34], [180.2, 36.4], [183, 37.4], [256, 54.8], [264, 56.7],
@@ -60,6 +62,21 @@ function instrument(): void {
       }
     };
   };
+  // V8.3 camera quality, sampled on the frame just drawn: [cam y - car y, boom length, view yaw, view pitch,
+  // inside a building / parked car (0/1), wall between car and camera (0/1), nearest wall within 0.4 m of the camera (m, 9 = none)].
+  const cdir = new (k.camera.position.constructor)();
+  const camSample = () => {
+    const d = k.driving, car = d.car, cam = k.camera, C = W.collision;
+    if (!d.active) return null;
+    const p = cam.position;
+    cam.getWorldDirection(cdir);
+    const inside = C.insideBuilding(p.x, p.z, p.y, false) ? 1 : 0;
+    const py = car.y + 1.0;
+    const occl = C.rayWalls(car.x, py, car.z, p.x - car.x, p.y - py, p.z - car.z) < 0.97 ? 1 : 0;
+    let near = 9;
+    for (let a = 0; a < 8; a++) { const t = C.rayWalls(p.x, p.y, p.z, Math.cos(a * 0.785) * 0.4, 0, Math.sin(a * 0.785) * 0.4); if (t < 1) near = Math.min(near, t * 0.4); }
+    return [+(p.y - car.y).toFixed(3), +Math.hypot(p.x - car.x, p.y - py, p.z - car.z).toFixed(3), +Math.atan2(cdir.x, cdir.z).toFixed(4), +Math.asin(cdir.y).toFixed(4), inside, occl, +near.toFixed(2)];
+  };
   // Frame boundary: the game loop calls world.update first thing every frame.
   const upd = W.update;
   W.update = function (...a: any[]) {
@@ -70,7 +87,7 @@ function instrument(): void {
         t: +(now).toFixed(1), dt: +(now - P.last).toFixed(2), sp: +Math.abs(car.vf).toFixed(1),
         calls: info.render.calls, tris: info.render.triangles, progs: info.programs?.length ?? 0,
         geo: info.memory.geometries, tex: info.memory.textures, heap: mem ? Math.round(mem.usedJSHeapSize / 1e5) / 10 : 0,
-        built: ch.stats.built, fetched: ch.stats.fetched, chunks: ch.loadedCount,
+        built: ch.stats.built, fetched: ch.stats.fetched, chunks: ch.loadedCount, cam: camSample(),
         ...Object.fromEntries(Object.entries(P.acc).map(([key, v]) => [key, +(v as number).toFixed(2)])),
       });
       // Names of the shader programs compiled during this frame.
@@ -144,7 +161,30 @@ function summarise(frames: any[], builds: any[], loaf: any[]) {
     const prev = frames[frames.indexOf(f) - 1];
     return { dt: f.dt, sp: f.sp, ...parts, pn: f.pn, newProgs: prev ? f.progs - prev.progs : 0, newGeo: prev ? f.geo - prev.geo : 0, newTex: prev ? f.tex - prev.tex : 0, builtΔ: prev ? f.built - prev.built : 0 };
   });
+  // Camera: per-frame changes of height-above-car and boom length (jitter shows as sign reversals of the change),
+  // angular acceleration of the view (rad/s^2), frames clipped / occluded / with a wall within 0.4 m.
+  const cf = frames.filter((f) => f.cam);
+  let hRev = 0, bRev = 0, maxBoomJump = 0, maxHJump = 0; const angAcc: number[] = [];
+  for (let i = 2; i < cf.length; i++) {
+    const a = cf[i - 2].cam, b = cf[i - 1].cam, c = cf[i].cam;
+    const dh1 = b[0] - a[0], dh2 = c[0] - b[0], db1 = b[1] - a[1], db2 = c[1] - b[1];
+    if (dh1 * dh2 < 0 && Math.abs(dh1) > 0.01 && Math.abs(dh2) > 0.01) hRev++;
+    if (db1 * db2 < 0 && Math.abs(db1) > 0.03 && Math.abs(db2) > 0.03) bRev++;
+    maxBoomJump = Math.max(maxBoomJump, Math.abs(db2)); maxHJump = Math.max(maxHJump, Math.abs(dh2));
+    const w = (x: number) => Math.atan2(Math.sin(x), Math.cos(x));
+    const t1 = cf[i - 1].dt / 1000, t2 = cf[i].dt / 1000;
+    const wy = (w(c[2] - b[2]) / t2 - w(b[2] - a[2]) / t1) / ((t1 + t2) / 2), wp = ((c[3] - b[3]) / t2 - (b[3] - a[3]) / t1) / ((t1 + t2) / 2);
+    angAcc.push(Math.hypot(wy, wp));
+  }
+  angAcc.sort((x, y) => x - y);
+  const camera = cf.length < 3 ? null : {
+    frames: cf.length, inside: cf.filter((f) => f.cam[4]).length, occluded: cf.filter((f) => f.cam[5]).length, wallWithin02: cf.filter((f) => f.cam[6] < 0.2).length, wallWithin04: cf.filter((f) => f.cam[6] < 0.4).length,
+    heightReversals: hRev, boomReversals: bRev, maxBoomJump: +maxBoomJump.toFixed(2), maxHeightJump: +maxHJump.toFixed(3),
+    angAccMedian: +pct(angAcc, 50).toFixed(2), angAccP95: +pct(angAcc, 95).toFixed(1), angAccP99: +pct(angAcc, 99).toFixed(1),
+    boomMedian: +pct(cf.map((f) => f.cam[1]).sort((x, y) => x - y), 50).toFixed(2),
+  };
   return {
+    camera,
     frames: frames.length, seconds: +(total / 1000).toFixed(1), avgFps: +((frames.length / total) * 1000).toFixed(1),
     medianMs: +pct(dts, 50).toFixed(1), p95Ms: +pct(dts, 95).toFixed(1), p99Ms: +pct(dts, 99).toFixed(1), worstMs: +dts[dts.length - 1].toFixed(1),
     over50: dts.filter((x) => x > 50).length, over100: dts.filter((x) => x > 100).length, over200: dts.filter((x) => x > 200).length,
@@ -198,16 +238,21 @@ async function leaveCar(page: Page) {
 }
 
 const server = spawn('npx', DEV ? ['vite', '--port', String(PORT), '--strictPort'] : ['vite', 'preview', '--outDir', DIST, '--port', String(PORT), '--strictPort'], { shell: true, stdio: 'pipe' });
-await new Promise<void>((resolve, reject) => {
-  const t = setTimeout(() => reject(new Error('preview server did not start')), 30_000);
-  server.stdout.on('data', (b) => { if (String(b).includes(String(PORT))) { clearTimeout(t); resolve(); } });
-});
+server.stdout.resume();
+server.stderr.resume();
+// Ready once it answers (its console line can carry colour codes inside the port number).
+for (let i = 0; ; i++) {
+  try { if ((await fetch(`http://localhost:${PORT}/`)).ok) break; } catch { /* not yet */ }
+  if (i > 240) throw new Error('preview server did not start');
+  await new Promise((r) => setTimeout(r, 500));
+}
 const results: any[] = [];
 const browser = await chromium.launch({ channel: 'msedge', args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-precise-memory-info'] });
 try {
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   await ctx.addInitScript((q) => { try { localStorage.setItem('k3d.quality', q); } catch { /* ignore */ } }, QUALITY);
   const page = await ctx.newPage();
+  if (CPU > 1) { const cdp = await ctx.newCDPSession(page); await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU }); }
   page.on('console', (m) => { if (m.type() === 'error' || m.text().startsWith('bench')) console.log('[page]', m.text()); });
   const tLoad = Date.now();
   await page.goto(`http://localhost:${PORT}/`);
@@ -253,5 +298,10 @@ try {
   console.log('\nmeta', JSON.stringify(meta), '\nwritten', OUT);
 } finally {
   await browser.close();
-  if (process.platform === 'win32') spawn('taskkill', ['/pid', String(server.pid), '/T', '/F']); else server.kill();
+  if (process.platform === 'win32') {
+    // `npx` under a shell can leave vite in a separate tree: stop whatever listens on the port.
+    const pids = new Set(execSync('netstat -ano').toString().split(/\r?\n/).filter((l) => l.includes(`:${PORT} `) && l.includes('LISTEN')).map((l) => l.trim().split(/\s+/).pop()));
+    for (const pid of [server.pid, ...pids]) try { execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' }); } catch { /* gone */ }
+  } else server.kill();
+  process.exit(0);
 }

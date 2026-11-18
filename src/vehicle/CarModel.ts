@@ -16,6 +16,34 @@ function geometry(b: Buf): THREE.BufferGeometry {
   return g;
 }
 
+/** Tail-lamp glass colour of the kit (src/v5/vehicles.ts, lampRed). */
+const LAMP_RED = hex(0x9a100c);
+
+/**
+ * Lit lamp faces: copies of the kit's tail-lamp triangles, lifted a few millimetres off the body so that they cover the
+ * unlit glass. `rows` 'all' takes the whole cluster, 'lower' its lower row only (the reversing lamp).
+ */
+function lampOverlay(glass: Buf, rows: 'all' | 'lower', lift: number): THREE.BufferGeometry {
+  const { pos, nor, col, idx } = glass;
+  const red = (v: number) => Math.abs(col[v * 3] - LAMP_RED[0]) + Math.abs(col[v * 3 + 1] - LAMP_RED[1]) + Math.abs(col[v * 3 + 2] - LAMP_RED[2]) < 1e-4;
+  const tris: number[] = [];
+  let y0 = Infinity, y1 = -Infinity;
+  for (let t = 0; t < idx.length; t += 3) {
+    if (!red(idx[t]) || !red(idx[t + 1]) || !red(idx[t + 2])) continue;
+    tris.push(t);
+    for (let q = 0; q < 3; q++) { const y = pos[idx[t + q] * 3 + 1]; y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  }
+  const out: number[] = [];
+  for (const t of tris) {
+    const vs = [idx[t], idx[t + 1], idx[t + 2]];
+    if (rows === 'lower' && vs.reduce((a, v) => a + pos[v * 3 + 1], 0) / 3 > (y0 + y1) / 2) continue;
+    for (const v of vs) for (let q = 0; q < 3; q++) out.push(pos[v * 3 + q] + nor[v * 3 + q] * lift);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
+  return g;
+}
+
 function materials(): Record<string, THREE.Material> {
   return {
     carpaint: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.38, metalness: 0.25 }),
@@ -46,6 +74,12 @@ export class CarModel {
   private body = new THREE.Group();
   private wheels: { steer: THREE.Group; spin: THREE.Object3D; side: number; front: boolean }[] = [];
   private time = 0;
+  /** Lamps that light up with the driving state (drawn only while lit: no cost otherwise). */
+  readonly lamps = new THREE.Group();
+  private brakeLamp: THREE.Mesh;
+  private reverseLamp: THREE.Mesh;
+  /** Lamps follow the controls only while someone is at the wheel (a parked car shows none). */
+  lightsOn = false;
 
   constructor(colour = 0xf2b632) {
     this.root.name = 'drivable-car';
@@ -66,6 +100,20 @@ export class CarModel {
       m.receiveShadow = true;
       this.body.add(m);
     }
+
+    // Brake and reversing lamps: unlit materials over the tail-lamp glass, toggled by visibility. Hidden meshes are not
+    // compiled with the scene: Driving.prepare readies their program on getting in, before they can first light up.
+    const glass = kit.bufs.get('glass')!;
+    const lamp = (rows: 'all' | 'lower', lift: number, color: number, name: string) => {
+      const m = new THREE.Mesh(lampOverlay(glass, rows, lift), new THREE.MeshBasicMaterial({ color }));
+      m.name = name;
+      m.visible = false;
+      this.lamps.add(m);
+      return m;
+    };
+    this.body.add(this.lamps);
+    this.brakeLamp = lamp('all', 0.004, 0xff2414, 'brake-lamps');
+    this.reverseLamp = lamp('lower', 0.007, 0xf4f1e8, 'reverse-lamps');
 
     // One wheel geometry (tyre + alloy), four placements.
     const wk = new Kit();
@@ -111,7 +159,7 @@ export class CarModel {
     this.root.position.set(car.x, car.y, car.z);
     this.root.rotation.set(-car.pitch, car.heading, car.roll);
     // Body lean on its springs: squat under power, dive under braking, roll out of a turn.
-    const k = Math.min(1, dt * 9);
+    const k = 1 - Math.exp(-9 * dt);
     const pitch = THREE.MathUtils.clamp(car.accelLong * 0.0045, -0.05, 0.035);
     const roll = THREE.MathUtils.clamp(car.accelLat * 0.006, -0.06, 0.06);
     this.body.rotation.z += (pitch - this.body.rotation.z) * k;
@@ -121,6 +169,8 @@ export class CarModel {
       if (w.front) w.steer.rotation.y = car.steer;
       w.spin.rotation.y = -w.side * angle;
     }
+    this.brakeLamp.visible = this.lightsOn && car.braking;
+    this.reverseLamp.visible = this.lightsOn && car.reverseGear;
     this.marker.position.y = 2.35 + Math.sin(this.time * 2.4) * 0.12;
     this.marker.rotation.y = this.time * 1.5;
   }

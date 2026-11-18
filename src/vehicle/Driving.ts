@@ -47,6 +47,11 @@ export class Driving {
   private shownGear = '';
   private shownNote = '';
   private toastWait = 0;
+  /**
+   * Readies the programs of objects not drawn yet for the current render path (main.ts: src/world/prepareDraw.ts), so
+   * that the lamps do not compile on the frame they first light up.
+   */
+  prepare: ((o: THREE.Object3D) => void) | null = null;
 
   constructor(world: WorldManager, camera: THREE.PerspectiveCamera, host: DrivingHost) {
     this.world = world;
@@ -131,6 +136,8 @@ export class Driving {
     player.visual.root.visible = false;
     this.camera.snap(this.car);
     this.model.marker.visible = false;
+    this.model.lightsOn = true;
+    this.prepare?.(this.model.lamps);
     this.setPrompt(null);
     this.hud.classList.add('driving');
     this.speedo.classList.remove('hidden');
@@ -160,6 +167,8 @@ export class Driving {
     this.velocity.set(0, 0, 0);
     player.velocity.set(0, 0, 0);
     this.model.marker.visible = true;
+    this.model.lightsOn = false;
+    this.model.sync(this.car, 0);
     this.hud.classList.remove('driving');
     this.speedo.classList.add('hidden');
     this.setPrompt(null);
