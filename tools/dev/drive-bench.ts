@@ -29,6 +29,8 @@ const TRACE = opt('trace', '');
 const CPU = +opt('cpu', '1');
 /** --gps=fort-margherita: V8.4 builds only: keep a GPS (driving) route to this landmark active during every scenario. */
 const GPS = opt('gps', '');
+/** --mobile: V8.5 phone emulation (390x844 CSS px, DPR 3, touch, mobile viewport); pair with --quality=low --cpu=4. Emulated, not a real phone. */
+const MOBILE = process.argv.includes('--mobile');
 
 const BLOCK_LOOP: [number, number][] = [
   [176, 34], [180.2, 36.4], [183, 37.4], [256, 54.8], [264, 56.7],
@@ -251,7 +253,7 @@ for (let i = 0; ; i++) {
 const results: any[] = [];
 const browser = await chromium.launch({ channel: 'msedge', args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-precise-memory-info'] });
 try {
-  const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+  const ctx = await browser.newContext(MOBILE ? { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 3 } : { viewport: { width: 1920, height: 1080 } });
   await ctx.addInitScript((q) => { try { localStorage.setItem('k3d.quality', q); } catch { /* ignore */ } }, QUALITY);
   const page = await ctx.newPage();
   if (CPU > 1) { const cdp = await ctx.newCDPSession(page); await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU }); }

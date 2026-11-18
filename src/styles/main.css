@@ -197,3 +197,84 @@ input[type='range'] { width: 100%; accent-color: var(--accent); }
 .modal-card button:disabled { opacity: 0.5; cursor: progress; }
 /* Contextual controls: on touch the speedometer's EXIT button stands in for the "Exit Car" prompt. */
 @media (pointer: coarse) { #hud.driving #car-prompt { display: none; } }
+
+/* --- V8.5 touch driving ----------------------------------------------------------------------------------------
+   MobileControls puts body.touch on touch devices and body.touch-drive at the wheel. Desktop is unaffected.
+   Portrait: steering pad bottom left with GPS / EXIT / CAM / RESET above it, pedals bottom right with the
+   speedometer above them. Landscape phones: speedometer bottom centre, GPS list in the middle. */
+:root { --safe-l: env(safe-area-inset-left, 0px); --safe-r: env(safe-area-inset-right, 0px); }
+#drive-touch { display: none; }
+body.touch-drive #drive-touch { display: block; }
+body.touch-drive #joystick, body.touch-drive #btn-run, body.touch-drive #btn-jump { display: none; }
+#drive-touch button, #steer-pad { pointer-events: auto; touch-action: none; -webkit-touch-callout: none; }
+#steer-pad {
+  position: absolute; left: calc(12px + var(--safe-l)); bottom: calc(38px + var(--safe-b)); width: clamp(136px, 40vw, 230px); height: 96px;
+  border-radius: 48px; background: rgba(13, 27, 36, 0.42); border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 20px; color: rgba(255, 255, 255, 0.7);
+}
+#steer-pad.active { border-color: rgba(255, 255, 255, 0.6); }
+#steer-knob {
+  position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5); border: 1px solid rgba(255, 255, 255, 0.85); pointer-events: none;
+}
+.pedal {
+  position: absolute; bottom: calc(38px + var(--safe-b)); width: 78px; border-radius: 16px; padding: 0;
+  background: rgba(13, 27, 36, 0.45); border: 1px solid rgba(255, 255, 255, 0.35); font-size: 13px; font-weight: 800; letter-spacing: 0.06em;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+}
+.pedal small { font-size: 8px; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; }
+#btn-gas { right: calc(12px + var(--safe-r)); height: 118px; }
+#btn-brake { right: calc(98px + var(--safe-r)); height: 86px; }
+#btn-gas.active { background: rgba(63, 167, 181, 0.85); color: #06242a; }
+#btn-brake.active { background: rgba(217, 105, 79, 0.85); color: #2a0d06; }
+#btn-brake.active small { color: #2a0d06; }
+.drive-btn {
+  position: absolute; width: 64px; height: 40px; border-radius: 10px; padding: 0; background: rgba(13, 27, 36, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.32); font-size: 11px; font-weight: 800; letter-spacing: 0.06em;
+}
+#btn-hb { right: calc(98px + var(--safe-r)); bottom: calc(132px + var(--safe-b)); width: 78px; font-size: 9px; letter-spacing: 0.03em; }
+#btn-hb.active { background: rgba(242, 193, 78, 0.85); color: var(--accent-ink); }
+#btn-exit { left: calc(12px + var(--safe-l)); bottom: calc(146px + var(--safe-b)); }
+#btn-exit.dim { opacity: 0.55; }
+#btn-cam { left: calc(82px + var(--safe-l)); bottom: calc(146px + var(--safe-b)); }
+#btn-reset { left: calc(82px + var(--safe-l)); bottom: calc(192px + var(--safe-b)); }
+#drive-utils { display: contents; }
+/* HUD pieces at the wheel on touch: GPS joins the utility buttons, the speedometer sits above the pedals. */
+body.touch-drive #gps-btn { left: calc(12px + var(--safe-l)); right: auto; transform: none; bottom: calc(192px + var(--safe-b)); width: 64px; min-width: 0; height: 40px; padding: 0; }
+body.touch-drive #gps-panel {
+  left: calc(12px + var(--safe-l)); right: auto; transform: none; bottom: calc(270px + var(--safe-b));
+  width: min(320px, calc(100vw - 150px)); max-height: min(420px, calc(100vh - 400px - var(--safe-b) - var(--safe-t))); touch-action: pan-y;
+}
+body.touch-drive #speedo { left: auto; right: calc(12px + var(--safe-r)); transform: none; bottom: calc(184px + var(--safe-b)); min-width: 120px; padding: 6px 12px 6px; }
+body.touch-drive #speedo-kmh { font-size: 26px; }
+body.touch-drive #speedo-exit { display: none; }
+body.touch-drive #toast { bottom: calc(270px + var(--safe-b)); }
+body.touch #toast { white-space: normal; text-align: center; width: max-content; max-width: calc(100vw - 24px); }
+/* On foot the car / shop prompts stand above the joystick and buttons. */
+body.touch #car-prompt { bottom: calc(190px + var(--safe-b)); }
+body.touch #car-prompt kbd { display: none; }
+/* The map credit stays at the bottom edge, under the driving controls. */
+body.touch-drive #attribution { font-size: 9px; line-height: 1.25; }
+@media (max-width: 720px), (max-height: 520px) {
+  /* Small screens: the loading note goes below the right-hand buttons instead of over the place name. */
+  body.touch #chunk-loading { left: auto; right: calc(8px + var(--safe-r)); transform: none; top: calc(302px + var(--safe-t)); }
+}
+/* Landscape phones: little height, plenty of width. */
+@media (orientation: landscape) and (max-height: 520px) {
+  body.touch #topbar { flex-direction: row; top: calc(8px + var(--safe-t)); right: calc(128px + var(--safe-r)); }
+  body.touch #minimap-ctl { flex-direction: row; top: calc(54px + var(--safe-t)); right: calc(128px + var(--safe-r)); }
+  body.touch #minimap-wrap { right: calc(8px + var(--safe-r)); }
+  body.touch #location { left: calc(8px + var(--safe-l)); max-width: calc(100vw - 330px); }
+  body.touch #nav-hint { left: calc(8px + var(--safe-l)); max-width: calc(100vw - 330px); }
+  body.touch #chunk-loading { top: calc(126px + var(--safe-t)); }
+  body.touch-drive #speedo { right: auto; left: 50%; transform: translateX(-50%); bottom: calc(38px + var(--safe-b)); }
+  body.touch-drive #gps-panel {
+    left: 50%; transform: translateX(-50%); top: calc(62px + var(--safe-t)); bottom: calc(118px + var(--safe-b));
+    width: min(300px, calc(100vw - 500px)); max-height: none;
+  }
+  body.touch-drive #toast { bottom: calc(118px + var(--safe-b)); max-width: calc(100vw - 500px); }
+}
+/* Medium widths (tablets, narrow desktop windows): the next-turn hint goes under the place name, not over it. */
+@media (min-width: 721px) and (max-width: 1100px) and (min-height: 521px) {
+  #hud #nav-hint { left: calc(12px + var(--safe-l)); transform: none; top: calc(74px + var(--safe-t)); max-width: calc(100vw - 260px); }
+}

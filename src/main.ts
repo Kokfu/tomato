@@ -368,7 +368,7 @@ async function boot(): Promise<void> {
     pointerWasLocked = !!document.pointerLockElement;
   });
   let pointerWasLocked = false;
-  if (isTouchDevice()) new MobileControls(input, canvas);
+  const mobile = isTouchDevice() ? new MobileControls(input, canvas) : null;
 
   window.addEventListener('resize', applyResolution);
   new ResizeObserver(applyResolution).observe(document.documentElement);
@@ -451,6 +451,8 @@ async function boot(): Promise<void> {
       player.heading = driving.car.heading;
     }
     input.endFrame();
+    // V8.5: touch control set follows the controllable; held touch controls are released while menus are open.
+    mobile?.update(driving.active && !flying ? 'drive' : 'walk', input.enabled, driving.canExit);
 
     // Contextual controls line. E belongs to the car when both the car and a shop are in reach.
     const context: ControlsContext = flying ? 'fly' : driving.active ? (driving.canExit ? 'drive-stopped' : 'drive')
@@ -550,7 +552,7 @@ async function boot(): Promise<void> {
 
   // Debug / automated-test hook.
   (window as any).__k3d = {
-    world, player, camera, tpc, input, renderer, minimap, gps, menu, placePanel, steps, v5, fly, refPanel, driving,
+    world, player, camera, tpc, input, renderer, minimap, gps, menu, placePanel, steps, v5, fly, refPanel, driving, mobile,
     geoToWorld, worldToGeo,
     /** Protected landmarks that reached a generic building generator (must stay empty). */
     landmarkGuard: guardViolations,

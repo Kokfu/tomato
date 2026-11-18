@@ -36,6 +36,8 @@ export class Input {
   touchX = 0;
   touchY = 0;
   touchRun = false;
+  /** Held state of the touch handbrake button (V8.5). */
+  touchHandbrake = false;
   mouseSensitivity = 0.0024;
 
   private down = new Set<string>();
@@ -128,7 +130,12 @@ export class Input {
     this.moveX = x;
     this.moveY = y;
     this.run = this.pressed('run') || this.touchRun;
-    this.handbrake = this.pressed('jump');
+    this.handbrake = this.pressed('jump') || this.touchHandbrake;
+  }
+
+  /** Run an action's handlers exactly as its key would (touch buttons: reset, view, interact). */
+  trigger(action: Action): void {
+    this.handlers.get(action)?.forEach((h) => h());
   }
 
   /** Clear one-shot values at the end of a frame. */

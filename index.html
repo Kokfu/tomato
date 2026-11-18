@@ -49,6 +49,17 @@
       <div id="joystick"><div id="stick"></div></div>
       <button id="btn-run" class="touch-btn">RUN</button>
       <button id="btn-jump" class="touch-btn">JUMP</button>
+      <div id="drive-touch" aria-label="Driving controls">
+        <div id="steer-pad" role="slider" aria-label="Steering" aria-valuemin="-1" aria-valuemax="1"><span class="steer-l">&#x25C0;</span><span id="steer-knob"></span><span class="steer-r">&#x25B6;</span></div>
+        <button id="btn-gas" class="pedal" aria-label="Accelerate">GAS</button>
+        <button id="btn-brake" class="pedal" aria-label="Brake and reverse">BRAKE<small>REVERSE</small></button>
+        <button id="btn-hb" class="drive-btn" aria-label="Handbrake">HANDBRAKE</button>
+        <div id="drive-utils">
+          <button id="btn-exit" class="drive-btn" aria-label="Get out of the car">EXIT</button>
+          <button id="btn-cam" class="drive-btn" aria-label="Camera distance">CAM</button>
+          <button id="btn-reset" class="drive-btn" aria-label="Reset car to the road">RESET</button>
+        </div>
+      </div>
     </div>
 
     <div id="settings" class="modal hidden" role="dialog" aria-label="Settings">
