@@ -153,8 +153,11 @@ function bridgeStructure(buf: GeoBuf, pts: Sample[], hw: number, ox: number, oz:
 
 export interface RoadMeshes { groups: (THREE.BufferGeometry | null)[]; marks: THREE.BufferGeometry | null; structure: GeoBuf }
 
-/** Road ribbons (grouped by draw layer), lane markings, and bridge structures for a chunk. */
-export function buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBuf): { groups: (THREE.BufferGeometry | null)[]; marks: THREE.BufferGeometry | null } {
+/**
+ * Road ribbons (grouped by draw layer), lane markings, and bridge structures for a chunk. A generator: it yields
+ * between roads so that ChunkManager can spread a heavy chunk over several frames (V8.2); the result is the same.
+ */
+export function* buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBuf): Generator<void, { groups: (THREE.BufferGeometry | null)[]; marks: THREE.BufferGeometry | null }> {
   const ox = data.cx * CHUNK_SIZE, oz = data.cz * CHUNK_SIZE;
   const high = ctx.detail === 'high';
   const bufs = [new GeoBuf(), new GeoBuf(), new GeoBuf(), new GeoBuf()];
@@ -180,6 +183,7 @@ export function buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBuf
     return false;
   };
   for (const r0 of data.roads) {
+    yield;
     let r = r0;
     if (v5Exclusion.active) {
       // V5 rendering experiment: a section's carriageway is drawn by the V5 scene.
@@ -264,6 +268,7 @@ export function buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBuf
       quad(structure, flat[i * 2], y - 2.2, y, flat[i * 2 + 1], flat[j * 2], y - 2.2, y, flat[j * 2 + 1], CONCRETE);
     }
   }
+  yield;
   return { groups: bufs.map((b) => b.build()), marks: marks.build() };
 }
 

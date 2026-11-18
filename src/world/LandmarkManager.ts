@@ -57,13 +57,15 @@ export class LandmarkManager {
   }
 
   /** Called by the chunk builder for every chunk it builds (high and low detail). */
-  buildForChunk(data: ChunkData, ctx: BuildContext): THREE.Object3D[] {
+  /** A generator (V8.2): yields after each landmark it builds, so ChunkManager can give each its own frame. */
+  *buildForChunk(data: ChunkData, ctx: BuildContext): Generator<void, THREE.Object3D[]> {
     const out: THREE.Object3D[] = [];
     for (const o of this.overrides) {
       const hit = data.buildings.some((b) => o.buildingIds.includes(b.id)) || (!!o.roadIds && data.roads.some((r) => o.roadIds!.includes(r.id)));
       if (!hit) continue;
       const obj = o.build({ data, ctx, landmark: this.landmarks.find((l) => l.id === o.landmarkId) });
       if (obj) out.push(obj);
+      yield;
     }
     return out;
   }

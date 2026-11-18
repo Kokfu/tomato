@@ -40,6 +40,25 @@ interface Chunk {
   decor?: boolean;
 }
 
+/** A chunk mesh (or a chunk's decorations) being built over one or more frames (V8.2, see `runJobs`). */
+interface Job {
+  c: Chunk;
+  kind: 'build' | 'decor';
+  detail: Detail;
+  it: Generator<void, void>;
+  /** Stage the build is in (profiling), main-thread time so far, the most of it spent in one frame, frames used. */
+  stage: string;
+  ms: number;
+  maxFrameMs: number;
+  frames: number;
+  frameMs: number;
+  lastFrame: number;
+  prof: Record<string, number>;
+}
+
+/** A finished build, as recorded in `ChunkManager.jobLog` (profiling aid). */
+export interface JobRecord { kind: 'build' | 'decor'; key: string; detail: Detail; ms: number; maxFrameMs: number; frames: number; prof: Record<string, number> }
+
 /**
  * Streams geographic chunks around the player: fetches chunk files, registers collision data,
  * builds meshes at two detail levels, and disposes everything that falls out of range.
@@ -50,6 +69,7 @@ export class ChunkManager {
   onChunkData: ((data: ChunkData) => void) | null = null;
   onChunkRemoved: ((cx: number, cz: number) => void) | null = null;
   quality: Quality;
+  /** lastBuildMs: main-thread time of the last finished build (all its frames); maxBuildMs: the most build work done in one frame. */
   stats = { fetched: 0, built: 0, disposed: 0, bytes: 0, lastBuildMs: 0, maxBuildMs: 0 };
   /** Cumulative milliseconds spent in each stage of chunk mesh building (profiling aid). */
   buildProfile: Record<string, number> = {};
@@ -72,10 +92,14 @@ export class ChunkManager {
   private failures = new Map<string, number>();
   private warming: { group: THREE.Group; frame: number }[] = [];
   readonly places: PlaceIndex;
-  /** Chunk meshes that may be built this frame (raised at vehicle speeds). */
-  private buildBudget = 1;
-  /** True in the vehicle speed band (see pump). */
-  private sliceBuilds = false;
+  /** The chunk mesh under construction, if any: one at a time, nearest first (see runJobs). */
+  private job: Job | null = null;
+  /** Main-thread milliseconds chunk building may take per frame (set from the speed in update). */
+  private frameBudgetMs = 8;
+  /** Profiling aid (tools/dev/drive-bench.ts): when an array, every finished build is appended to it. */
+  jobLog: JobRecord[] | null = null;
+  /** Set by the game while the loading screen or start menu is up: frame smoothness does not matter then, load time does. */
+  loadingBoost = false;
 
   constructor(manifest: Manifest, height: HeightMap, collision: CollisionWorld, mats: Materials, landmarks: LandmarkManager, places: PlaceIndex, quality: Quality) {
     this.manifest = manifest;
@@ -127,6 +151,7 @@ export class ChunkManager {
 
   setQuality(q: Quality): void {
     this.quality = q;
+    this.job = null;
     // Rebuild everything at the new settings (data stays cached).
     for (const c of this.chunks.values()) this.disposeMesh(c);
     this.centre = { cx: 1e9, cz: 1e9 };
@@ -198,8 +223,10 @@ export class ChunkManager {
       this.centre = { cx, cz };
       this.recomputeWanted();
     }
-    this.buildBudget = sp > 60 ? 3 : sp > 9 ? 2 : 1;
-    this.sliceBuilds = sp > 9 && sp <= 60;
+    // Chunk building gets a time budget per frame instead of a number of whole chunks (V8.2): a heavy old-town chunk
+    // took 50-80 ms in one frame. Least while driving (smooth frames matter most and downloads run well ahead), most
+    // at OP-mode flying speeds, where whole rings of chunks must keep up with the camera.
+    this.frameBudgetMs = this.loadingBoost ? 40 : sp > 60 ? 14 : sp > 9 ? 6 : 8;
     this.pump();
   }
 
@@ -236,28 +263,58 @@ export class ChunkManager {
       if (this.inflight >= 6) break;
       if (!this.chunks.has(k)) this.fetchChunk(k);
     }
-    // 2. Build at most one chunk mesh per frame (two at vehicle speeds), nearest first, to avoid frame
-    // spikes. A high-detail chunk is built in two frames: geometry first, decorations after.
-    let budget = this.buildBudget;
-    // At driving speeds the second build of a frame is only started while the frame still has time for it:
-    // two heavy old-town chunks in one frame are a visible stutter, and a car does not need them that fast.
-    const t0 = performance.now();
-    const spent = () => this.sliceBuilds && performance.now() - t0 > 6;
+    // 2. Build chunk meshes within this frame's time budget.
+    this.runJobs(performance.now() + this.frameBudgetMs);
+  }
+
+  /**
+   * Chunk meshes are built one at a time, nearest first (decorations of built chunks before new chunks), as
+   * generators that yield between roads, buildings, land-use polygons and landmarks. Steps run until the frame's
+   * budget is spent (at least one step a frame), so a heavy chunk is spread over a few frames instead of stalling
+   * one. The chunk joins the scene only when its build is complete, and a chunk changing detail level keeps its old
+   * mesh until then: no half-built chunk and no hole is ever drawn, and `isReady` (ground and roads drawn) never
+   * goes false during a rebuild. Collision does not wait for any of this: it is registered when the data arrives.
+   */
+  private runJobs(deadline: number): void {
+    do {
+      const j = this.job ?? (this.job = this.nextJob());
+      if (!j) return;
+      // Abandon a build the chunk no longer wants (unloaded, or wanted at another detail level now).
+      if (this.chunks.get(j.c.key) !== j.c || (j.kind === 'build' && this.want.get(j.c.key) !== j.detail)) { this.job = null; continue; }
+      const t = performance.now();
+      const r = j.it.next();
+      const d = performance.now() - t;
+      this.buildProfile[j.stage] = (this.buildProfile[j.stage] ?? 0) + d;
+      j.prof[j.stage] = (j.prof[j.stage] ?? 0) + d;
+      if (j.lastFrame !== this.frame) { j.lastFrame = this.frame; j.frames++; j.frameMs = 0; }
+      j.ms += d;
+      j.frameMs += d;
+      j.maxFrameMs = Math.max(j.maxFrameMs, j.frameMs);
+      if (r.done) {
+        if (this.job === j) this.job = null;
+        this.stats.lastBuildMs = j.ms;
+        this.stats.maxBuildMs = Math.max(this.stats.maxBuildMs, j.maxFrameMs);
+        this.jobLog?.push({ kind: j.kind, key: j.c.key, detail: j.detail, ms: j.ms, maxFrameMs: j.maxFrameMs, frames: j.frames, prof: j.prof });
+      }
+    } while (performance.now() < deadline);
+  }
+
+  private nextJob(): Job | null {
+    const job = (c: Chunk, kind: Job['kind'], detail: Detail): Job => {
+      const j: Job = { c, kind, detail, it: null!, stage: kind === 'build' ? 'terrain' : 'decor', ms: 0, maxFrameMs: 0, frames: 0, frameMs: 0, lastFrame: -1, prof: {} };
+      j.it = kind === 'build' ? this.build(j) : this.decorate(j);
+      return j;
+    };
     for (const k of this.order) {
       const c = this.chunks.get(k);
-      if (c?.decor && c.group) {
-        this.decorate(c);
-        if (--budget <= 0 || spent()) return;
-      }
+      if (c?.decor && c.group) return job(c, 'decor', 'high');
     }
     for (const k of this.order) {
       const c = this.chunks.get(k);
       const detail = this.want.get(k)!;
-      if (c && c.state === 'loaded' && c.built !== detail) {
-        this.build(c, detail);
-        if (--budget <= 0 || spent()) break;
-      }
+      if (c && c.state === 'loaded' && c.built !== detail) return job(c, 'build', detail);
     }
+    return null;
   }
 
   private fetchChunk(key: string): void {
@@ -303,25 +360,21 @@ export class ChunkManager {
       .finally(() => this.inflight--);
   }
 
-  private build(c: Chunk, detail: Detail): void {
-    const t0 = performance.now();
-    this.disposeMesh(c);
+  /** A chunk mesh at one detail level, step by step (run by runJobs; `j.stage` names the stage for profiling). */
+  private *build(j: Job): Generator<void, void> {
+    const c = j.c, detail = j.detail;
     const data = c.data!;
     const ctx: BuildContext = { ...this.ctxBase, quality: this.quality, detail };
     const g = new THREE.Group();
-    let tp = t0;
-    const lap = (name: string) => {
-      const now = performance.now();
-      this.buildProfile[name] = (this.buildProfile[name] ?? 0) + now - tp;
-      tp = now;
-    };
     g.position.set(c.cx * CHUNK_SIZE, 0, c.cz * CHUNK_SIZE);
-    g.add(buildTerrain(data, ctx));
-    lap('terrain');
+    j.stage = 'terrain';
+    g.add(yield* buildTerrain(data, ctx));
     const water = buildWater(data, ctx);
     if (water) g.add(water);
+    yield;
+    j.stage = 'roads';
     const structure = new GeoBuf();
-    const roads = buildRoads(data, ctx, structure);
+    const roads = yield* buildRoads(data, ctx, structure);
     roads.groups.forEach((geo, i) => {
       if (!geo) return;
       const m = new THREE.Mesh(geo, ctx.mats.roads[i]);
@@ -334,7 +387,8 @@ export class ChunkManager {
       m.renderOrder = 6;
       g.add(m);
     }
-    lap('roads');
+    yield;
+    j.stage = 'shore';
     buildShore(data, ctx, structure);
     const sg = structure.build();
     if (sg) {
@@ -343,14 +397,16 @@ export class ChunkManager {
       m.receiveShadow = true;
       g.add(m);
     }
-    lap('shore');
-    for (const o of buildBuildings(data, ctx)) g.add(o);
-    lap('buildings');
-    c.decor = detail === 'high';
+    yield;
+    j.stage = 'buildings';
+    for (const o of yield* buildBuildings(data, ctx)) g.add(o);
     // Landmark models are cheap (a few thousand triangles, one draw call each) and their generic
     // extrusions are suppressed at every detail level, so they are built for low detail as well:
     // otherwise the bridge masts and the DUN roof would vanish from the distant skyline.
-    for (const o of ctx.landmarks.buildForChunk(data, ctx)) g.add(o);
+    j.stage = 'landmarks';
+    for (const o of yield* ctx.landmarks.buildForChunk(data, ctx)) g.add(o);
+    yield;
+    j.stage = 'upload';
     g.updateMatrixWorld(true);
     g.traverse((o) => {
       o.matrixAutoUpdate = false;
@@ -364,25 +420,30 @@ export class ChunkManager {
       const map = (mesh.material as THREE.MeshLambertMaterial).map;
       if (map && mesh.userData.ownMaterial) this.renderer?.initTexture(map);
     });
-    lap('upload');
+    // Swap in the finished chunk: the mesh it had until now (another detail level) goes in the same frame.
+    this.disposeMesh(c, false);
     this.warming.push({ group: g, frame: this.frame });
     c.group = g;
     c.built = detail;
+    c.decor = detail === 'high';
     this.group.add(g);
     this.stats.built++;
-    this.stats.lastBuildMs = performance.now() - t0;
-    this.stats.maxBuildMs = Math.max(this.stats.maxBuildMs, this.stats.lastBuildMs);
   }
 
-  /** Second build frame of a high-detail chunk: trees, street furniture and signs. */
-  private decorate(c: Chunk): void {
-    const t0 = performance.now();
-    c.decor = false;
-    const data = c.data!, g = c.group!;
+  /** After a high-detail build: trees, street furniture and signs, added together once all are made. */
+  private *decorate(j: Job): Generator<void, void> {
+    const c = j.c, data = c.data!;
     const ctx: BuildContext = { ...this.ctxBase, quality: this.quality, detail: 'high' };
-    const added: THREE.Object3D[] = [...buildVegetation(data, ctx), ...buildFurniture(data, ctx), ...buildDressing(data, ctx)];
+    const added: THREE.Object3D[] = [...buildVegetation(data, ctx)];
+    yield;
+    added.push(...buildFurniture(data, ctx));
+    yield;
+    added.push(...buildDressing(data, ctx));
+    yield;
     const labels = buildChunkLabels(data, ctx);
     if (labels) added.push(labels);
+    const g = c.group!;
+    c.decor = false;
     for (const o of added) {
       g.add(o);
       o.updateMatrixWorld(true);
@@ -393,12 +454,11 @@ export class ChunkManager {
       if (map && mesh.userData.ownMaterial) this.renderer?.initTexture(map);
     }
     this.warming.push({ group: g, frame: this.frame });
-    const ms = performance.now() - t0;
-    this.buildProfile.decor = (this.buildProfile.decor ?? 0) + ms;
-    this.stats.maxBuildMs = Math.max(this.stats.maxBuildMs, ms);
   }
 
-  private disposeMesh(c: Chunk): void {
+  /** Drop a chunk's mesh (and, unless `abortJob` is false, any build of it in progress: its settings are stale). */
+  private disposeMesh(c: Chunk, abortJob = true): void {
+    if (abortJob && this.job?.c === c) this.job = null;
     if (!c.group) return;
     this.group.remove(c.group);
     c.group.traverse((o) => {

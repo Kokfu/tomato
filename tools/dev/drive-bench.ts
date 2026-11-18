@@ -85,8 +85,15 @@ function instrument(): void {
   };
   wrap(ch, 'update', 'chunks.update');
   wrap(ch, 'recomputeWanted', 'recompute');
-  wrap(ch, 'build', 'build', (ms, a) => P.on && P.builds.push({ kind: 'build', key: a[0].key, detail: a[1], ms: +ms.toFixed(2), prof: null }));
-  wrap(ch, 'decorate', 'decor', (ms, a) => P.on && P.builds.push({ kind: 'decor', key: a[0].key, ms: +ms.toFixed(2) }));
+  // Per-stage time of each build (V8.2): the delta of ChunkManager.buildProfile across the call.
+  const stages = () => ({ ...ch.buildProfile });
+  let bp0: Record<string, number> = stages();
+  const delta = () => { const now = stages(), d: Record<string, number> = {}; for (const [key, v] of Object.entries(now)) { const x = (v as number) - (bp0[key] ?? 0); if (x > 0.05) d[key] = +x.toFixed(2); } bp0 = now; return d; };
+  if (typeof ch.build === 'function' && !('jobLog' in ch)) wrap(ch, 'build', 'build', (ms, a) => { const prof = delta(); if (P.on) P.builds.push({ kind: 'build', key: a[0].key, detail: a[1], ms: +ms.toFixed(2), prof, t: performance.now() }); });
+  if (!('jobLog' in ch)) wrap(ch, 'decorate', 'decor', (ms, a) => { const prof = delta(); if (P.on) P.builds.push({ kind: 'decor', key: a[0].key, ms: +ms.toFixed(2), prof, t: performance.now() }); });
+  // V8.2 and later: builds run as jobs over several frames. 'build' = time in the job runner this frame; every finished
+  // job is read from ChunkManager.jobLog (ms = the most of it done in one frame, totalMs = all its frames).
+  if ('jobLog' in ch) { ch.jobLog = []; if (typeof ch.runJobs === 'function') wrap(ch, 'runJobs', 'build'); }
   wrap(ch, 'disposeMesh', 'dispose');
   wrap(ch, 'unload', 'unload');
   wrap(W.collision, 'addChunk', 'col.add');
@@ -143,6 +150,9 @@ function summarise(frames: any[], builds: any[], loaf: any[]) {
     over50: dts.filter((x) => x > 50).length, over100: dts.filter((x) => x > 100).length, over200: dts.filter((x) => x > 200).length,
     chunkBuilds: b.length, buildMsMedian: b.length ? +pct(b, 50).toFixed(1) : 0, buildMsMax: b.length ? +b[b.length - 1].toFixed(1) : 0,
     decors: d.length, decorMsMax: d.length ? +d[d.length - 1].toFixed(1) : 0,
+    stageMax: builds.reduce((m: Record<string, number>, x: any) => { for (const [key, v] of Object.entries(x.prof ?? {})) m[key] = Math.max(m[key] ?? 0, v as number); return m; }, {}),
+    worstBuilds: [...builds].sort((a: any, c: any) => c.ms - a.ms).slice(0, 6).map((x: any) => ({ kind: x.kind, key: x.key, detail: x.detail, ms: x.ms, totalMs: x.totalMs, frames: x.frames, ...x.prof })),
+    buildTotalMsMax: Math.max(0, ...builds.map((x: any) => x.totalMs ?? x.ms)),
     peakHeapMB: Math.max(...frames.map((f) => f.heap)), maxCalls: Math.max(...frames.map((f) => f.calls)), avgCalls: Math.round(sum('calls') / frames.length),
     maxTrisK: Math.round(Math.max(...frames.map((f) => f.tris)) / 1000), programs: [frames[0]?.progs, frames[frames.length - 1]?.progs],
     msPerFrame: Object.fromEntries(Object.entries(attrib(frames)).map(([key, v]) => [key, +((v as number) / frames.length).toFixed(2)])),
@@ -154,15 +164,21 @@ function summarise(frames: any[], builds: any[], loaf: any[]) {
 }
 
 async function run(page: Page, name: string, fn: () => Promise<any>) {
-  await page.evaluate(() => { const P = (window as any).__prof; P.frames = []; P.builds = []; P.loaf = []; P.last = 0; P.on = true; });
+  await page.evaluate(() => { const P = (window as any).__prof, ch = (window as any).__k3d.world.chunks; P.frames = []; P.builds = []; P.loaf = []; P.last = 0; P.on = true; if (ch.jobLog) ch.jobLog = []; });
   const res = await fn();
-  const { frames, builds, loaf } = await page.evaluate(() => { const P = (window as any).__prof; P.on = false; return { frames: P.frames.slice(3), builds: P.builds, loaf: P.loaf }; });
+  const { frames, builds, loaf } = await page.evaluate(() => {
+    const P = (window as any).__prof, ch = (window as any).__k3d.world.chunks;
+    P.on = false;
+    const jobs = (ch.jobLog ?? []).map((j: any) => ({ kind: j.kind, key: j.key, detail: j.detail, ms: +j.maxFrameMs.toFixed(2), totalMs: +j.ms.toFixed(2), frames: j.frames, prof: Object.fromEntries(Object.entries(j.prof).map(([k, v]) => [k, +(v as number).toFixed(2)])) }));
+    return { frames: P.frames.slice(3), builds: ch.jobLog ? jobs : P.builds, loaf: P.loaf };
+  });
   const s = summarise(frames, builds, loaf);
   const collision = res && typeof res === 'object' && 'reached' in res
     ? { reached: res.reached, distance: Math.round(res.distance), maxKmh: +res.maxKmh.toFixed(0), everInBuilding: res.everInBuilding, everInWater: res.everInWater, blocked: res.blocked, impacts: res.impacts, maxImpact: +res.maxImpact.toFixed(1), unbuiltFrames: res.unbuiltFrames, offRoadFrames: res.offRoadFrames, recoveries: res.recoveries, maxHeightError: +res.maxHeightError.toFixed(2) }
     : res;
   console.log(`\n=== ${name}\n${JSON.stringify({ ...s, worst: undefined, loaf: undefined, collision })}`);
   for (const w of s.worst.slice(0, 5)) console.log('  worst', JSON.stringify(w));
+  for (const b of s.worstBuilds) console.log('  build', JSON.stringify(b));
   for (const c of s.compiles) console.log('  compile', JSON.stringify(c));
   return { name, ...s, collision, frameTimes: frames.map((f: any) => [Math.round(f.t), f.dt, f.sp]) };
 }

@@ -6,7 +6,7 @@ import type { WorldManager } from '../world/WorldManager.ts';
 import type { Input } from '../player/Input.ts';
 import type { PlayerController } from '../player/PlayerController.ts';
 import { CAR, CAR_START, NEUTRAL, VehicleBody } from './VehiclePhysics.ts';
-import type { VehicleEnv } from './VehiclePhysics.ts';
+import type { VehicleEnv, ResetResult } from './VehiclePhysics.ts';
 import { nearestDrivable } from './RoadQuery.ts';
 import { CarModel } from './CarModel.ts';
 import { ChaseCamera } from './ChaseCamera.ts';
@@ -59,11 +59,15 @@ export class Driving {
         const g = c.groundAt(x, z, y);
         return g.deck && g.h - world.height.sample(x, z) < 0.35 && !c.inWater(x, z) ? { h: g.h, deck: false } : g;
       },
-      loaded: (x, z) => c.isLoaded(x, z),
+      // V8.2: ground the car may enter has its collision registered and its road surface drawn (chunk mesh built).
+      loaded: (x, z) => c.isLoaded(x, z) && chunks.isReady(x, z),
       hasData: (x, z) => chunks.hasData(x, z),
       water: (x, z) => c.inWater(x, z),
       boxContact: (x, z, fx, fz, a, b, y) => c.boxContact(x, z, fx, fz, a, b, y),
       road: (x, z) => nearestDrivable((cx, cz) => chunks.dataAt(cx, cz), x, z, CAR.halfWid * 2),
+      // Reset key only: the road must be drawn, and the body must not stand wholly inside a building or parked car.
+      ready: (x, z) => chunks.isReady(x, z),
+      solid: (x, z, y) => c.insideBuilding(x, z, y, false),
     };
     this.car = new VehicleBody(env);
     this.model = new CarModel();
@@ -194,13 +198,18 @@ export class Driving {
     return null;
   }
 
-  /** R: back to the last valid road position. */
+  /** Outcome of the last R press (tests and diagnostics). */
+  lastReset: ResetResult | null = null;
+
+  /** R: back to a verified safe place on the road (VehicleBody.resetToRoad), or a message saying why not. */
   resetToRoad(): void {
     if (!this.active) return;
-    if (this.car.resetToRoad()) {
+    const res = (this.lastReset = this.car.resetToRoad());
+    if (res.ok) {
+      this.after(0);
       this.camera.snap(this.car);
       this.host.toast('Back on the road');
-    } else this.host.toast('No clear road position nearby');
+    } else this.host.toast(res.reason === 'loading' ? 'Cannot reset yet: the road here is still loading' : 'No safe place on the road nearby: the car stays here');
   }
 
   /** One simulation step with the player at the wheel. */

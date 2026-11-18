@@ -402,6 +402,141 @@ test.describe('V8 driving prototype', () => {
     expect(issues.errors).toEqual([]);
   });
 
+  test('default V7, V8.2: R puts the car at a verified safe place (Jalan China lane, Jalan Carpenter, a junction, parked cars, a building, unloaded ground)', async ({ page }) => {
+    const issues = watch(page);
+    await ready(page);
+    await toDoor(page);
+    await waitChunks(page);
+    await page.keyboard.press('KeyE');
+    expect((await carState(page)).active).toBe(true);
+    const down = Math.atan2(-CHINA.dx, -CHINA.dz); // heading down Jalan China, with the one-way traffic
+    /** Put the car at a pose (overlapping whatever stands there), with or without its remembered poses. */
+    const put = (x: number, z: number, h: number, keepRecent = false) => page.evaluate(([x, z, h, keep]) => {
+      const d = (window as any).__k3d.driving;
+      d.car.place(x, z, h);
+      if (!keep) d.car.lastRoad = null;
+      d.position.set(d.car.x, d.car.y, d.car.z);
+      d.camera.snap(d.car);
+    }, [x, z, h, keepRecent] as [number, number, number, boolean]);
+    /** Press R and report where the car went and what stands round it. */
+    const reset = async () => {
+      await page.keyboard.press('KeyR');
+      await frames(page, 4);
+      return page.evaluate(([HL, HW]) => {
+        const k = (window as any).__k3d, d = k.driving, car = d.car, c = k.world.collision;
+        const f = car.footprint(0.1);
+        let inside = false;
+        for (let i = 0; i < 8; i += 2) if (c.insideBuilding(f[i], f[i + 1], car.y, false)) inside = true;
+        if (c.insideBuilding(car.x, car.z, car.y, false)) inside = true;
+        const contact = !!c.boxContact(car.x, car.z, Math.sin(car.heading), Math.cos(car.heading), HL + 0.2, HW + 0.15, car.y);
+        const r = d.lastReset;
+        return {
+          ok: r?.ok, source: r?.source ?? null, reason: r?.reason ?? null, tried: r?.tried, x: car.x, z: car.z, heading: car.heading, vf: car.vf,
+          check: car.check(car.x, car.z, car.heading), inside, contact, road: car.road?.name ?? null, onRoad: car.onRoad, ready: k.world.chunks.isReady(car.x, car.z),
+          toast: document.getElementById('toast')?.textContent ?? '',
+        };
+      }, [HALF_LEN, HALF_WID]);
+    };
+    const safe = (r: Awaited<ReturnType<typeof reset>>, road: string | null, label: string) => {
+      expect(r.ok, `${label}: ${JSON.stringify(r)}`).toBe(true);
+      expect(r.check, label).toBe('');
+      expect(r.inside, `${label}: inside a building or parked car`).toBe(false);
+      expect(r.contact, `${label}: within 0.15-0.2 m of an obstacle`).toBe(false);
+      expect(r.onRoad, label).toBe(true);
+      expect(r.ready, label).toBe(true);
+      expect(r.vf).toBe(0);
+      if (road) expect(r.road, label).toBe(road);
+      expect(r.toast).toBe('Back on the road');
+    };
+    const results: Record<string, unknown> = {};
+
+    // 1. Jalan China, on the mapped centre line (through the east row of parked cars), nothing remembered:
+    //    the search finds the lane between the rows, near where the car was.
+    const [cx, cz] = CHINA.toWorld(60, 2.6);
+    await put(cx, cz, down);
+    let r = await reset();
+    safe(r, 'Jalan China', 'Jalan China centre line');
+    let [s, o] = street(r);
+    expect(Math.abs(o), `in the lane: o ${o}`).toBeLessThan(1.35 - HALF_WID);
+    expect(Math.abs(s - 60)).toBeLessThan(12);
+    expect(Math.abs(wrap(r.heading - down))).toBeLessThan(0.1); // with the one-way traffic
+    results.china = { s, o, tried: r.tried };
+    // It can drive straight off down the lane.
+    const away = await hold(page, ['KeyW'], 60);
+    expect(away.maxImpact).toBeLessThan(0.5);
+    expect(away.everInBuilding).toBe(false);
+    await hold(page, ['Space'], 60);
+
+    // 2. Near parked cars, with poses remembered from driving the lane: back to the newest one.
+    const [lx, lz] = CHINA.toWorld(70, 0);
+    await put(lx, lz, down);
+    await hold(page, ['KeyW'], 100);
+    await hold(page, ['Space'], 40);
+    const recent = await k3d(page, (k) => k.driving.car.recent.map((p: any) => ({ ...p })));
+    expect(recent.length).toBeGreaterThan(0);
+    const now = await carState(page);
+    const [ps, po] = street(now);
+    await put(...CHINA.toWorld(ps, 1.3), down + 0.25, true); // swerved into the east row
+    r = await reset();
+    safe(r, 'Jalan China', 'near parked cars');
+    expect(r.source).toBe('recent');
+    expect(Math.hypot(r.x - recent[0].x, r.z - recent[0].z)).toBeLessThan(0.01);
+    results.parked = { from: [ps, po], to: street(r), recent: recent.length };
+
+    // 3. Inside a shophouse of the west row of Jalan China (a building), nothing remembered.
+    await put(...CHINA.toWorld(40, -(CHINA.half + 4)), down + Math.PI / 2);
+    r = await reset();
+    safe(r, 'Jalan China', 'inside a building');
+    [s, o] = street(r);
+    expect(Math.abs(o)).toBeLessThan(1.35 - HALF_WID);
+    results.building = { s, o, tried: r.tried };
+
+    // 4. Jalan Carpenter: across the street with the nose in the five-foot way.
+    const a = [183, 37.4], b = [256, 54.8], L = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L;
+    const mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
+    await put(mx - uz * 4, mz + ux * 4, Math.atan2(-uz, ux));
+    r = await reset();
+    safe(r, 'Jalan Carpenter', 'Jalan Carpenter');
+    expect(Math.hypot(r.x - mx, r.z - mz)).toBeLessThan(35);
+    results.carpenter = { x: r.x, z: r.z, tried: r.tried };
+
+    // 5. The Jalan China / Jalan Carpenter junction, diagonally across it.
+    const [jx, jz] = CHINA.toWorld(-4.5, 0);
+    await put(jx, jz, down + Math.PI / 4);
+    r = await reset();
+    safe(r, null, 'junction');
+    expect(Math.hypot(r.x - jx, r.z - jz)).toBeLessThan(35);
+    results.junction = { x: r.x, z: r.z, road: r.road, tried: r.tried };
+
+    // 6. Ground that is not loaded: with nothing remembered the car stays where it is and the message says why;
+    //    with a remembered pose in loaded ground, R brings it back there.
+    const far = await page.evaluate(() => {
+      const k = (window as any).__k3d, d = k.driving, car = d.car;
+      const back = { x: car.x, z: car.z, heading: car.heading };
+      car.place(-411, 2475, 0); // Jalan Tun Abang Haji Openg, 2.5 km away: mapped, not loaded
+      car.lastRoad = null;
+      const loaded = k.world.collision.isLoaded(car.x, car.z) || k.world.chunks.isReady(car.x, car.z) || !k.world.chunks.hasData(car.x, car.z);
+      d.resetToRoad(); // same frame: nothing round the car can have loaded yet
+      const res = { loaded, r: d.lastReset, x: car.x, z: car.z, toast: document.getElementById('toast')?.textContent ?? '' };
+      car.place(car.x, car.z, 0);
+      car.lastRoad = back;
+      d.resetToRoad();
+      return { ...res, second: d.lastReset, back: Math.hypot(car.x - back.x, car.z - back.z) };
+    });
+    expect(far.loaded).toBe(false);
+    expect(far.r.ok).toBe(false);
+    expect(far.r.reason).toBe('loading');
+    expect(far.toast).toBe('Cannot reset yet: the road here is still loading');
+    expect(far.second.ok && far.second.source === 'recent', JSON.stringify(far.second)).toBe(true);
+    expect(far.back).toBeLessThan(0.01);
+    results.unloaded = { first: far.r, second: far.second };
+    await frames(page, 4);
+    const st = await carState(page);
+    expect(st.inBuilding).toBe(false);
+    console.log(JSON.stringify(results));
+    expect(issues.errors).toEqual([]);
+  });
+
   test('default V7 acceptance: pause menu Drive Car, E, hold W: the car pulls out and drives down Jalan China without touching a parked car', async ({ page }) => {
     const issues = watch(page);
     await ready(page);

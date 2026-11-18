@@ -60,6 +60,32 @@ export const CAR_START = { x: 205.882, z: -55.044, heading: -0.58863 };
 
 export type CarBlock = '' | 'water' | 'edge' | 'loading' | 'deck';
 
+/**
+ * V8.2 reset key: what a pose must offer before the car is put there. Nothing here moves a road or an obstacle: the
+ * search only looks for room on the mapped carriageways as they are (in Jalan China that is the lane between the
+ * parked rows, 2.25 m off the OSM centre line, which runs through the east row).
+ */
+export const RESET = {
+  /** Free space wanted round the body: sideways and at each end (metres). The Jalan China lane leaves 0.48 m a side. */
+  sidePad: 0.2,
+  endPad: 0.3,
+  /** Steepest grade along the car and across it (rise / run; the steepest mapped street is 11.2 %). */
+  maxGrade: 0.16,
+  maxCross: 0.1,
+  /** Largest twist between the ground under the four wheels, and largest gap between the centre and the wheels (metres). */
+  maxStep: 0.2,
+  /** Verified poses kept from the drive (newest first), how often one is stored (s), and how far back one is still used (m). */
+  keep: 12,
+  every: 0.5,
+  recentRange: 200,
+  /** Carriageway search: this far along the road either way, in these steps; across it in steps of at least `acrossStep`. */
+  along: 30,
+  alongStep: 3,
+  acrossStep: 0.25,
+};
+
+export type ResetResult = { ok: true; pose: Pose; source: 'recent' | 'road'; tried: number } | { ok: false; reason: 'loading' | 'none'; tried: number };
+
 export interface Controls {
   /** -1 (brake / reverse) ... 1 (accelerate). */
   throttle: number;
@@ -82,6 +108,10 @@ export interface VehicleEnv {
   boxContact(x: number, z: number, fx: number, fz: number, halfLen: number, halfWid: number, y: number): { px: number; pz: number; cx: number; cz: number } | null;
   /** Nearest drivable carriageway, or null. */
   road(x: number, z: number): RoadHit | null;
+  /** The chunk at this position has its mesh built (road surface drawn). Reset only; absent = always. */
+  ready?(x: number, z: number): boolean;
+  /** The point lies inside a blocking outline (building, pier, parked car) below its top. Reset only; absent = never. */
+  solid?(x: number, z: number, y: number): boolean;
 }
 
 export interface Pose { x: number; z: number; heading: number }
@@ -112,8 +142,11 @@ export class VehicleBody {
   blocked: CarBlock = '';
   /** Closing speed of the last wall contact this update (m/s), 0 if none. */
   impact = 0;
-  /** Last pose at which the whole car stood on a mapped carriageway (target of the reset key). */
-  lastRoad: Pose | null = null;
+  /** Poses the car held on a carriageway with room round it, verified when stored, newest first (reset key). */
+  readonly recent: Pose[] = [];
+  /** The newest of `recent`; setting it replaces the list (null clears it). */
+  get lastRoad(): Pose | null { return this.recent[0] ?? null; }
+  set lastRoad(p: Pose | null) { this.recent.length = 0; if (p) this.recent.push(p); }
   private sinceRoad = 0;
   private env: VehicleEnv;
 
@@ -201,14 +234,21 @@ export class VehicleBody {
       this.step(h, controls);
       remaining -= h;
     }
-    // Remember the last pose with the whole body on a carriageway, about once a second while moving.
+    // Remember poses on a carriageway with room round the body (twice a second while moving), for the reset key.
     this.sinceRoad += dt;
     const r = this.road;
-    if (r && !this.blocked && r.dist <= Math.max(0, r.width / 2 - CAR.halfWid * 0.6) && Math.abs(this.vl) < 1.5 && (this.sinceRoad > 0.8 || !this.lastRoad)) {
+    if (r && !this.blocked && r.dist <= r.width / 2 && Math.abs(this.vl) < 1.5 && (this.sinceRoad >= RESET.every || !this.recent.length)) {
       // Align the stored heading with the carriageway (in the direction the car is facing).
       const along = Math.sin(this.heading) * r.dx + Math.cos(this.heading) * r.dz;
       const hd = Math.atan2(r.dx, r.dz) + (along < 0 ? Math.PI : 0);
-      if (Math.abs(along) > 0.5) { this.lastRoad = { x: this.x, z: this.z, heading: hd }; this.sinceRoad = 0; }
+      const prev = this.recent[0];
+      if (Math.abs(along) > 0.5 && (!prev || Math.hypot(prev.x - this.x, prev.z - this.z) > 2)) {
+        this.sinceRoad = 0;
+        if (this.check(this.x, this.z, hd) === '') {
+          this.recent.unshift({ x: this.x, z: this.z, heading: hd });
+          if (this.recent.length > RESET.keep) this.recent.length = RESET.keep;
+        }
+      }
     }
   }
 
@@ -307,30 +347,97 @@ export class VehicleBody {
   }
 
   /**
-   * Put the car back on the road: at the last pose it held on a carriageway, or, failing that, on the centre
-   * line of the nearest drivable road, facing along it. Returns false when neither is free.
+   * Why the car could not be put at this pose at rest ('' = it can): every part of the body and a margin round it
+   * (RESET.sidePad / endPad) must be loaded and drawn, clear of walls, piers, parked cars, water and footbridges; the
+   * body must stand on a drivable carriageway (centre within its mapped half width, corners within the on-road rule,
+   * so never on a pedestrian street, footway or pier); and the ground under the wheels must be gentle enough.
    */
-  resetToRoad(): boolean {
-    const tries: Pose[] = [];
-    if (this.lastRoad) tries.push(this.lastRoad);
-    const r = this.env.road(this.x, this.z) ?? (this.lastRoad ? this.env.road(this.lastRoad.x, this.lastRoad.z) : null);
-    if (r) {
-      const along = Math.sin(this.heading) * r.dx + Math.cos(this.heading) * r.dz;
-      const hd = Math.atan2(r.dx, r.dz) + (along < 0 && !r.oneWay ? Math.PI : 0);
-      // Along the centre line, in case something stands exactly at the nearest point.
-      for (const d of [0, 6, -6, 12, -12, 20, -20]) tries.push({ x: r.x + r.dx * d, z: r.z + r.dz * d, heading: hd });
+  check(x: number, z: number, heading: number): '' | 'loading' | 'blocked' {
+    const env = this.env, s = Math.sin(heading), c = Math.cos(heading);
+    const a = CAR.halfLen + RESET.endPad, b = CAR.halfWid + RESET.sidePad;
+    const at = (u: number, v: number): [number, number] => [x + s * u + c * v, z + c * u - s * v];
+    const probes = [[0, 0], [a, b], [a, -b], [-a, -b], [-a, b], [a, 0], [-a, 0], [0, b], [0, -b]].map(([u, v]) => at(u, v));
+    for (const [px, pz] of probes) if (!env.loaded(px, pz) || (env.ready && !env.ready(px, pz))) return 'loading';
+    // On a drivable carriageway.
+    const r = env.road(x, z);
+    if (!r || r.dist > r.width / 2) return 'blocked';
+    for (const [u, v] of [[CAR.halfLen, CAR.halfWid], [CAR.halfLen, -CAR.halfWid], [-CAR.halfLen, -CAR.halfWid], [-CAR.halfLen, CAR.halfWid]]) {
+      const [px, pz] = at(u, v);
+      if (!onRoad(env.road(px, pz))) return 'blocked';
     }
-    for (const p of tries) {
-      if (!this.env.loaded(p.x, p.z)) continue;
-      const y = this.env.ground(p.x, p.z, 1e6).h;
-      const wasDeck = this.onDeck;
-      this.onDeck = false;
-      const ok = this.canOccupy(p.x, p.z, p.heading, y);
-      this.onDeck = wasDeck;
-      if (!ok) continue;
+    // Ground: the surface the car would settle on (a road bridge deck where the carriageway is a bridge), gentle slope.
+    const g0 = env.ground(x, z, 1e6);
+    const y = g0.h;
+    const w = CAR.wheelBase / 2, t = CAR.track / 2;
+    const wh = [at(w, t), at(w, -t), at(-w, t), at(-w, -t)].map(([px, pz]) => env.ground(px, pz, y + 0.5));
+    if ((g0.deck || wh.some((g) => g.deck)) && !r.bridge) return 'blocked';
+    const [fl, fr, rl, rr] = wh.map((g) => g.h);
+    if (Math.abs(fl + fr - rl - rr) / 2 / CAR.wheelBase > RESET.maxGrade) return 'blocked';
+    if (Math.abs(fl + rl - fr - rr) / 2 / CAR.track > RESET.maxCross) return 'blocked';
+    if (Math.abs(fl - fr - rl + rr) > RESET.maxStep || Math.abs((fl + fr + rl + rr) / 4 - y) > RESET.maxStep) return 'blocked';
+    // Clear of water, walls and obstacles with the margin; and not wholly inside an outline (no edge to touch then).
+    for (const [px, pz] of probes) {
+      if (env.water(px, pz) && !r.bridge) return 'blocked';
+      if (env.solid?.(px, pz, y + 0.1)) return 'blocked';
+    }
+    if (env.boxContact(x, z, s, c, a, b, y)) return 'blocked';
+    return '';
+  }
+
+  /**
+   * Places on the carriageway nearest (x, z) where the car might stand: along the road up to RESET.along either way
+   * (following its centre line through bends and junctions) and across the whole mapped width, nearest to (x, z)
+   * first. Each faces along the road: in the direction the car faces, or the way of a one-way street.
+   */
+  private roadPlaces(x: number, z: number, heading: number): Pose[] {
+    const env = this.env, r0 = env.road(x, z);
+    if (!r0) return [];
+    const out: { p: Pose; d: number }[] = [];
+    for (let d = 0; d <= RESET.along; d += RESET.alongStep) {
+      for (const sg of d ? [1, -1] : [1]) {
+        const r = d ? env.road(r0.x + r0.dx * d * sg, r0.z + r0.dz * d * sg) : r0;
+        if (!r) continue;
+        const along = Math.sin(heading) * r.dx + Math.cos(heading) * r.dz;
+        const hd = Math.atan2(r.dx, r.dz) + (r.oneWay ? 0 : along < 0 ? Math.PI : 0);
+        const half = r.width / 2, step = Math.max(RESET.acrossStep, half / 12);
+        // Across the road: left of its direction is (dz, -dx).
+        for (let o = 0; o <= half + 1e-6; o += step) {
+          for (const so of o ? [1, -1] : [1]) {
+            const px = r.x + r.dz * o * so, pz = r.z - r.dx * o * so;
+            out.push({ p: { x: px, z: pz, heading: hd }, d: Math.hypot(px - x, pz - z) });
+          }
+        }
+      }
+    }
+    return out.sort((p, q) => p.d - q.d).map((o) => o.p);
+  }
+
+  /**
+   * R: put the car back at a verified safe place on the road, at rest. Tried in order: the poses it recently held on
+   * a carriageway (newest first, within RESET.recentRange), places on the carriageway nearest the car, the remembered
+   * poses further away, then places near the newest remembered pose. Every candidate is checked now (`check`): nothing is
+   * trusted from when it was stored. When none passes the car is not moved, and the result says whether that was
+   * for want of loaded ground.
+   */
+  resetToRoad(): ResetResult {
+    const cand: [Pose, 'recent' | 'road'][] = [];
+    const near = this.recent.filter((p) => Math.hypot(p.x - this.x, p.z - this.z) <= RESET.recentRange);
+    for (const p of near) cand.push([p, 'recent']);
+    for (const p of this.roadPlaces(this.x, this.z, this.heading)) cand.push([p, 'road']);
+    for (const p of this.recent) if (!near.includes(p)) cand.push([p, 'recent']);
+    const last = this.recent[0];
+    if (last) for (const p of this.roadPlaces(last.x, last.z, last.heading)) cand.push([p, 'road']);
+    let loading = false, tried = 0;
+    for (const [p, source] of cand) {
+      tried++;
+      const why = this.check(p.x, p.z, p.heading);
+      if (why === 'loading') { loading = true; continue; }
+      if (why) continue;
       this.place(p.x, p.z, p.heading);
-      return true;
+      return { ok: true, pose: { ...p }, source, tried };
     }
-    return false;
+    // With the car's own ground not loaded yet there may be no road data to search at all: that is 'loading' too.
+    const here = !this.env.loaded(this.x, this.z) && this.env.hasData(this.x, this.z);
+    return { ok: false, reason: loading || here ? 'loading' : 'none', tried };
   }
 }

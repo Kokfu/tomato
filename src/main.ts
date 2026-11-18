@@ -398,6 +398,8 @@ async function boot(): Promise<void> {
     const flying = fly.active;
     const trip = carTrip ? driving.whereabouts : null;
     const focus = flying ? fly.focus : trip ? tripFocus.set(trip.x, player.position.y, trip.z) : player.position;
+    // Until the player starts, chunk building may take long frames (V8.2 time budget, ChunkManager.runJobs).
+    world.chunks.loadingBoost = !spawnReady || !started;
     world.update(dt, focus, flying ? fly.velocity : trip ? noVelocity : driving.active ? driving.velocity : player.velocity, camera);
     v5?.update(dt, rawDt, focus.x, focus.z);
     if (carTrip) stepCarTrip(dt);

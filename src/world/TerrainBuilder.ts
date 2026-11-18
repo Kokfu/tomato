@@ -8,8 +8,8 @@ import { stationOfChunk } from './district/props.ts';
 
 const BASE_GROUND = '#a9a694';
 
-/** Paint mapped land-use polygons into a small ground texture for the chunk. */
-function groundTexture(data: ChunkData, size: number): THREE.CanvasTexture {
+/** Paint mapped land-use polygons into a small ground texture for the chunk (yields between polygons, V8.2). */
+function* groundTexture(data: ChunkData, size: number): Generator<void, THREE.CanvasTexture> {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const g = c.getContext('2d')!;
@@ -17,6 +17,7 @@ function groundTexture(data: ChunkData, size: number): THREE.CanvasTexture {
   g.fillRect(0, 0, size, size);
   const s = size / (CHUNK_SIZE * QUANT);
   for (const a of data.areas) {
+    yield;
     g.fillStyle = AREA_COLORS[AREA_KINDS[a.k]] ?? BASE_GROUND;
     g.beginPath();
     for (const r of a.r) {
@@ -26,12 +27,14 @@ function groundTexture(data: ChunkData, size: number): THREE.CanvasTexture {
     }
     g.fill('evenodd');
   }
+  yield;
   if (stationOfChunk(data)) paintDistrict(g, data, size);
   // Subtle deterministic mottling so large open ground is not a flat colour (decorative only).
   let seed = (data.cx * 73856093) ^ (data.cz * 19349663);
   const rnd = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) | 0) >>> 0) / 4294967296;
   const dots = size * 3;
   for (let i = 0; i < dots; i++) {
+    if (i % 1000 === 0) yield;
     g.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.035)';
     const r = 1 + rnd() * (size / 90);
     g.fillRect(rnd() * size, rnd() * size, r, r);
@@ -71,7 +74,8 @@ function paintDistrict(g: CanvasRenderingContext2D, data: ChunkData, size: numbe
 }
 
 /** Terrain mesh for a chunk. Vertex heights come from the global height grid. */
-export function buildTerrain(data: ChunkData, ctx: BuildContext): THREE.Mesh {
+/** The chunk's ground mesh. A generator (V8.2): yields after the geometry and while painting its texture. */
+export function* buildTerrain(data: ChunkData, ctx: BuildContext): Generator<void, THREE.Mesh> {
   const ox = data.cx * CHUNK_SIZE, oz = data.cz * CHUNK_SIZE;
   let xz: number[];
   let index: number[];
@@ -105,7 +109,8 @@ export function buildTerrain(data: ChunkData, ctx: BuildContext): THREE.Mesh {
   geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   geo.setIndex(index);
   geo.computeVertexNormals();
-  const mat = ctx.mats.terrain(groundTexture(data, ctx.detail === 'high' ? ctx.quality.groundTex : 128));
+  yield;
+  const mat = ctx.mats.terrain(yield* groundTexture(data, ctx.detail === 'high' ? ctx.quality.groundTex : 128));
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
   mesh.userData.ownMaterial = true;

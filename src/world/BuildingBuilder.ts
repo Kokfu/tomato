@@ -303,14 +303,18 @@ function addPitchedRoof(kind: Kind, hash: number, ringIn: number[], top: number,
   return true;
 }
 
-/** One merged wall mesh and one merged roof mesh per chunk, generated from the mapped footprints. */
-export function buildBuildings(data: ChunkData, ctx: BuildContext): THREE.Object3D[] {
+/**
+ * One merged wall mesh and one merged roof mesh per chunk, generated from the mapped footprints. A generator: it
+ * yields between buildings so that ChunkManager can spread a heavy chunk over several frames (V8.2).
+ */
+export function* buildBuildings(data: ChunkData, ctx: BuildContext): Generator<void, THREE.Object3D[]> {
   const ox = data.cx * CHUNK_SIZE, oz = data.cz * CHUNK_SIZE;
   const walls = new GeoBuf(true);
   const roofs = new GeoBuf();
   const arch = new GeoBuf(true);
   const herit = new GeoBuf(true);
   for (const b of data.buildings) {
+    yield;
     if (ctx.landmarks.replacesBuilding(b.id)) continue;
     // V5 rendering experiment: these blocks are drawn by the V5 scene while it is shown.
     if (v5Exclusion.active && v5Exclusion.ids.has(b.id)) continue;
@@ -345,24 +349,28 @@ export function buildBuildings(data: ChunkData, ctx: BuildContext): THREE.Object
     addBuilding(b, ox, oz, ctx, walls, roofs, row);
   }
   const out: THREE.Object3D[] = [];
+  yield;
   const ag = arch.build();
   if (ag) {
     const m = new THREE.Mesh(ag, ctx.mats.arch);
     m.castShadow = m.receiveShadow = true;
     out.push(m);
   }
+  yield;
   const hg = herit.build();
   if (hg) {
     const m = new THREE.Mesh(hg, ctx.mats.heritage);
     m.castShadow = m.receiveShadow = true;
     out.push(m);
   }
+  yield;
   const wg = walls.build();
   if (wg) {
     const m = new THREE.Mesh(wg, ctx.detail === 'high' ? ctx.mats.wallsTextured : ctx.mats.wallsPlain);
     m.castShadow = m.receiveShadow = true;
     out.push(m);
   }
+  yield;
   const rg = roofs.build();
   if (rg) {
     const m = new THREE.Mesh(rg, ctx.mats.roofs);

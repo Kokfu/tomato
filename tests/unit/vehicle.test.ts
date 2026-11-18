@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CAR, CAR_START, NEUTRAL, VehicleBody } from '../../src/vehicle/VehiclePhysics.ts';
+import { CAR, CAR_START, NEUTRAL, RESET, VehicleBody } from '../../src/vehicle/VehiclePhysics.ts';
 import type { Controls, VehicleEnv } from '../../src/vehicle/VehiclePhysics.ts';
 import { nearestDrivable, isDrivable, onRoad, SIDE_CLEARANCE, DRIVABLE_CLASSES } from '../../src/vehicle/RoadQuery.ts';
 import type { RoadHit } from '../../src/vehicle/RoadQuery.ts';
@@ -305,9 +305,158 @@ test('R returns the car to the last pose it held on the carriageway', () => {
   assert.ok(Math.abs(car.x) > 10, `left the road: x ${car.x}`);
   const last = { ...car.lastRoad! };
   assert.ok(Math.abs(last.x) <= 3, 'the remembered pose is still on the road');
-  assert.ok(car.resetToRoad());
+  const res = car.resetToRoad();
+  assert.ok(res.ok && res.source === 'recent', JSON.stringify(res));
   assert.deepEqual([car.x, car.z, car.heading], [last.x, last.z, last.heading]);
   assert.equal(car.vf, 0);
+});
+
+// --- V8.2 safe reset ------------------------------------------------------------------------------------------
+
+/**
+ * A street like Jalan China: the mapped centre line at x = 0 (6 m wide), but parked rows on both sides of a 2.7 m
+ * lane whose middle is 2.25 m west of the line (the east row stands on the line). Rows from z = 0 to 120.
+ */
+const LANE_X = -2.25;
+function narrowStreet(extra: { ring: number[]; h: number }[] = []): CollisionWorld {
+  return worldWith([
+    { ring: [LANE_X + 1.35, 0, 4, 0, 4, 120, LANE_X + 1.35, 120], h: 1.5 }, // east parked row (over the centre line) and frontage
+    { ring: [-6, 0, LANE_X - 1.35, 0, LANE_X - 1.35, 120, -6, 120], h: 1.5 }, // west parked row
+    ...extra,
+  ]);
+}
+/** Environment of the game: the real collision world, the stub road along x = 0, and the reset-only hooks. */
+function resetEnv(w: CollisionWorld, over: Partial<VehicleEnv> = {}): VehicleEnv {
+  return flat({
+    road: (x, z) => ({ ...STRAIGHT, x: 0, z, dist: Math.abs(x) }),
+    ground: (x, z, y) => w.groundAt(x, z, y),
+    boxContact: (x, z, fx, fz, a, b, y) => w.boxContact(x, z, fx, fz, a, b, y),
+    solid: (x, z, y) => w.insideBuilding(x, z, y, false),
+    ...over,
+  });
+}
+/** Clearance of the car at its pose: no wall within the reset margin, no corner inside an outline. */
+function clear(w: CollisionWorld, car: VehicleBody): boolean {
+  const s = Math.sin(car.heading), c = Math.cos(car.heading);
+  return !w.boxContact(car.x, car.z, s, c, CAR.halfLen + RESET.endPad - 0.01, CAR.halfWid + RESET.sidePad - 0.01, car.y) && !inside(w, car);
+}
+
+test('V8.2 R: in a narrow lane off the mapped centre line, the car is put in the lane, not on the line', () => {
+  const w = narrowStreet();
+  const car = new VehicleBody(resetEnv(w));
+  // The centre line lies inside the east parked row. With the body wholly inside an outline no edge touches it, so
+  // the edge test alone (canOccupy, all the V8.1 reset checked) calls it free; the reset check does not.
+  assert.ok(car.canOccupy(0, 60, 0, 0));
+  assert.equal(car.check(0, 60, 0), 'blocked');
+  // Stuck nose-in against something with no remembered pose: the search finds the lane.
+  car.place(LANE_X + 0.1, 60, 0.4);
+  car.lastRoad = null;
+  const res = car.resetToRoad();
+  assert.ok(res.ok && res.source === 'road', JSON.stringify(res));
+  assert.ok(Math.abs(car.x - LANE_X) < 0.3, `in the lane: x ${car.x}`);
+  assert.ok(Math.abs(car.z - 60) <= RESET.alongStep, `near where it was: z ${car.z}`);
+  assert.ok(Math.abs(car.heading) < 1e-9 || Math.abs(car.heading - Math.PI) < 1e-9, `along the street: ${car.heading}`);
+  assert.ok(clear(w, car), 'clear of both parked rows with the reset margin');
+  assert.equal(car.vf, 0);
+});
+
+test('V8.2 R: poses remembered while driving the lane are verified, and the newest is used', () => {
+  const w = narrowStreet();
+  const car = new VehicleBody(resetEnv(w));
+  car.place(LANE_X, 5, 0);
+  run(car, 5, { throttle: 0.4 });
+  assert.ok(car.recent.length >= 3, `${car.recent.length} poses remembered`);
+  for (const p of car.recent) assert.equal(car.check(p.x, p.z, p.heading), '', `remembered pose ${JSON.stringify(p)} is safe`);
+  const newest = { ...car.recent[0] };
+  car.place(LANE_X + 0.6, car.z, 0.3); // scraped into the east row
+  const res = car.resetToRoad();
+  assert.ok(res.ok && res.source === 'recent');
+  assert.deepEqual([car.x, car.z, car.heading], [newest.x, newest.z, newest.heading]);
+});
+
+test('V8.2 R: a remembered pose that is now blocked, inside a building or off the drawn map is skipped', () => {
+  // A remembered pose wholly inside a building outline: no edge touches the body, so only the inside test catches it.
+  const w = narrowStreet([{ ring: [LANE_X - 1.3, 40, LANE_X + 1.3, 40, LANE_X + 1.3, 50, LANE_X - 1.3, 50], h: 8 }]);
+  const car = new VehicleBody(resetEnv(w));
+  assert.equal(w.boxContact(LANE_X, 45, 0, 1, CAR.halfLen, CAR.halfWid, 0), null, 'boxContact alone sees nothing');
+  assert.equal(car.check(LANE_X, 45, 0), 'blocked');
+  car.place(LANE_X, 70, 0);
+  car.lastRoad = { x: LANE_X, z: 45, heading: 0 };
+  const res = car.resetToRoad();
+  assert.ok(res.ok && res.source === 'road', JSON.stringify(res));
+  assert.ok(car.z < 40 - CAR.halfLen || car.z > 50 + CAR.halfLen, `outside the building: z ${car.z}`);
+  assert.ok(clear(w, car));
+  // A pose whose chunk mesh is not drawn yet is not used either.
+  const car2 = new VehicleBody(resetEnv(w, { ready: (x, z) => z > 20 }));
+  car2.place(LANE_X, 70, 0);
+  car2.lastRoad = { x: LANE_X, z: 10, heading: 0 };
+  assert.equal(car2.check(LANE_X, 10, 0), 'loading');
+  const res2 = car2.resetToRoad();
+  assert.ok(res2.ok && car2.z > 20, `on drawn ground: z ${car2.z}`);
+});
+
+test('V8.2 R: with no safe place the car is not moved, and the reason says whether the ground is still loading', () => {
+  // The whole street is parked up.
+  const w = narrowStreet([{ ring: [LANE_X - 1.4, -10, LANE_X + 1.4, -10, LANE_X + 1.4, 130, LANE_X - 1.4, 130], h: 1.5 }]);
+  const car = new VehicleBody(resetEnv(w));
+  car.place(LANE_X, 60, 0);
+  const at = [car.x, car.z, car.heading];
+  const res = car.resetToRoad();
+  assert.ok(!res.ok && res.reason === 'none' && res.tried > 50, JSON.stringify(res));
+  assert.deepEqual([car.x, car.z, car.heading], at, 'the car stays where it was');
+  // Nothing loaded round the car.
+  const car2 = new VehicleBody(resetEnv(narrowStreet(), { loaded: () => false }));
+  car2.place(LANE_X, 60, 0);
+  const res2 = car2.resetToRoad();
+  assert.ok(!res2.ok && res2.reason === 'loading', JSON.stringify(res2));
+  // Map data exists but nothing is loaded yet, so not even the road can be looked up: still 'loading'.
+  const car4 = new VehicleBody(resetEnv(narrowStreet(), { loaded: () => false, road: () => null }));
+  car4.place(LANE_X, 60, 0);
+  const res4 = car4.resetToRoad();
+  assert.ok(!res4.ok && res4.reason === 'loading' && res4.tried === 0, JSON.stringify(res4));
+  // No drivable road anywhere near (a pedestrian street is not one) and nothing remembered.
+  const car3 = new VehicleBody(resetEnv(narrowStreet(), { road: () => null }));
+  car3.place(LANE_X, 60, 0);
+  const res3 = car3.resetToRoad();
+  assert.ok(!res3.ok && res3.reason === 'none' && res3.tried === 0, JSON.stringify(res3));
+});
+
+test('V8.2 R: the car is put on the carriageway with its whole body, on gentle ground, away from water', () => {
+  // The stub road is 6 m wide along x = 0.
+  const car = new VehicleBody(flat());
+  assert.equal(car.check(3.5, 0, 0), 'blocked', 'centre off the mapped width');
+  assert.equal(car.check(2.9, 0, Math.PI / 2), 'blocked', 'across the road, the nose sticks out past the verge');
+  assert.equal(car.check(2.9, 0, 0), '', 'along the road at the kerb');
+  // Slope: a 25 % ramp along the road is refused; the reset finds the level part.
+  const ramp = (z: number) => (z > 20 && z < 40 ? (z - 20) * 0.25 : z >= 40 ? 5 : 0);
+  const steep = new VehicleBody(flat({ ground: (x, z) => ({ h: ramp(z), deck: false }) }));
+  assert.equal(steep.check(0, 30, 0), 'blocked');
+  steep.place(0, 30, 0);
+  const res = steep.resetToRoad();
+  assert.ok(res.ok && (steep.z <= 20 - CAR.wheelBase / 2 || steep.z >= 40 + CAR.wheelBase / 2), `level ground: z ${steep.z}`);
+  // A cross slope (a kerb under one side) is refused.
+  assert.equal(new VehicleBody(flat({ ground: (x) => ({ h: x > 0 ? 0.3 : 0, deck: false }) })).check(0, 0, 0), 'blocked');
+  // Water, and a footbridge deck over a road that is not a bridge.
+  assert.equal(new VehicleBody(flat({ water: (x) => x < -1 })).check(0, 0, 0), 'blocked');
+  assert.equal(new VehicleBody(flat({ ground: () => ({ h: 0, deck: true }) })).check(0, 0, 0), 'blocked');
+});
+
+test('V8.2 R: a one-way street keeps its direction; the search follows the nearest carriageway at a junction', () => {
+  const car = new VehicleBody(flat({ road: (x, z) => ({ ...STRAIGHT, x: 0, z, dist: Math.abs(x), oneWay: true }) }));
+  car.place(0, 0, Math.PI); // facing against the one-way traffic
+  car.lastRoad = null;
+  const res = car.resetToRoad();
+  assert.ok(res.ok && Math.abs(car.heading) < 1e-9, `faces with the traffic: ${car.heading}`);
+  // Two roads crossing at the origin, the east-west one free, the north-south one parked up near the junction.
+  const w = worldWith([{ ring: [-3, -40, 3, -40, 3, -4, -3, -4], h: 1.5 }, { ring: [-3, 4, 3, 4, 3, 40, -3, 40], h: 1.5 }]);
+  const cross = (x: number, z: number): RoadHit => (Math.abs(x) < Math.abs(z)
+    ? { ...STRAIGHT, x: 0, z, dist: Math.abs(x) }
+    : { ...STRAIGHT, id: 2, x, z: 0, dx: 1, dz: 0, dist: Math.abs(z) });
+  const jc = new VehicleBody(resetEnv(w, { road: cross }));
+  jc.place(0.5, 8, 0); // nose into the parked row north of the junction
+  const r2 = jc.resetToRoad();
+  assert.ok(r2.ok, JSON.stringify(r2));
+  assert.ok(clear(w, jc), `clear: ${jc.x}, ${jc.z}, ${jc.heading}`);
 });
 
 // --- real map data ------------------------------------------------------------------------------------------
