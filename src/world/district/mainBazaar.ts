@@ -174,36 +174,27 @@ export const LOT_NOTES: Record<number, Partial<Lot> & { note: string }> = {
   // yellow at the west end, brighter paint toward Lebuh Wayang) is applied statistically instead.
 };
 
+/** V9-P3: the arcade paint is the facade paint, this much more saturated (HSL, 0-1)... */
+export const V9_PAINT_SAT = 0.12;
+/** ...and this much darker (HSL lightness, 0-1), so it reads as the same paint in the shade of the walkway. */
+export const V9_PAINT_DARK = 0.06;
 /**
- * V9 prototype (?v9=1): paint of the five-foot-way piers and party-wall arches, one colour per
- * building. Palette observed in Commons photos M3/M4 (2010-2012); typology, not per-lot survey.
- * Orange/ochre, red, yellow and a lighter cream variant, each building painted strongly.
+ * V9 prototype (?v9=1): paint of a building's five-foot-way piers, party walls and spandrels, derived from
+ * the building's upper-facade colour `wall` (Lot.wall, the colour addUpper paints): same hue, slightly more
+ * saturated and darker. Whole shophouses are painted in one colour in the Commons photos M3/M4 (2010-2012);
+ * typology, not per-lot survey. Pure: sRGB hex in, sRGB hex out.
  */
-export const V9_ARCADE_PAINT = [0xd9812c, 0xb23a2d, 0xe2b42e, 0xe8dcb6, 0xc88a35];
-/** Paint of a lot's arcade. Consecutive buildings (group numbers) always differ because gcd(3, 5) = 1. */
-export function v9ArcadePaint(lot: { group: number }): number {
-  return V9_ARCADE_PAINT[(lot.group * 3 + 1) % V9_ARCADE_PAINT.length];
-}
-
-let runOffsets: Map<string, number> | null = null;
-/**
- * Number of a building along the whole Main Bazaar arcade run (FRONTS in declaration order, so the
- * frontage edges of block 236495776 continue one another). Group numbers restart at every frontage
- * edge; this keeps counting, so two buildings that meet across a frontage edge or a corner also get
- * consecutive numbers and therefore different paint (see v9ArcadePaint).
- */
-export function v9RunGroup(buildingId: number, edge: number, group: number): number {
-  if (!runOffsets) {
-    runOffsets = new Map();
-    let off = 0;
-    for (const key of Object.keys(FRONTS)) {
-      runOffsets.set(key, off);
-      const [b, e] = key.split(':').map(Number);
-      const lots = planFront(b, e, 0); // a listed frontage ignores the length
-      off += lots[lots.length - 1].group;
-    }
-  }
-  return (runOffsets.get(`${buildingId}:${edge}`) ?? 0) + group;
+export function v9FacadePaint(wall: number): number {
+  const r = ((wall >> 16) & 255) / 255, g = ((wall >> 8) & 255) / 255, b = (wall & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, c = mx - mn;
+  // hue in sextants (0..6) and HSL saturation
+  const h = c === 0 ? 0 : mx === r ? (((g - b) / c) + 6) % 6 : mx === g ? (b - r) / c + 2 : (r - g) / c + 4;
+  const s = c === 0 ? 0 : c / (1 - Math.abs(2 * l - 1));
+  const s2 = c === 0 ? 0 : Math.min(1, s + V9_PAINT_SAT), l2 = Math.max(0, l - V9_PAINT_DARK);
+  const c2 = (1 - Math.abs(2 * l2 - 1)) * s2, x = c2 * (1 - Math.abs((h % 2) - 1)), m = l2 - c2 / 2;
+  const [r2, g2, b2] = h < 1 ? [c2, x, 0] : h < 2 ? [x, c2, 0] : h < 3 ? [0, c2, x] : h < 4 ? [0, x, c2] : h < 5 ? [x, 0, c2] : [c2, 0, x];
+  const q = (v: number) => Math.round(Math.min(1, Math.max(0, v + m)) * 255);
+  return (q(r2) << 16) | (q(g2) << 8) | q(b2);
 }
 
 /** Deterministic plan of the lots along one frontage. */

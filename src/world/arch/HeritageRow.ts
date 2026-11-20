@@ -7,9 +7,9 @@ import { ARCADE_DEPTH, edgeOutward, insetEdges, pointInRingFlat, ringArea2 } fro
 import { quad, rowFrame } from './Shophouse.ts';
 import type { RowFrame } from './Shophouse.ts';
 import { HT, HT_WHITE, htSub, htUV } from './HeritageAtlas.ts';
-import { FRONT, STYLE, planFront, v9ArcadePaint, v9RunGroup } from '../district/mainBazaar.ts';
+import { FRONT, STYLE, planFront, v9FacadePaint } from '../district/mainBazaar.ts';
 import type { Lot } from '../district/mainBazaar.ts';
-import { v9Lot } from '../district/v9flag.ts';
+import { v9Lot, v9SeamEdge, v9TrimCorner } from '../district/v9flag.ts';
 import { ITEM, lotFloor, lotItems } from '../district/frontLayout.ts';
 import { blob } from '../district/Dressing.ts';
 
@@ -205,10 +205,26 @@ export function v9ArchRadius(fy: number, b0: number): number {
   return Math.max(0.55, Math.min(V9_ARCH_R, b0 - V9_CROWN_GAP - fy - V9_MIN_JAMB));
 }
 
+/**
+ * The V9 opening between floor fy and flat ceiling b0: a round-headed arch of radius r springing at ys,
+ * or, where the walkway is too low for even the 0.55 m arch to leave a 1.77 m jamb (a lot on a steep
+ * rise), a flat-topped opening of the full width under a 0.12 m lintel. The flat branch is a fallback that draws nothing on the
+ * shipped terrain: the one lot that low (236495776 edge 16, lot 0) is a run start, which has no wall (the clearance test asserts this).
+ */
+export function v9Opening(fy: number, b0: number): { r: number; ys: number; half: number; flat: boolean } {
+  const r = v9ArchRadius(fy, b0);
+  if (b0 - V9_CROWN_GAP - r - fy >= V9_MIN_JAMB - 0.03) return { r, ys: b0 - V9_CROWN_GAP - r, half: r, flat: false };
+  return { r: 0, ys: b0 - V9_CROWN_GAP, half: V9_ARCH_R, flat: true };
+}
+
 /** How a V9 lot meets its neighbours (see addHeritageRow). */
 export interface V9Lot {
-  /** Hex arcade paint of the building. */
+  /** Hex arcade paint of the building (derived from its facade colour, see v9FacadePaint). */
   paint: number;
+  /** Hex paint of the flush end pier at a run start / run end (the paint of the run it closes, see addHeritageRow). */
+  pier0: number; pier1: number;
+  /** Grow that end pier by 3 mm (it shares its square with an old pier or stands free); false where it is drawn inside a V9 pier. */
+  grow0: boolean; grow1: boolean;
   /** a = 0 end: 'wall' = straight arched party wall, 'mitre' = arched wall on the bisector of a corner, 'end' = run end (flush end pier, no wall). */
   start: 'wall' | 'mitre' | 'end';
   /** a = w end: 'none' = the next lot draws the wall, 'mitre' = corner bisector, 'end' = run end. */
@@ -217,7 +233,15 @@ export interface V9Lot {
   s0: number; s1: number;
   /** Floor level of the lot before this one (null at a run end): a riser fills the step. */
   prevFy: number | null;
+  /**
+   * V9-P3: frontage (from a = 0 / up to a = w) kept clear of shopfront and shop interior at the shopfront line, where the other arcade of a
+   * sharp corner crosses the lot, and how that clear width changes per metre of depth (the interior's flank follows the other arcade's inner line).
+   */
+  clip0: number; clip1: number; cs0: number; cs1: number;
 }
+
+/** Depth of an open shop's interior behind the shopfront (ID in addGround), metres. */
+const V9_SHOP_DEPTH = 3.4;
 
 /** V9 run-end piers are 3 mm larger than the column: where the neighbouring (old) lot has its own pier on the same square, the V9 pier wins instead of z-fighting with it. */
 const V9_PIER_GROW = 0.003;
@@ -241,13 +265,16 @@ function v9Tone(h: number, face: number): number {
  */
 function addV9Arch(f: Frame, fy: number, b0: number, paint: THREE.Color, s: number, h: number, prevFy: number | null): void {
   const T = V9_WALL_T, d0 = V9_WALL_D0, dEnd = D, dc = (d0 + dEnd) / 2;
-  const r = v9ArchRadius(fy, b0), ys = b0 - V9_CROWN_GAP - r;
+  const { r, ys, half, flat } = v9Opening(fy, b0);
   const rev = paint.clone().multiplyScalar(0.9);
   const P = (a: number, d: number, y: number): P3 => f.p(a + s * d, d, y);
   // Face normal of the (sheared) wall plane, dir = +-1 along the frontage.
   const wn = (dir: number): [number, number] => { const x = f.ex * dir + s * dir * f.nx, z = f.ez * dir + s * dir * f.nz, l = Math.hypot(x, z) || 1; return [x / l, z / l]; };
   const dArc: number[] = [], yArc: number[] = [];
-  for (let k = 0; k <= V9_ARCH_SEGS; k++) { const t = (Math.PI * k) / V9_ARCH_SEGS; dArc.push(dc - r * Math.cos(t)); yArc.push(ys + r * Math.sin(t)); }
+  for (let k = 0; k <= V9_ARCH_SEGS; k++) {
+    const t = (Math.PI * k) / V9_ARCH_SEGS;
+    dArc.push(flat ? dc - half + (2 * half * k) / V9_ARCH_SEGS : dc - r * Math.cos(t)); yArc.push(flat ? ys : ys + r * Math.sin(t));
+  }
   const dl = dArc[0], dr = dArc[V9_ARCH_SEGS];
   // The wall (strips and jambs) stands on the lower of the two floors it separates, so a rising step leaves no gap under it.
   const yb = prevFy === null ? fy : Math.min(fy, prevFy);
@@ -261,7 +288,7 @@ function addV9Arch(f: Frame, fy: number, b0: number, paint: THREE.Color, s: numb
   quad(f.buf, P(-T, dl, yb), P(T, dl, yb), P(T, dl, ys), P(-T, dl, ys), -f.nx, 0, -f.nz, rev, HT_WHITE);
   quad(f.buf, P(T, dr, yb), P(-T, dr, yb), P(-T, dr, ys), P(T, dr, ys), f.nx, 0, f.nz, rev, HT_WHITE);
   for (let k = 0; k < V9_ARCH_SEGS; k++) {
-    const tm = (Math.PI * (k + 0.5)) / V9_ARCH_SEGS, c = Math.cos(tm), sn = Math.sin(tm);
+    const tm = (Math.PI * (k + 0.5)) / V9_ARCH_SEGS, c = flat ? 0 : Math.cos(tm), sn = flat ? 1 : Math.sin(tm);
     quad(f.buf, P(-T, dArc[k], yArc[k]), P(T, dArc[k], yArc[k]), P(T, dArc[k + 1], yArc[k + 1]), P(-T, dArc[k + 1], yArc[k + 1]), -f.nx * c, -sn, -f.nz * c, rev, HT_WHITE);
   }
   // Step between this lot's floor and the previous one's: a terracotta riser across the opening, facing the lower floor.
@@ -286,7 +313,14 @@ function addV9Floor(f: Frame, w: number, fy: number, h: number, aS: (d: number) 
   }
 }
 
-function addGround(f: Frame, lot: Lot, w: number, g: number, fy: number, first: boolean, last: boolean, v9: V9Lot | null = null): void {
+/**
+ * V9-P3 round 3: shopfront trim of an old (non-V9) lot at a trimmed corner (V9_TRIM_CORNERS): frontage from a = 0 / up to a = w kept
+ * clear of shopfront and shop interior (0 = no trim). The interior stays rectangular: there the other arcade's inner line runs out of the
+ * lot before the shop's back wall.
+ */
+export interface OldCut { c0: number; c1: number }
+
+function addGround(f: Frame, lot: Lot, w: number, g: number, fy: number, first: boolean, last: boolean, v9: V9Lot | null = null, cut: OldCut | null = null): void {
   const b0 = g + HH.beam0, b1 = g + HH.beam1;
   const wallC = hex(c1, lot.wall, 0.95).clone();
   const trim = hex(c2, lot.trim).clone();
@@ -324,10 +358,13 @@ function addGround(f: Frame, lot: Lot, w: number, g: number, fy: number, first: 
 
   // Shopfront on the recessed line.
   const j = 0.24, yo = fy + 2.5;
-  const x0 = v9 ? aS(D) + j : j, x1 = v9 ? aE(D) - j : w - j; // shopfront between the jambs
+  // Shopfront between the jambs. A V9-P3 corner clip moves a jamb only where it is set (> 0): at a concave mitre aS(D) < 0 or aE(D) > w and stays.
+  // An old lot without a cut keeps its V8.6 jambs exactly (0..j and w - j..w).
+  const x0 = v9 ? (v9.clip0 > 0 ? Math.max(aS(D), v9.clip0) : aS(D)) + j : cut && cut.c0 > 0 ? cut.c0 + j : j;
+  const x1 = v9 ? (v9.clip1 > 0 ? Math.min(aE(D), w - v9.clip1) : aE(D)) - j : cut && cut.c1 > 0 ? w - cut.c1 - j : w - j;
   const jamb = wallC.clone().multiplyScalar(0.92);
   f.face(x0 - j, x0, fy, b0, D, jamb, htSub(HT.plaster, 0, 0, 0.1, 0.6));
-  f.face(x1, v9 ? x1 + j : w, fy, b0, D, jamb, htSub(HT.plaster, 0.9, 0, 1, 0.6));
+  f.face(x1, v9 || (cut && cut.c1 > 0) ? x1 + j : w, fy, b0, D, jamb, htSub(HT.plaster, 0.9, 0, 1, 0.6));
   if (lot.front === FRONT.doors) {
     f.face(x0, x1, fy, yo + 0.2, D, hex(c1, [0xffffff, 0xd9c9b0, 0xb9d0c0, 0xc8d4e0][(h >>> 9) % 4]), htUV(HT.timberDoor));
     f.face(x0, x1, yo + 0.2, b0, D, jamb, htSub(HT.plaster, 0.1, 0.6, 0.9, 0.75));
@@ -337,12 +374,26 @@ function addGround(f: Frame, lot: Lot, w: number, g: number, fy: number, first: 
     const ID = 3.4;
     const tile = [HT.shopCraft, HT.shopCafe, HT.shopDry][lot.interior];
     const lit = rgb(c1, 1.75, 1.62, 1.4).clone();
-    f.face(x0, x1, fy, yo, D + ID, lit, htUV(tile));
     const sideC = rgb(c1, 1.1, 1.02, 0.9).clone();
-    f.side(x0, D, D + ID, fy, yo, 1, sideC, htSub(tile, 0.02, 0.12, 0.6, 0.86));
-    f.side(x1, D, D + ID, fy, yo, -1, sideC, htSub(tile, 0.4, 0.12, 0.98, 0.86));
-    f.flat(x0, x1, D, D + ID, fy + 0.01, 1, rgb(c1, 0.62, 0.58, 0.52), htSub(HT.floorTile, 0, 0, 1, 0.5));
-    f.flat(x0, x1, D, D + ID, yo, -1, rgb(c1, 0.75, 0.72, 0.66));
+    if (v9 && (v9.cs0 !== 0 || v9.cs1 !== 0)) {
+      // V9-P3 corner lot: the interior is a trapezoid whose flank runs along the inner line of the other arcade.
+      const E = D + ID, xa = x0 + v9.cs0 * ID, xb = x1 - v9.cs1 * ID;
+      const flank = (a0: number, a1: number, dir: number, cs: number, uv: readonly number[]) => {
+        const l = Math.hypot(1, cs), na = dir / l, nd = -cs / l;
+        quad(f.buf, f.p(a0, D, fy), f.p(a1, E, fy), f.p(a1, E, yo), f.p(a0, D, yo), f.ex * na - f.nx * nd, 0, f.ez * na - f.nz * nd, sideC, uv);
+      };
+      f.face(xa, xb, fy, yo, E, lit, htUV(tile));
+      flank(x0, xa, 1, v9.cs0, htSub(tile, 0.02, 0.12, 0.6, 0.86));
+      flank(x1, xb, -1, v9.cs1, htSub(tile, 0.4, 0.12, 0.98, 0.86));
+      quad(f.buf, f.p(x0, D, fy + 0.01), f.p(x1, D, fy + 0.01), f.p(xb, E, fy + 0.01), f.p(xa, E, fy + 0.01), 0, 1, 0, rgb(c1, 0.62, 0.58, 0.52), htSub(HT.floorTile, 0, 0, 1, 0.5));
+      quad(f.buf, f.p(x0, D, yo), f.p(x1, D, yo), f.p(xb, E, yo), f.p(xa, E, yo), 0, -1, 0, rgb(c1, 0.75, 0.72, 0.66));
+    } else {
+      f.face(x0, x1, fy, yo, D + ID, lit, htUV(tile));
+      f.side(x0, D, D + ID, fy, yo, 1, sideC, htSub(tile, 0.02, 0.12, 0.6, 0.86));
+      f.side(x1, D, D + ID, fy, yo, -1, sideC, htSub(tile, 0.4, 0.12, 0.98, 0.86));
+      f.flat(x0, x1, D, D + ID, fy + 0.01, 1, rgb(c1, 0.62, 0.58, 0.52), htSub(HT.floorTile, 0, 0, 1, 0.5));
+      f.flat(x0, x1, D, D + ID, yo, -1, rgb(c1, 0.75, 0.72, 0.66));
+    }
     // Transom over the opening: timber ventilation bars.
     f.face(x0, x1, yo, b0, D, jamb, htSub(HT.plaster, 0.1, 0.6, 0.9, 0.75));
     f.box(x0, x1, D - 0.12, D, yo - 0.16, yo + 0.04, rgb(c1, 0.5, 0.52, 0.53));
@@ -379,8 +430,9 @@ function addGround(f: Frame, lot: Lot, w: number, g: number, fy: number, first: 
     switch (it.kind) {
       case ITEM.column: {
         if (v9) {
-          const g = (v9.start === 'end' && a0 > -1e-9 && a1 < 0.46 + 1e-9) || (v9.end === 'end' && a1 > w - 1e-9) ? V9_PIER_GROW : 0; // run-end pier
-          f.box(a0 - g, a1 + g, d0 - g, d1 + g, fy - 0.6, b0, paint, HT_WHITE, false);
+          const s0 = v9.start === 'end' && a0 > -1e-9 && a1 < 0.46 + 1e-9, s1 = v9.end === 'end' && a1 > w - 1e-9; // run-end piers
+          const g = (s0 && v9.grow0) || (s1 && v9.grow1) ? V9_PIER_GROW : 0;
+          f.box(a0 - g, a1 + g, d0 - g, d1 + g, fy - 0.6, b0, s0 ? hex(c2, v9.pier0).clone() : s1 ? hex(c2, v9.pier1).clone() : paint, HT_WHITE, false);
           break;
         } // square plastered pier, no capital
         const dado = (lot.group + (h >>> 30)) % 2 === 0;
@@ -464,27 +516,30 @@ export function addHeritageRow(b: BuildingData, ox: number, oz: number, ctx: Bui
   const simple = ctx.detail !== 'high';
   const side = hex(c3, 0xdcd6c8, 0.9 + ((b.id % 12) / 100)).clone();
 
-  // V9 (flag on): how consecutive frontage edges meet. Only the lots of the Main Bazaar frontages (FRONTS) take part.
+  // V9 (flag on): how consecutive frontage edges meet. The lots of the Main Bazaar frontages (FRONTS) take part, and (V9-P3)
+  // the lots of the old frontage edges that meet the run at its ends (V9_SEAM_EDGES).
   const edgeFrame = (e: number) => {
     const k = (e + 1) % n, len = Math.hypot(ring[k * 2] - ring[e * 2], ring[k * 2 + 1] - ring[e * 2 + 1]);
     const [nx, nz] = edgeOutward(ring, e, fr.area2);
     return { ax: ring[e * 2], az: ring[e * 2 + 1], len, ex: (ring[k * 2] - ring[e * 2]) / len, ez: (ring[k * 2 + 1] - ring[e * 2 + 1]) / len, nx, nz };
   };
-  const v9Edge = (e: number): boolean => { const l = plans.get(e); return !!l && v9Lot(b.id, l[0].no); };
+  const frontEdge = (e: number): boolean => { const l = plans.get(e); return !!l && v9Lot(b.id, l[0].no); };
+  const v9Edge = (e: number): boolean => frontEdge(e) || (plans.has(e) && v9SeamEdge(b.id, e));
   const floorAt = (e: number, u: number): number => {
     const g = edgeFrame(e), w = g.len / plans.get(e)!.length;
     return lotFloor((x, z) => ctx.height.sample(x, z), ox + g.ax + g.ex * w * (u + 0.5), oz + g.az + g.ez * w * (u + 0.5), g.nx, g.nz);
   };
   /**
-   * Floor level actually drawn for lot u of edge e. A V9 lot at a run end (corner onto a non-V9 edge) lies 3 mm under the lower of its own
-   * floor and the floor of the neighbouring old lot it overlaps: one height for the whole lot, so the old checker floor always wins in the
-   * overlap and no step or seam is left between the lot's own tiles. Every other lot keeps its natural level (collision is unchanged).
+   * Floor level actually drawn for lot u of edge e. A V9 lot at a run end lies 3 mm under the lower of its own floor and the floor of the
+   * neighbouring lot it overlaps, unless that lot is a Main Bazaar (FRONTS) lot: one height for the whole lot, so the old checker floor, or
+   * the floor of a seam-edge lot (V9-P3), always wins in the overlap and no step or seam is left between the lot's own tiles. Every other
+   * lot keeps its natural level (collision is unchanged).
    */
   const drawnFloor = (e: number, u: number): number => {
     let y = floorAt(e, u);
     const cnt = plans.get(e)!.length, nb: number[] = [];
-    if (u === 0 && !joint((e + n - 1) % n)) { const pe = (e + n - 1) % n, pl = plans.get(pe); if (pl && !v9Edge(pe)) nb.push(floorAt(pe, pl.length - 1)); }
-    if (u === cnt - 1 && !joint(e)) { const ne = (e + 1) % n, nl = plans.get(ne); if (nl && !v9Edge(ne)) nb.push(floorAt(ne, 0)); }
+    if (u === 0 && !joint((e + n - 1) % n)) { const pe = (e + n - 1) % n, pl = plans.get(pe); if (pl && !frontEdge(pe)) nb.push(floorAt(pe, pl.length - 1)); }
+    if (u === cnt - 1 && !joint(e)) { const ne = (e + 1) % n, nl = plans.get(ne); if (nl && !frontEdge(ne)) nb.push(floorAt(ne, 0)); }
     return nb.length ? Math.min(y, ...nb) - V9_FLOOR_SINK : y;
   };
   /** Mitre between the end of V9 edge e and the start of the next one: slopes of both cut lines, or null (a run end). */
@@ -527,18 +582,56 @@ export function addHeritageRow(b: BuildingData, ox: number, oz: number, ctx: Bui
       const fy = lotFloor((x, z) => ctx.height.sample(x, z), mx, mz, nx, nz);
       onLot?.(i, u, lot); // test hook: called before each lot is drawn
       let v9: V9Lot | null = null;
-      if (v9Lot(b.id, lot.no)) {
+      // V9-P3 round 3: clear frontage at the shopfront line of the lot end at a trimmed corner onto edge o (side -1 at a = 0, +1 at a = w):
+      // the point (a, D) of this lot lies k * a + m * D in from edge o's face (a from the corner; see clear below), so it leaves edge o's
+      // walkway at a = (D - m * D) / k. The shopfront plane (depth D) is the only part of the lot that stands in the other walkway.
+      const trimW = (o: number, side: number): number => {
+        const g = edgeFrame(o), k = side * (g.nx * ex + g.nz * ez), m = g.nx * nx + g.nz * nz;
+        return k < 0.2 ? 0 : Math.max(0, (D - m * D) / k);
+      };
+      const seam = !v9Lot(b.id, lot.no) && v9SeamEdge(b.id, i);
+      if (v9Lot(b.id, lot.no) || seam) {
         const lastLot = u === lots.length - 1, pj = u === 0 ? joint((i + n - 1) % n) : null, nj = lastLot ? joint(i) : null;
+        const pe = (i + n - 1) % n, ne = (i + 1) % n, paint = v9FacadePaint(lot.wall), start = u > 0 ? 'wall' : pj ? 'mitre' : 'end', end = !lastLot ? 'none' : nj ? 'mitre' : 'end';
+        // A seam lot's end pier at a sharp corner onto the Main Bazaar run stands inside the run's own (3 mm larger) end pier: it takes
+        // that pier's paint and is not grown, so the two read as one pier. Every other run-end pier keeps the 3 mm growth.
+        const cornerPrev = seam && start === 'end' && frontEdge(pe), cornerNext = seam && end === 'end' && frontEdge(ne);
+        // At a sharp corner between the run and a seam edge the two arcades cross in the corner bay. The shopfront and shop interior of
+        // each corner lot start where the other arcade ends (D in from the other edge's face), so neither stands in the other's walkway
+        // (the walkway there is already open in the collision outline). Distance in from edge o's face of the point (a, d) of this lot,
+        // a measured from the corner: k * a + m * d (k = -n_o . e before the lot, n_o . e after it; m = n_o . n), so the clear frontage
+        // at depth d is (D - m * d) / k: (D - m * D) / k at the shopfront line, changing by -m / k per metre into the shop.
+        const clear = (o: number, side: number): [number, number] => {
+          const g = edgeFrame(o), k = side * (g.nx * ex + g.nz * ez), m = g.nx * nx + g.nz * nz;
+          // Not a convex corner: nothing crosses. Latent limit: a corner whose clear width reaches 0 before the back wall also gets no cut
+          // (none of the five shipped corners; the corners test fails if any corner lot stands in the other arcade).
+          if (k < 0.2 || (D - m * D) / k <= 0 || (D - m * (D + V9_SHOP_DEPTH)) / k <= 0) return [0, 0];
+          return [(D - m * D) / k, -m / k];
+        };
+        const sharp = (o: number) => v9Edge(o) && (v9SeamEdge(b.id, i) || v9SeamEdge(b.id, o));
+        // V9-P3 round 3: at a trimmed corner (V9_TRIM_CORNERS) the shopfront stops at the inner corner of the two walkways, interior straight.
+        const [clip0, cs0] = start === 'end' && sharp(pe) ? clear(pe, -1) : start === 'end' && v9TrimCorner(b.id, pe) ? [trimW(pe, -1), 0] : [0, 0];
+        const [clip1, cs1] = end === 'end' && sharp(ne) ? clear(ne, 1) : end === 'end' && v9TrimCorner(b.id, i) ? [trimW(ne, 1), 0] : [0, 0];
         v9 = {
-          paint: v9ArcadePaint({ group: v9RunGroup(b.id, i, lot.group) }),
-          start: u > 0 ? 'wall' : pj ? 'mitre' : 'end',
-          end: !lastLot ? 'none' : nj ? 'mitre' : 'end',
+          paint,
+          pier0: cornerPrev ? v9FacadePaint(plans.get(pe)![plans.get(pe)!.length - 1].wall) : paint,
+          pier1: cornerNext ? v9FacadePaint(plans.get(ne)![0].wall) : paint,
+          grow0: !cornerPrev, grow1: !cornerNext,
+          start, end,
           s0: pj ? pj.s0 : 0, s1: nj ? nj.s1 : 0,
           prevFy: u > 0 ? drawnFloor(i, u - 1) : pj ? drawnFloor((i + n - 1) % n, plans.get((i + n - 1) % n)!.length - 1) : null,
+          clip0, clip1, cs0, cs1,
         };
       }
       // Columns: a run end keeps its flush end pier; a party wall or corner gets one shared pier centred on it.
-      addGround(f, lot, w, ground, v9 ? drawnFloor(i, u) : fy, v9 ? v9.start === 'end' : u === 0, v9 ? v9.end === 'end' : u === lots.length - 1, v9);
+      // An old lot at a trimmed corner (V9-P3 round 3) keeps all its V8.6 geometry except the shopfront end at that corner.
+      let cut: OldCut | null = null;
+      if (!v9) {
+        const c0 = u === 0 && v9TrimCorner(b.id, (i + n - 1) % n) ? trimW((i + n - 1) % n, -1) : 0;
+        const c1 = u === lots.length - 1 && v9TrimCorner(b.id, i) ? trimW((i + 1) % n, 1) : 0;
+        if (c0 > 0 || c1 > 0) cut = { c0, c1 };
+      }
+      addGround(f, lot, w, ground, v9 ? drawnFloor(i, u) : fy, v9 ? v9.start === 'end' : u === 0, v9 ? v9.end === 'end' : u === lots.length - 1, v9, cut);
       addUpper(f, lot, w, ground);
     });
   }

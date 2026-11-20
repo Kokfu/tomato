@@ -39,3 +39,27 @@ export function v9Lot(buildingId: number, no: number | null): boolean {
   if (!v9Enabled() || no === null) return false;
   return lotOfNumber(no)?.buildingId === buildingId;
 }
+
+/**
+ * V9-P3: the old (V8.6) frontage edges that meet the Main Bazaar run at its six run ends (block:edge). Behind the
+ * flag their lots take the V9 arcade too, so the run meets them without a grey pier or a checker floor at the seam.
+ */
+export const V9_SEAM_EDGES: readonly string[] = ['233690737:1', '233690737:3', '236495303:17', '236495303:0', '236495776:16', '236495776:5'];
+
+/** True for a frontage edge of V9_SEAM_EDGES while the flag is on. */
+export function v9SeamEdge(buildingId: number, edge: number): boolean {
+  return v9Enabled() && V9_SEAM_EDGES.includes(`${buildingId}:${edge}`);
+}
+
+/**
+ * V9-P3 round 3 (owner-approved, 2026-11-20): corners (block:edge = the corner after that edge) where the shopfronts of both lots stop at
+ * the inner corner of the two walkways. Only the Main Bazaar No 1 corner: 233690737 edge 0 (old V8.6 arcade, kept as the boundary) | edge 1
+ * (seam edge). Without the trim edge 0's last shopfront jamb and transom stand 0.79 m into edge 1's walkway, and edge 1's first one 0.78 m
+ * into edge 0's. The arcades themselves (floors, ceilings, piers, collision) are unchanged.
+ */
+export const V9_TRIM_CORNERS: readonly string[] = ['233690737:0'];
+
+/** True for the corner after frontage edge `edge` of V9_TRIM_CORNERS while the flag is on. */
+export function v9TrimCorner(buildingId: number, edge: number): boolean {
+  return v9Enabled() && V9_TRIM_CORNERS.includes(`${buildingId}:${edge}`);
+}

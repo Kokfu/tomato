@@ -1,4 +1,5 @@
 // V9-VISUAL P2: the five-foot way of the whole Main Bazaar row (Nos 1-71, FRONTS of src/world/district/mainBazaar.ts), behind ?v9=1.
+// V9-P3: plus the six old frontage edges at the run ends (V9_SEAM_EDGES of v9flag.ts), and arcade paint derived from each building's facade.
 //
 // The geometry tests import src/world/arch/HeritageRow.ts, whose module graph uses TypeScript
 // parameter properties, which node's default strip-only mode cannot load. `npm test` runs this file
@@ -11,7 +12,8 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { setV9, v9Enabled, v9Lot, V9_BLOCK, V9_BLOCKS, V9_NOS } from '../../src/world/district/v9flag.ts';
+import { setV9, v9Enabled, v9Lot, v9SeamEdge, v9TrimCorner, V9_BLOCK, V9_BLOCKS, V9_NOS, V9_SEAM_EDGES, V9_TRIM_CORNERS } from '../../src/world/district/v9flag.ts';
+import { v9FacadePaint, V9_PAINT_DARK, V9_PAINT_SAT } from '../../src/world/district/mainBazaar.ts';
 
 const SELF = fileURLToPath(import.meta.url);
 // Resolved from this file, not the cwd, so running it from another directory neither skips nor misreads.
@@ -54,6 +56,14 @@ test('v9flag: false when location is undefined, true only for ?v9=1, read once',
     assert.equal(v9Lot(233690736, 7), false);
     assert.deepEqual([...V9_BLOCKS], [233690737, 236495303, 236495776]);
     assert.deepEqual([...V9_NOS], [1, 71]);
+    // V9-P3: the six old edges at the run ends, and nothing else
+    assert.deepEqual([...V9_SEAM_EDGES], ['233690737:1', '233690737:3', '236495303:17', '236495303:0', '236495776:16', '236495776:5']);
+    for (const k of V9_SEAM_EDGES) { const [b, e] = k.split(':').map(Number); assert.equal(v9SeamEdge(b, e), true, k); }
+    for (const [b, e] of [[233690737, 0], [233690737, 2], [236495303, 18], [236495776, 0], [236495776, 4], [233690736, 1], [236495388, 3]]) assert.equal(v9SeamEdge(b, e), false, `${b}:${e}`);
+    // V9-P3 round 3: the one trimmed corner (Main Bazaar No 1 corner, after 233690737 edge 0), and nothing else
+    assert.deepEqual([...V9_TRIM_CORNERS], ['233690737:0']);
+    assert.equal(v9TrimCorner(233690737, 0), true);
+    for (const [b, e] of [[233690737, 1], [233690737, 3], [236495303, 0], [236495776, 0], [233690736, 0]]) assert.equal(v9TrimCorner(b, e), false, `${b}:${e}`);
     for (const s of ['', '?v9=0', '?v9=true', '?v90=1']) { g.location = { search: s }; setV9(null); assert.equal(v9Enabled(), false, s); }
     g.location = { search: '?x=2&v9=1' }; setV9(null);
     assert.equal(v9Enabled(), true);
@@ -62,6 +72,26 @@ test('v9flag: false when location is undefined, true only for ?v9=1, read once',
     setV9(null);
   }
   assert.equal(v9Enabled(), false);
+  for (const k of V9_SEAM_EDGES) { const [b, e] = k.split(':').map(Number); assert.equal(v9SeamEdge(b, e), false, `${k}: off while the flag is off`); }
+  assert.equal(v9TrimCorner(233690737, 0), false, 'the trim corner is off while the flag is off');
+});
+
+test('v9FacadePaint: same hue as the facade, more saturated by V9_PAINT_SAT and darker by V9_PAINT_DARK (HSL); greys stay grey', () => {
+  const hsl = (x: number) => {
+    const r = ((x >> 16) & 255) / 255, g = ((x >> 8) & 255) / 255, b = (x & 255) / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, c = mx - mn;
+    const h = c === 0 ? 0 : mx === r ? (((g - b) / c) + 6) % 6 : mx === g ? (b - r) / c + 2 : (r - g) / c + 4;
+    return { h: h * 60, s: c === 0 ? 0 : c / (1 - Math.abs(2 * l - 1)), l };
+  };
+  // every facade colour of the row (WALLS and WALLS_EAST of mainBazaar.ts) and a few strong ones
+  for (const w of [0xf1ede2, 0xf4efe0, 0xefe6cf, 0xf3e7b9, 0xeedc9c, 0xe9e4d6, 0xdfe7d8, 0xd5e3ea, 0xf0d9c8, 0xe6ddc9, 0xf2e2a8, 0xe7c9b0,
+    0x9cc4dc, 0xf0c56a, 0xf2b38a, 0xf2c4cc, 0xcfe3c0, 0x8fb8d8, 0xf4d77a, 0xe9a67c, 0xd9e6c2, 0xb23a2d, 0x2c5f86]) {
+    const a = hsl(w), p = hsl(v9FacadePaint(w)), dh = Math.min(Math.abs(a.h - p.h), 360 - Math.abs(a.h - p.h));
+    assert.ok(dh < 3, `${w.toString(16)}: hue kept (${a.h.toFixed(1)} -> ${p.h.toFixed(1)})`);
+    assert.ok(Math.abs(a.l - V9_PAINT_DARK - p.l) < 0.006, `${w.toString(16)}: darker by ${V9_PAINT_DARK} (${a.l.toFixed(3)} -> ${p.l.toFixed(3)})`);
+    assert.ok(Math.abs(Math.min(1, a.s + V9_PAINT_SAT) - p.s) < 0.03, `${w.toString(16)}: saturation ${a.s.toFixed(3)} -> ${p.s.toFixed(3)}`);
+  }
+  for (const g of [0x808080, 0xffffff, 0x000000]) { const p = v9FacadePaint(g); assert.ok(((p >> 16) & 255) === ((p >> 8) & 255) && ((p >> 8) & 255) === (p & 255), `${g.toString(16)} stays grey`); }
+  assert.equal(v9FacadePaint(0xf1ede2), v9FacadePaint(0xf1ede2), 'pure');
 });
 
 if (!INNER) {
@@ -80,12 +110,12 @@ if (!INNER) {
   const THREE = await import('three');
   const { HT, htUV, HT_WHITE } = await import('../../src/world/arch/HeritageAtlas.ts');
   const { buildBuildings } = await import('../../src/world/BuildingBuilder.ts');
-  const { addHeritageRow, v9ArchRadius, V9_ARCH_SEGS, HH } = await import('../../src/world/arch/HeritageRow.ts');
+  const { addHeritageRow, v9ArchRadius, v9Opening, V9_ARCH_SEGS, HH } = await import('../../src/world/arch/HeritageRow.ts');
   const { GeoBuf } = await import('../../src/world/Materials.ts');
   const { HeightMap } = await import('../../src/world/HeightMap.ts');
   const { edgeOutward, ringArea2, ARCADE_DEPTH: D } = await import('../../src/world/arch/frontage.ts');
   const { lotFloor } = await import('../../src/world/district/frontLayout.ts');
-  const { v9ArcadePaint, V9_ARCADE_PAINT, planFront, FRONTS } = await import('../../src/world/district/mainBazaar.ts');
+  const { planFront, FRONTS } = await import('../../src/world/district/mainBazaar.ts');
   const { PLAYER } = await import('../../src/player/PlayerController.ts');
 
   // Mock terrain (the one of the V8.6 hash constants) and the shipped terrain (height.bin through HeightMap, exactly as the app samples it).
@@ -131,6 +161,11 @@ if (!INNER) {
   const OTHER = [{ id: 233690736, chunk: '0_-1' }, { id: 236495388, chunk: '0_0' }];
   const origin = (key: string): [number, number] => { const [cx, cz] = key.split('_').map(Number); return [cx * 256, cz * 256]; };
   const fronts = (id: number): number[] => Object.keys(FRONTS).filter((k) => k.startsWith(`${id}:`)).map((k) => Number(k.split(':')[1]));
+  /** V9-P3: the old edges of a block that meet the run at its ends, and every edge drawn as V9 (FRONTS first). */
+  const seams = (id: number): number[] => V9_SEAM_EDGES.filter((k) => k.startsWith(`${id}:`)).map((k) => Number(k.split(':')[1]));
+  const v9e = (id: number): number[] => [...fronts(id), ...seams(id)];
+  /** Name of a lot in messages: its house number, or block:edge:u for the unnumbered seam-edge lots. */
+  const nm = (l: { no: number | null; id: number; key: string }) => (l.no !== null ? `No ${l.no}` : `${l.id}:${l.key}`);
 
   interface LotRec {
     id: number; edge: number; u: number; no: number | null; key: string; v: [number, number]; i: [number, number];
@@ -160,19 +195,26 @@ if (!INNER) {
       const fy = lotFloor((x, z) => c.height.sample(x, z), ox + x0 + ex * w / 2, oz + z0 + ez * w / 2, nx, nz);
       lots.set(`${m.edge}:${m.u}`, { id: def.id, edge: m.edge, u: m.u, no: m.lot.no, key: `${m.edge}:${m.u}`, v: [m.v, nxt ? nxt.v : buf.count], i: [m.i, nxt ? nxt.i : buf.idx.length], w, x0, z0, ex, ez, nx, nz, fy, b0: ground + HH.beam0, group: m.lot.group, lot: m.lot, first: m.u === 0, last: m.u === cnt - 1, fyRaw: fy });
     });
-    // Flag on: a V9 lot at a run end is drawn 3 mm under the lower of its own floor and the neighbouring old lot's floor (one height for the whole lot).
+    // Edges that carry lots (frontage edges long enough to be planned).
+    const planned = [...new Set(marks.map((m) => m.edge))];
+    // Flag on: a V9 lot at a run end is drawn 3 mm under the lower of its own floor and the neighbouring lot's floor, unless that neighbour is a
+    // Main Bazaar (FRONTS) lot (one height for the whole lot).
     if (v9Enabled()) for (const l of lots.values()) {
-      if (!fronts(def.id).includes(l.edge)) continue;
-      const nb = runEndStrips({ n, ring, a2 }, l, c, def.chunk).map((q) => q.fy5);
+      if (!v9e(def.id).includes(l.edge)) continue;
+      const nb = runEndStrips({ n, ring, a2, planned }, l, c, def.chunk).map((q) => q.fy5);
       if (nb.length) l.fy = Math.min(l.fyRaw, ...nb) - 0.003;
     }
-    return { buf, lots, ring, n, a2, ground, b };
+    return { buf, lots, ring, n, a2, ground, b, planned };
   }
-  /** The old (non-V9) lot strips a V9 run-end lot overlaps: its neighbouring edge's first or last lot, with that lot's natural floor level. */
-  function runEndStrips(row: { n: number; ring: number[]; a2: number }, l: LotRec, c: any, chunkKey: string): { e: number; fy5: number; rect: number[] }[] {
+  /**
+   * The lot strips a V9 run-end lot sinks under: its neighbouring edge's first or last lot, with that lot's natural floor level, when that edge
+   * carries lots and is not a Main Bazaar (FRONTS) edge (an old edge, or a V9-P3 seam edge seen from the run).
+   */
+  function runEndStrips(row: { n: number; ring: number[]; a2: number; planned: number[] }, l: LotRec, c: any, chunkKey: string): { e: number; fy5: number; rect: number[] }[] {
     const ex = expectEnds(row as any, l), nbs: { e: number; idx: 'first' | 'last' }[] = [];
-    if (ex.start === 'end') nbs.push({ e: (l.edge + row.n - 1) % row.n, idx: 'last' });
-    if (ex.end === 'end') nbs.push({ e: (l.edge + 1) % row.n, idx: 'first' });
+    const sinksUnder = (e: number) => row.planned.includes(e) && !fronts(l.id).includes(e);
+    if (ex.start === 'end' && sinksUnder((l.edge + row.n - 1) % row.n)) nbs.push({ e: (l.edge + row.n - 1) % row.n, idx: 'last' });
+    if (ex.end === 'end' && sinksUnder((l.edge + 1) % row.n)) nbs.push({ e: (l.edge + 1) % row.n, idx: 'first' });
     const [ox, oz] = origin(chunkKey);
     return nbs.map(({ e, idx }) => {
       const j = (e + 1) % row.n, ax = row.ring[e * 2], az = row.ring[e * 2 + 1], len = Math.hypot(row.ring[j * 2] - ax, row.ring[j * 2 + 1] - az);
@@ -214,7 +256,11 @@ if (!INNER) {
   const ft = htUV(HT.floorTile), plaster = htUV(HT.plaster);
   const terra = new THREE.Color().setHex(0xa65a40); // same colour-management path as the code
   const near = (c: number[], t: { r: number; g: number; b: number }, k = 1) => Math.abs(c[0] - t.r * k) < 1e-5 && Math.abs(c[1] - t.g * k) < 1e-5 && Math.abs(c[2] - t.b * k) < 1e-5;
-  const paintOf = (rec: LotRec) => new THREE.Color().setHex(v9ArcadePaint({ group: runGroup(rec) }));
+  /** V9-P3: the arcade paint of a lot is derived from its own facade colour. */
+  const paintOf = (rec: { lot: { wall: number } }) => new THREE.Color().setHex(v9FacadePaint(rec.lot.wall));
+  /** The P2 rule (superseded): a five-paint palette indexed by the run-wide building number. Kept here only to show the mismatch it caused. */
+  const P2_PAINT = [0xd9812c, 0xb23a2d, 0xe2b42e, 0xe8dcb6, 0xc88a35];
+  const p2Paint = (rec: LotRec) => P2_PAINT[(runGroup(rec) * 3 + 1) % P2_PAINT.length];
   // The run-wide building number, derived here independently: groups of the FRONTS in declaration order.
   const runGroup = (rec: { id: number; edge: number; group: number }) => {
     let off = 0;
@@ -239,13 +285,17 @@ if (!INNER) {
       const [nx, nz] = edgeOutward(r.ring, q, r.a2), [ex, ez] = unit(q);
       return (mx * ex + mz * ez) / -(mx * nx + mz * nz);
     };
-    const f = fronts(l.id);
+    const f = v9e(l.id), front = fronts(l.id), seam = seams(l.id).includes(e);
     const joinPrev = l.first && f.includes(prev) && cosAt(prev, e) >= 0.5, joinNext = l.last && f.includes(next) && cosAt(e, next) >= 0.5;
+    // V9-P3: a seam lot's end pier at a sharp corner onto the run takes the paint of the run's end lot there and is not grown.
+    const cornerPrev = seam && l.first && !joinPrev && front.includes(prev), cornerNext = seam && l.last && !joinNext && front.includes(next);
+    const own = v9FacadePaint(l.lot.wall), runLot = (pe: number, last: boolean) => { const q = planFront(l.id, pe, 0); return v9FacadePaint(q[last ? q.length - 1 : 0].wall); };
     return {
       start: l.first ? (joinPrev ? 'mitre' : 'end') : 'wall', end: l.last ? (joinNext ? 'mitre' : 'end') : 'none',
       s0: joinPrev ? slope(prev, e) : 0, s1: joinNext ? slope(e, e) : 0,
       turnPrev: joinPrev ? cosAt(prev, e) : null, turnNext: joinNext ? cosAt(e, next) : null,
-    } as { start: 'wall' | 'mitre' | 'end'; end: 'none' | 'mitre' | 'end'; s0: number; s1: number; turnPrev: number | null; turnNext: number | null };
+      cornerPrev, cornerNext, pier0: cornerPrev ? runLot(prev, true) : own, pier1: cornerNext ? runLot(next, false) : own,
+    } as { start: 'wall' | 'mitre' | 'end'; end: 'none' | 'mitre' | 'end'; s0: number; s1: number; turnPrev: number | null; turnNext: number | null; cornerPrev: boolean; cornerNext: boolean; pier0: number; pier1: number };
   }
 
   /** Every check of the brief on the emitted triangles of one lot. */
@@ -267,14 +317,16 @@ if (!INNER) {
       if (p.every((q) => Math.abs(q.y - l.b0) < EPS && q.ny < -0.9 && q.d > -1e-6 && q.d < D + 1e-6)) ceilArea += area(p);
       const as = p.map((q) => q.a - s * q.d);
       if (Math.abs(Math.abs(as[0]) - T) < EPS && as.every((x) => Math.abs(x - as[0]) < 1e-6) && p.every((q) => Math.abs(q.ny) < 1e-6 || Math.abs(q.ny) < 0.2)) wall.push(p);
-      else if (p.every((q) => q.d >= 0.46 - EPS && q.d <= D + EPS && q.y >= l.fy - 0.2 && q.y <= l.b0 + EPS) && as.every((x) => Math.abs(x) <= T + EPS) && Math.max(...as) - Math.min(...as) > 1e-6 && !p.every((q) => Math.abs(q.y - p[0].y) < EPS)) reveal.push(p);
+      else if (p.every((q) => q.d >= 0.46 - EPS && q.d <= D + EPS && q.y >= l.fy - 1.5 && q.y <= l.b0 + EPS) && as.every((x) => Math.abs(x) <= T + EPS) && Math.max(...as) - Math.min(...as) > 1e-6 && (!p.every((q) => Math.abs(q.y - p[0].y) < EPS) || (v9Opening(l.fy, l.b0).flat && p.every((q) => Math.abs(q.y - (l.b0 - 0.12)) < EPS && q.ny < -0.9)))) reveal.push(p);
       else if (as.every((x) => Math.abs(x) < 1e-6) && p.every((q) => q.d > 0.5 && q.d < D) && Math.abs(p[0].ny) < 0.2) riser.push(p);
     }
     // piers: vertical faces whose vertices all sit at the foot (fy - 0.6) or the ceiling line, within the column footprint
-    const G = 0.003; // run-end piers are grown by 3 mm (they would z-fight with the neighbouring old pier on the same square)
-    const feet = [ex.start === 'end' ? [-G, 0.46 + G, G] : [-0.23, 0.23, 0]];
-    if (ex.end === 'end') feet.push([l.w - 0.46 - G, l.w + G, G]);
-    const piers = feet.map(([a0, a1, g]) => {
+    const G = 0.003; // run-end piers are grown by 3 mm (they would z-fight with the neighbouring old pier on the same square), not a seam lot's corner pier
+    const g0 = ex.cornerPrev ? 0 : G, g1 = ex.cornerNext ? 0 : G;
+    const C = (x: number) => new THREE.Color().setHex(x);
+    const feet: [number, number, number, InstanceType<typeof THREE.Color>][] = [ex.start === 'end' ? [-g0, 0.46 + g0, g0, C(ex.pier0)] : [-0.23, 0.23, 0, paint]];
+    if (ex.end === 'end') feet.push([l.w - 0.46 - g1, l.w + g1, g1, C(ex.pier1)]);
+    const piers = feet.map(([a0, a1, g, col]) => {
       const sig: Vx[][] = [];
       let extras = 0;
       for (const p of tris) {
@@ -283,7 +335,7 @@ if (!INNER) {
         if (sigY && p.every((q) => q.a >= a0 - EPS && q.a <= a1 + EPS && q.d >= -g - EPS && q.d <= 0.46 + g + EPS)) sig.push(p);
         else if (p.every((q) => q.a >= a0 - 0.055 && q.a <= a1 + 0.055 && q.d >= -0.055 && q.d <= 0.46 + 0.055 && q.y < l.b0 + EPS) && Math.min(...p.map((q) => q.y)) < l.fy - 1e-6) extras++; // plinth below the floor line
       }
-      return { sig, extras };
+      return { sig, extras, col };
     });
     const wallTone = (side: number) => wall.filter((p) => Math.sign(p[0].a - s * p[0].d) === side);
     const toneOk = (ps: Vx[][]) => ps.length > 0 && (() => { const t = ps[0][0].c[0] / paint.r; return t >= 0.97 - 1e-3 && t <= 1.03 + 1e-3 && ps.every((p) => p.every((q) => near(q.c, paint, t))); })();
@@ -294,7 +346,7 @@ if (!INNER) {
       floorNoTile: floorArea > 0 && tileArea < 1e-6,
       floorTerracotta: Math.abs(terraArea - floorArea) < 1e-6 && floorArea > 0,
       floorArea, ceilArea, ex, sunk,
-      pierPainted: piers.every((p) => p.sig.length > 0 && p.sig.every((q) => q.every((v) => near(v.c, paint) && inCell(v, white)))),
+      pierPainted: piers.every((p) => p.sig.length > 0 && p.sig.every((q) => q.every((v) => near(v.c, p.col) && inCell(v, white)))),
       pierPlainBox: piers.every((p) => p.sig.length === 8 && p.extras === 0),
       wallPresent: hasWall ? wall.length === 48 && reveal.length === 24 : wall.length === 0 && reveal.length === 0,
       wallPainted: !hasWall || (toneOk(wallTone(-1)) && toneOk(wallTone(1))),
@@ -309,6 +361,9 @@ if (!INNER) {
 
   const V9_ROWS: { def: { id: number; chunk: string }; row: Row }[] = [];
   const all71 = (rows: { row: Row; def: { id: number } }[]) => rows.flatMap(({ row, def }) => fronts(def.id).flatMap((e) => [...row.lots.values()].filter((l) => l.edge === e)));
+  /** Every V9 lot: Nos 1-71 and the 22 lots of the six seam edges. */
+  const allV9 = (rows: { row: Row; def: { id: number } }[]) => rows.flatMap(({ row, def }) => v9e(def.id).flatMap((e) => [...row.lots.values()].filter((l) => l.edge === e)));
+  const N_SEAM = 22, N_V9 = 71 + N_SEAM;
 
   test('flag off: chunk geometry is byte-identical to V8.6 (chunk 0_-1 and all 503 chunks)', () => {
     setV9(false);
@@ -320,7 +375,10 @@ if (!INNER) {
     assert.equal(h.digest('hex'), V86_ALL_CHUNKS);
   });
 
-  test('flag on, scope: exactly the Main Bazaar FRONTS lots (Nos 1-71) differ; Carpenter blocks, other edges and every other chunk are byte-identical; only the heritage buffers change', () => {
+  /** V9-P3 round 3: the one old (non-V9) lot the M2 corner trim changes (233690737 edge 0, last lot). */
+  const TRIMMED = ['233690737:0:3'];
+
+  test('flag on, scope: exactly the Main Bazaar FRONTS lots (Nos 1-71), the 22 lots of the six seam edges and the one trimmed old lot at the M2 corner differ; Carpenter blocks, other edges and every other chunk are byte-identical; only the heritage buffers change', () => {
     setV9(false);
     const offRows = MB.map((def) => ({ def, row: rowOf(def, ctx) })), offOther = OTHER.map((def) => ({ def, row: rowOf(def, ctx) }));
     const offChunks = new Map(allKeys().map((k) => [k, build(k).all]));
@@ -330,16 +388,17 @@ if (!INNER) {
       const onRows = MB.map((def) => ({ def, row: rowOf(def, ctx) })), onOther = OTHER.map((def) => ({ def, row: rowOf(def, ctx) }));
       let nDiffer = 0;
       MB.forEach((def, bi) => {
-        const f = fronts(def.id), off = offRows[bi].row, on = onRows[bi].row;
+        const f = v9e(def.id), off = offRows[bi].row, on = onRows[bi].row;
         assert.deepEqual([...on.lots.keys()], [...off.lots.keys()], `block ${def.id}: same lots in the same order`);
         for (const [key, lo] of off.lots) {
-          const ln = on.lots.get(key)!, isV9 = f.includes(lo.edge);
-          assert.equal(lo.no !== null, isV9, `block ${def.id} edge ${lo.edge}: numbered lots are exactly the FRONTS edges`);
-          if (isV9) { assert.notEqual(lotHash(on, ln), lotHash(off, lo), `block ${def.id} lot ${lo.key} (No ${lo.no}) must change`); nDiffer++; }
-          else assert.equal(lotHash(on, ln), lotHash(off, lo), `block ${def.id} lot ${lo.key} is not a Main Bazaar frontage lot: must be identical`);
+          const ln = on.lots.get(key)!, isV9 = f.includes(lo.edge) || TRIMMED.includes(`${def.id}:${key}`);
+          assert.equal(lo.no !== null, fronts(def.id).includes(lo.edge), `block ${def.id} edge ${lo.edge}: numbered lots are exactly the FRONTS edges`);
+          assert.deepEqual(ln.lot, lo.lot, `block ${def.id} lot ${lo.key}: the lot plan (identity, colours, shopfront) is unchanged`);
+          if (isV9) { assert.notEqual(lotHash(on, ln), lotHash(off, lo), `block ${def.id} lot ${lo.key} (${nm(lo)}) must change`); nDiffer++; }
+          else assert.equal(lotHash(on, ln), lotHash(off, lo), `block ${def.id} lot ${lo.key} is neither a Main Bazaar, a seam-edge nor the trimmed lot: must be identical`);
         }
       });
-      assert.equal(nDiffer, 71);
+      assert.equal(nDiffer, N_V9 + TRIMMED.length, '71 Main Bazaar lots + 22 seam-edge lots + the trimmed lot');
       OTHER.forEach((def, i) => { for (const [key, lo] of offOther[i].row.lots) assert.equal(lotHash(onOther[i].row, onOther[i].row.lots.get(key)!), lotHash(offOther[i].row, lo), `Carpenter block ${def.id} lot ${key} must not change`); });
       const changed: string[] = [];
       for (const [k, h] of offChunks) if (build(k).all !== h) changed.push(k);
@@ -363,13 +422,14 @@ if (!INNER) {
       let worst = 0;
       const per: Record<string, number> = {};
       MB.forEach((def, bi) => {
-        for (const e of fronts(def.id)) {
+        for (const e of v9e(def.id)) {
           let dsum = 0, osum = 0, nsum = 0, nl = 0;
           for (const [key, lo] of off[bi].lots) {
             if (lo.edge !== e) continue;
             const d = lotTris(on[bi].lots.get(key)!) - lotTris(lo);
             worst = Math.max(worst, d); dsum += d; osum += lotTris(lo); nsum += lotTris(on[bi].lots.get(key)!); nl++;
-            assert.ok(d > 0 && d < 140, `lot ${def.id}:${key}: a positive, modest triangle delta (${d})`);
+            assert.ok(d > -40 && d < 160, `lot ${def.id}:${key}: a modest triangle delta (${d})`);
+            if (lo.no !== null) assert.ok(d > 0, `lot ${def.id}:${key}: Main Bazaar (numbered) lots grow`);
           }
           per[`${def.id}:${e}`] = dsum;
           console.log(`V9 tris ${def.id}:${e} (${nl} lots) off ${osum} on ${nsum} delta ${dsum} (${(dsum / nl).toFixed(1)}/lot)`);
@@ -378,29 +438,29 @@ if (!INNER) {
       for (const k of ['0_-1', '1_0'] as const) {
         const t = build(k, realCtx()).total;
         console.log(`V9 tris chunk ${k}: off ${offChunk[k]} on ${t} delta ${t - offChunk[k]}`);
-        assert.ok(t - offChunk[k] > 0 && t - offChunk[k] < 7000, `chunk ${k} growth ${t - offChunk[k]}`);
+        assert.ok(t - offChunk[k] > 0 && t - offChunk[k] < 9000, `chunk ${k} growth ${t - offChunk[k]}`);
       }
-      assert.ok(worst < 140);
+      assert.ok(worst < 160);
     } finally { setV9(false); }
   });
 
   test('flag on: V9_ARCH_SEGS is 10-12 (arches stay cheap)', () => { assert.ok(V9_ARCH_SEGS >= 10 && V9_ARCH_SEGS <= 12); });
 
-  test('flag on, every lot 1-71: terracotta floor, painted plain piers, flat painted party walls and reveals, risers, run ends; each check fails on the V8.6 geometry', () => {
+  test('flag on, every V9 lot (Nos 1-71 and the 22 seam-edge lots): terracotta floor, painted plain piers, flat painted party walls and reveals, risers, run ends; each check fails on the V8.6 geometry', () => {
     setV9(false);
     const offRows = MB.map((def) => ({ def, row: rowOf(def) }));
     setV9(true);
     try {
       const onRows = MB.map((def) => ({ def, row: rowOf(def) }));
       V9_ROWS.push(...onRows);
-      const lotsOn = all71(onRows), lotsOff = all71(offRows);
-      assert.equal(lotsOn.length, 71);
+      const lotsOn = allV9(onRows), lotsOff = all71(offRows);
+      assert.equal(lotsOn.length, N_V9);
       let risers = 0, steps = 0;
       const offLotAt = (rec: LotRec) => offRows.find((o) => o.def.id === rec.id)!.row.lots.get(rec.key)!;
       lotsOn.forEach((l, i) => {
-        const row = onRows.find((o) => o.def.id === l.id)!.row, no = l.no;
+        const row = onRows.find((o) => o.def.id === l.id)!.row, no = nm(l).replace(/^No /, '');
         const r = check(row, l), rOff = check(offRows.find((o) => o.def.id === l.id)!.row, offLotAt(l));
-        assert.equal(offLotAt(l).no, no);
+        assert.equal(offLotAt(l).no, l.no);
         assert.ok(r.floorNoTile, `No ${no}: no checkerboard tile on the walkway floor`);
         assert.ok(r.floorTerracotta, `No ${no}: the whole floor is terracotta (0.90-1.10)`);
         const walk = D * (l.w + (r.ex.s1 - r.ex.s0) * D / 2); // trapezoid between the start and end lines
@@ -437,7 +497,7 @@ if (!INNER) {
       assert.ok(plasterWalls(c5) === true, 'sanity: the flat walls carry no plaster cell');
       const mutated = { ...c5, wall: c5.wall.map((p) => p.map((q) => ({ ...q, u: plaster[0] + 0.1, v: plaster[1] + 0.1 }))) };
       assert.equal(mutated.wall.every((p) => p.every((q) => inCell(q, white))), false, 'bites: plaster UVs would fail the flatness check');
-      console.log(`risers: ${risers} of 71 lots; V8.6 pier triangles at No 5 ${check(offRows[0].row, lotsOff.find((l) => l.no === 5)!).piers[0].sig.length}+extras ${check(offRows[0].row, lotsOff.find((l) => l.no === 5)!).piers[0].extras}`);
+      console.log(`risers: ${risers} of ${N_V9} lots; V8.6 pier triangles at No 5 ${check(offRows[0].row, lotsOff.find((l) => l.no === 5)!).piers[0].sig.length}+extras ${check(offRows[0].row, lotsOff.find((l) => l.no === 5)!).piers[0].extras}`);
     } finally { setV9(false); }
   });
 
@@ -455,7 +515,7 @@ if (!INNER) {
     setV9(true);
     try {
       const rows = MB.map((def) => ({ def, row: rowOf(def) }));
-      const lots = all71(rows);
+      const lots = allV9(rows);
       const rowOfLot = (l: LotRec) => rows.find((o) => o.def.id === l.id)!.row;
       const lotAt = (id: number, e: number, u: number) => rows.find((o) => o.def.id === id)!.row.lots.get(`${e}:${u}`);
       // Boundary vertices of the floor / ceiling quads of a lot at depth d: [min a, max a] (frame of the lot).
@@ -472,7 +532,7 @@ if (!INNER) {
       };
       const pairs: [LotRec, LotRec, boolean][] = [];
       for (const def of MB) {
-        const f = fronts(def.id);
+        const f = v9e(def.id);
         for (const e of f) {
           const cnt = [...rowOfLot(lotAt(def.id, e, 0)!).lots.values()].filter((q) => q.edge === e).length;
           for (let u = 0; u + 1 < cnt; u++) pairs.push([lotAt(def.id, e, u)!, lotAt(def.id, e, u + 1)!, false]);
@@ -480,10 +540,10 @@ if (!INNER) {
           if (f.includes(nx) && check(rowOfLot(lotAt(def.id, e, 0)!), lotAt(def.id, nx, 0)!).ex.start === 'mitre') pairs.push([lotAt(def.id, e, cnt - 1)!, lotAt(def.id, nx, 0)!, true]);
         }
       }
-      assert.equal(pairs.length, 68, 'adjacent pairs: 64 inside the 7 frontage edges (21 + 16 + 9 + 9 + 4 + 3 + 2) and 4 corners');
+      assert.equal(pairs.length, 85, 'adjacent pairs: 64 inside the 7 frontage edges (21 + 16 + 9 + 9 + 4 + 3 + 2), 16 inside the 6 seam edges (0 + 2 + 2 + 2 + 7 + 3) and 5 corners');
       let wallTris = 0, corners = 0;
       for (const [k, k1, corner] of pairs) {
-        const at = `${k.no}|${k1.no}`;
+        const at = `${nm(k)}|${nm(k1)}`;
         if (corner) corners++;
         const c1 = check(rowOfLot(k1), k1), c0 = check(rowOfLot(k), k);
         assert.equal(c1.wall.length, 48, `${at}: the wall is drawn once, by the later lot`);
@@ -507,19 +567,19 @@ if (!INNER) {
         // The riser and the floors meet at one height, or the step is closed.
         void c0;
       }
-      assert.equal(wallTris, 68 * 48);
-      assert.equal(corners, 4, 'four corners of 236495776 are mitred (edges 0|1, 1|2, 2|3, 3|4)');
+      assert.equal(wallTris, 85 * 48);
+      assert.equal(corners, 5, 'four corners of 236495776 are mitred (edges 0|1, 1|2, 2|3, 3|4), and 233690737 edge 1|2 (seam lot | No 1)');
       // Without the mitre the lots would leave a gap or overlap of this size at depth D (far above the 1 mm tolerance): the check bites.
       for (const [k, k1, corner] of pairs) {
         if (!corner) continue;
         const c1 = check(rowOfLot(k1), k1), c0 = check(rowOfLot(k), k);
         const wedge = Math.abs(c0.ex.s1 - 0) * D + Math.abs(c1.ex.s0 - 0) * D;
-        if (Math.abs(1 - (c1.ex.turnPrev ?? 1)) > 0.005) assert.ok(wedge > 0.05, `butt-jointed lots would leave ${wedge.toFixed(3)} m at corner ${k.no}|${k1.no}`);
+        if (Math.abs(1 - (c1.ex.turnPrev ?? 1)) > 0.005) assert.ok(wedge > 0.05, `butt-jointed lots would leave ${wedge.toFixed(3)} m at corner ${nm(k)}|${nm(k1)}`);
       }
       // Run ends: nothing but the flush end pier; the neighbouring street plane carries no wall.
       const ends: [LotRec, 'start' | 'end'][] = [];
       for (const def of MB) {
-        const f = fronts(def.id);
+        const f = v9e(def.id);
         for (const e of f) {
           const cnt = [...rowOfLot(lotAt(def.id, e, 0)!).lots.values()].filter((q) => q.edge === e).length;
           const n = rowOfLot(lotAt(def.id, e, 0)!).n;
@@ -529,22 +589,35 @@ if (!INNER) {
           void n;
         }
       }
-      assert.deepEqual(ends.map(([l, w]) => `${l.no}${w === 'start' ? '<' : '>'}`).sort(), ['1<', '22>', '23<', '39>', '40<', '71>'].sort(), 'six run ends');
+      // V9-P3: No 1 is mitred onto the seam lot of 233690737 edge 1; the five other Main Bazaar run ends now meet seam lots at sharp corners
+      // (both sides end); the seam edges end at side walls (no lots) or, at 233690737 edge 1, at the old edge 0.
+      assert.deepEqual(ends.map(([l, w]) => `${l.no ?? `${l.id}:${l.key}`}${w === 'start' ? '<' : '>'}`).sort(), ['22>', '23<', '39>', '40<', '71>',
+        '233690737:1:0<', '233690737:3:0<', '233690737:3:2>', '236495303:17:0<', '236495303:17:2>', '236495303:0:0<', '236495303:0:2>',
+        '236495776:16:0<', '236495776:16:7>', '236495776:5:0<', '236495776:5:3>'].sort(), 'sixteen run ends');
+      let corner = 0;
       for (const [l, which] of ends) {
         const c = check(rowOfLot(l), l);
-        if (which === 'start') assert.equal(c.wall.length, 0, `No ${l.no}: no wall at a run start`);
-        assert.ok(c.pierPainted && c.pierPlainBox, `end of run at No ${l.no}: painted plain end pier`);
+        if (which === 'start') assert.equal(c.wall.length, 0, `${nm(l)}: no wall at a run start`);
+        assert.ok(c.pierPainted && c.pierPlainBox, `end of run at ${nm(l)}: painted plain end pier`);
         const pier = c.piers[which === 'start' ? 0 : c.piers.length - 1];
         const a = pier.sig.flatMap((p) => p.map((q) => q.a));
-        if (which === 'start') assert.ok(Math.min(...a) > -0.003 - 1e-6 && Math.max(...a) < 0.46 + 0.003 + 1e-6, `No ${l.no}: end pier is flush with the run start`);
-        else assert.ok(Math.abs(Math.max(...a) - l.w) < 0.003 + 1e-6 && Math.min(...a) > l.w - 0.46 - 0.003 - 1e-6, `No ${l.no}: end pier is flush with the run end`);
+        if (which === 'start') assert.ok(Math.min(...a) > -0.003 - 1e-6 && Math.max(...a) < 0.46 + 0.003 + 1e-6, `${nm(l)}: end pier is flush with the run start`);
+        else assert.ok(Math.abs(Math.max(...a) - l.w) < 0.003 + 1e-6 && Math.min(...a) > l.w - 0.46 - 0.003 - 1e-6, `${nm(l)}: end pier is flush with the run end`);
+        // A seam lot's corner pier onto the run: the run's end-lot paint, not grown (it stands inside the run's grown end pier).
+        if (which === 'start' ? c.ex.cornerPrev : c.ex.cornerNext) {
+          corner++;
+          const col = new THREE.Color().setHex(which === 'start' ? c.ex.pier0 : c.ex.pier1);
+          assert.ok(pier.sig.every((p) => p.every((q) => near(q.c, col))), `${nm(l)}: corner pier carries the run's paint`);
+          assert.ok(which === 'start' ? Math.min(...a) > -1e-6 : Math.max(...a) < l.w + 1e-6, `${nm(l)}: corner pier is not grown`);
+        }
         assert.ok(c.noOldArch);
         if (which === 'end') {
           // nothing stands in the plane of the neighbouring street: no vertical triangle on the end plane a = w across the walkway
           const onEnd = c.tris.filter((p) => p.every((q) => Math.abs(q.a - l.w) < 1e-6) && p.every((q) => q.d > 0.47 && q.d < D - 0.01) && p.every((q) => Math.abs(q.ny) < 0.2) && p.every((q) => q.y < l.b0 + EPS)).length;
-          assert.equal(onEnd, 0, `No ${l.no}: no end wall in the neighbouring street plane`);
+          assert.equal(onEnd, 0, `${nm(l)}: no end wall in the neighbouring street plane`);
         }
       }
+      assert.equal(corner, 5, 'five seam corner piers, one per sharp corner onto the run');
     } finally { setV9(false); }
   });
 
@@ -572,7 +645,7 @@ if (!INNER) {
   /** Rays across every V9 party wall at heights between the two floors it separates: how many pass through (a gap), of how many cast. */
   function wallLeaks(rows: { def: { id: number }; row: Row }[]) {
     const rowOfLot = (l: LotRec) => rows.find((o) => o.def.id === l.id)!.row;
-    const lots = all71(rows);
+    const lots = allV9(rows);
     const at = (id: number, e: number, u: number) => lots.find((q) => q.id === id && q.edge === e && q.u === u);
     let cast = 0, leaks = 0, steps = 0, maxStep = 0;
     const worst: string[] = [];
@@ -590,7 +663,7 @@ if (!INNER) {
         for (let d = 0.05; d <= D - 0.05 + 1e-9; d += 0.05) {
           const a = s0 * d - 0.6, o = [l.x0 + l.ex * a - l.nx * d, y, l.z0 + l.ez * a - l.nz * d], dir = [l.ex * 1.2, 0, l.ez * 1.2];
           cast++;
-          if (!tris.some((tr) => segHits(o, dir, tr))) { leaks++; if (worst.length < 4) worst.push(`No ${l.no}: y=${(y - lo).toFixed(4)} above the lower floor, d=${d.toFixed(2)}, step ${((hi - lo) * 1000).toFixed(1)} mm`); }
+          if (!tris.some((tr) => segHits(o, dir, tr))) { leaks++; if (worst.length < 4) worst.push(`${nm(l)}: y=${(y - lo).toFixed(4)} above the lower floor, d=${d.toFixed(2)}, step ${((hi - lo) * 1000).toFixed(1)} mm`); }
         }
       }
     }
@@ -637,22 +710,22 @@ if (!INNER) {
     try {
       const rows = MB.map((def) => ({ def, row: rowOf(def) }));
       let n = 0, worstAll = 0;
-      for (const l of all71(rows)) {
+      for (const l of allV9(rows)) {
         const row = rows.find((o) => o.def.id === l.id)!.row, r = floorSeams(row, l);
         n++; worstAll = Math.max(worstAll, r.worst);
-        assert.equal(r.heights, 1, `No ${l.no}: the whole terracotta floor is at one height (${r.heights} heights, tile seams ${r.seams}, up to ${(r.worst * 1000).toFixed(1)} mm)`);
-        assert.equal(r.seams, 0, `No ${l.no}: no open tile seam`);
+        assert.equal(r.heights, 1, `${nm(l)}: the whole terracotta floor is at one height (${r.heights} heights, tile seams ${r.seams}, up to ${(r.worst * 1000).toFixed(1)} mm)`);
+        assert.equal(r.seams, 0, `${nm(l)}: no open tile seam`);
       }
-      assert.equal(n, 71);
-      console.log(`floor seams: 71 lots, one floor height each, no tile seam (worst ${(worstAll * 1000).toFixed(1)} mm)`);
+      assert.equal(n, N_V9);
+      console.log(`floor seams: ${N_V9} lots, one floor height each, no tile seam (worst ${(worstAll * 1000).toFixed(1)} mm)`);
     } finally { setV9(false); }
   });
 
-  test('flag on, run ends: each run-end lot is drawn at one height, 3 mm under the lower of its floor and the neighbouring old floor; nothing else is lowered (overlap numbers printed)', () => {
+  test('flag on, run ends: each run-end lot is drawn at one height, 3 mm under the lower of its floor and the neighbouring floor it gives way to (old, or a seam lot seen from the run); nothing else is lowered (overlap numbers printed)', () => {
     setV9(true);
     try {
       const rows = MB.map((def) => ({ def, row: rowOf(def) }));
-      const lots = all71(rows);
+      const lots = allV9(rows);
       // Sutherland-Hodgman: area of polygon (flat xz) inside a convex rectangle.
       const clipArea = (poly: number[], rect: number[]): number => {
         let pts: number[][] = []; for (let i = 0; i < poly.length; i += 2) pts.push([poly[i], poly[i + 1]]);
@@ -673,10 +746,10 @@ if (!INNER) {
         const row = rows.find((o) => o.def.id === l.id)!.row, strips = runEndStrips(row, l, realCtx(), MB.find((m) => m.id === l.id)!.chunk);
         const tris = worldTris(row, l).filter((t) => Math.abs(t[1] - t[4]) < 1e-9 && Math.abs(t[4] - t[7]) < 1e-9 && t[1] > l.fy - 1e-6 - 0.2 && t[1] < l.fyRaw + EPS && Math.abs(t[1] - l.fy) < 1e-6);
         const floor = floorTriangles(row, l);
-        assert.ok(floor.length > 0 && floor.every((p) => p.every((q) => Math.abs(q.y - l.fy) < 1e-6)), `No ${l.no}: the whole floor is at the drawn level ${l.fy.toFixed(4)}`);
-        if (!strips.length) { assert.ok(Math.abs(l.fy - l.fyRaw) < 1e-9, `No ${l.no}: not a run end, floor at its natural level`); continue; }
+        assert.ok(floor.length > 0 && floor.every((p) => p.every((q) => Math.abs(q.y - l.fy) < 1e-6)), `${nm(l)}: the whole floor is at the drawn level ${l.fy.toFixed(4)}`);
+        if (!strips.length) { assert.ok(Math.abs(l.fy - l.fyRaw) < 1e-9, `${nm(l)}: not a run end, floor at its natural level`); continue; }
         ends++;
-        assert.ok(l.fy <= Math.min(l.fyRaw, ...strips.map((q) => q.fy5)) - 0.003 + 1e-9, `No ${l.no}: 3 mm under the lower floor`);
+        assert.ok(l.fy <= Math.min(l.fyRaw, ...strips.map((q) => q.fy5)) - 0.003 + 1e-9, `${nm(l)}: 3 mm under the lower floor`);
         let total = 0, overlap = 0;
         for (const t of floorTriangles(row, l)) {
           const tri = area(t); total += tri;
@@ -688,11 +761,11 @@ if (!INNER) {
         }
         const nbFy = Math.min(...strips.map((q) => q.fy5));
         void tris;
-        console.log(`run end No ${l.no}: V9 floor lowered as a whole by ${((l.fyRaw - l.fy) * 1000).toFixed(1)} mm, ${(nbFy - l.fy > 0 ? (nbFy - l.fy) * 1000 : 0).toFixed(1)} mm below the old floor; overlap with the old strip ${overlap.toFixed(2)} m2 of ${total.toFixed(2)} m2 lowered, ${(total - overlap).toFixed(2)} m2 lowered outside the old strip`);
-        assert.ok(overlap > 0.5, `No ${l.no}: the overlap is found`);
-        assert.ok(nbFy - l.fy >= 0.003 - 1e-9, `No ${l.no}: terracotta is never above the old floor (${((nbFy - l.fy) * 1000).toFixed(2)} mm below)`);
+        console.log(`run end ${nm(l)}: V9 floor lowered as a whole by ${((l.fyRaw - l.fy) * 1000).toFixed(1)} mm, ${(nbFy - l.fy > 0 ? (nbFy - l.fy) * 1000 : 0).toFixed(1)} mm below the old floor; overlap with the old strip ${overlap.toFixed(2)} m2 of ${total.toFixed(2)} m2 lowered, ${(total - overlap).toFixed(2)} m2 lowered outside the old strip`);
+        assert.ok(overlap > 0.5, `${nm(l)}: the overlap is found`);
+        assert.ok(nbFy - l.fy >= 0.003 - 1e-9, `${nm(l)}: terracotta is never above the old floor (${((nbFy - l.fy) * 1000).toFixed(2)} mm below)`);
       }
-      assert.equal(ends, 6, 'six run ends, one rule');
+      assert.equal(ends, 6, 'six sunk run ends, one rule: Nos 22, 23, 39, 40, 71 under their seam lots and 233690737 edge 1 under old edge 0');
     } finally { setV9(false); }
   });
 
@@ -703,15 +776,22 @@ if (!INNER) {
     try {
       const rows = MB.map((def) => ({ def, row: rowOf(def) }));
       let minJamb = Infinity, minWidth = Infinity, minHead = Infinity, maxRise = -Infinity, minRise = Infinity;
-      for (const l of all71(rows)) {
+      const flats: string[] = [];
+      for (const l of allV9(rows)) {
         const row = rows.find((o) => o.def.id === l.id)!.row, c = check(row, l);
         const rise = l.fy - row.ground; maxRise = Math.max(maxRise, rise); minRise = Math.min(minRise, rise);
-        const r = v9ArchRadius(l.fy, l.b0), ys = l.b0 - 0.12 - r;
-        minJamb = Math.min(minJamb, ys - l.fy); minWidth = Math.min(minWidth, 2 * r); minHead = Math.min(minHead, l.b0 - l.fy);
-        assert.ok(2 * r >= 2 * PLAYER.radius + 0.3, `No ${l.no}: opening ${2 * r} m wide vs player diameter ${2 * PLAYER.radius}`);
-        assert.ok(ys - l.fy >= PLAYER.height + 0.05, `No ${l.no}: jamb height ${ys - l.fy} vs player ${PLAYER.height}`);
+        const { r, ys, half, flat } = v9Opening(l.fy, l.b0);
+        if (flat) {
+          flats.push(`${nm(l)} (${(l.b0 - l.fy).toFixed(2)} m)`); assert.ok(l.no === null, `${nm(l)}: Main Bazaar lots keep their arch`);
+          assert.equal(c.ex.start, 'end', `${nm(l)}: a flat opening only where no wall is drawn (run start): the flat branch stays unused`);
+        }
+        else assert.equal(r, v9ArchRadius(l.fy, l.b0));
+        minJamb = Math.min(minJamb, ys - l.fy); minWidth = Math.min(minWidth, 2 * half); minHead = Math.min(minHead, l.b0 - l.fy);
+        assert.ok(2 * half >= 2 * PLAYER.radius + 0.3, `${nm(l)}: opening ${2 * half} m wide vs player diameter ${2 * PLAYER.radius}`);
+        assert.ok(ys - l.fy >= PLAYER.height + 0.05, `${nm(l)}: jamb height ${ys - l.fy} vs player ${PLAYER.height}`);
         assert.ok(ys + r <= l.b0 - 0.1, 'crown stays below the flat ceiling');
-        assert.ok(l.b0 - l.fy >= PLAYER.height + 0.5, `No ${l.no}: walkway headroom under the flat ceiling`);
+        // Headroom under the flat ceiling is V8.6's (fy and b0 unchanged); a flat-topped opening only needs the jamb.
+        assert.ok(l.b0 - l.fy >= PLAYER.height + (flat ? 0.17 : 0.5), `${nm(l)}: walkway headroom under the flat ceiling`);
         if (c.ex.start === 'end') continue;
         // Geometric check on the built wall: no wall triangle covers the player's footprint in the opening.
         const tri = c.wall.map((p) => p.map((q) => [q.d, q.y] as [number, number]));
@@ -721,62 +801,200 @@ if (!INNER) {
           const a = s(0, 1), b = s(1, 2), cc = s(2, 0);
           return (a >= -1e-9 && b >= -1e-9 && cc >= -1e-9) || (a <= 1e-9 && b <= 1e-9 && cc <= 1e-9);
         });
-        assert.ok(covered(0.55, l.fy + 1.0), `No ${l.no}: wall strip beside the opening is solid (the check can see walls)`);
+        assert.ok(covered(0.55, l.fy + 1.0), `${nm(l)}: wall strip beside the opening is solid (the check can see walls)`);
         const dc = (0.46 + D) / 2;
-        for (let d = dc - 0.35; d <= dc + 0.35 + 1e-9; d += 0.05) for (let y = l.fy + 0.05; y <= l.fy + PLAYER.height; y += 0.1) assert.ok(!covered(d, y), `No ${l.no}: wall at d=${d.toFixed(2)} y=${(y - l.fy).toFixed(2)}`);
+        for (let d = dc - 0.35; d <= dc + 0.35 + 1e-9; d += 0.05) for (let y = l.fy + 0.05; y <= l.fy + PLAYER.height; y += 0.1) assert.ok(!covered(d, y), `${nm(l)}: wall at d=${d.toFixed(2)} y=${(y - l.fy).toFixed(2)}`);
       }
-      console.log(`clearance, shipped terrain (HeightMap over height.bin), 71 lots: opening width >= ${minWidth.toFixed(2)} m, jamb height >= ${minJamb.toFixed(2)} m, headroom >= ${minHead.toFixed(2)} m, floor relative to block datum ${minRise.toFixed(2)} .. ${maxRise.toFixed(2)} m`);
+      console.log(`clearance, shipped terrain (HeightMap over height.bin), ${N_V9} lots: opening width >= ${minWidth.toFixed(2)} m, jamb height >= ${minJamb.toFixed(2)} m, headroom >= ${minHead.toFixed(2)} m, floor relative to block datum ${minRise.toFixed(2)} .. ${maxRise.toFixed(2)} m; lots too low for an arch (all run starts, no wall drawn, so no flat-topped opening is drawn): ${flats.length ? flats.join(', ') : 'none'}`);
       // On a steep rise the arch still shrinks safely: the rule is monotone and never below 0.55 m radius.
       for (const rise of [0.14, 0.25, 0.38, 0.58]) { const r = v9ArchRadius(10 + rise, 13.05); assert.ok(2 * r >= 1.0 && 13.05 - 0.12 - r - (10 + rise) >= 1.77 - 1e-9, `rise ${rise}`); }
     } finally { setV9(false); }
   });
 
-  test('flag on, paint: strong per-building paint; neighbouring buildings differ along the whole row, across frontage edges and corners', () => {
-    assert.equal(V9_ARCADE_PAINT.length, 5);
+  /** The sharp corners of the run onto a seam edge: a V9 lot at a run end ('end', not mitred) whose neighbouring edge is V9 too, with a seam edge on one side. */
+  function sharpCorners() {
+    setV9(true);
+    const corners: { def: (typeof MB)[number]; key: string; no: number | null; o: number; at: 'start' | 'end' }[] = [];
+    try {
+      for (const def of MB) {
+        const row = rowOf(def);
+        for (const l of allV9([{ def, row }])) {
+          const ex = expectEnds(row, l);
+          for (const [o, at] of [[(l.edge + row.n - 1) % row.n, 'start'], [(l.edge + 1) % row.n, 'end']] as [number, 'start' | 'end'][]) {
+            if ((at === 'start' ? !l.first : !l.last) || ex[at] !== 'end' || !v9e(def.id).includes(o)) continue;
+            if (seams(def.id).includes(o) || seams(def.id).includes(l.edge)) corners.push({ def, key: l.key, no: l.no, o, at });
+          }
+        }
+      }
+    } finally { setV9(false); }
+    return corners;
+  }
+
+  test('flag on, corners (V9-P3): at each sharp corner of the run onto a seam edge, no shopfront or shop interior of either corner lot stands in the other arcade; V8.6 had them there', () => {
+    const corners = sharpCorners();
+    assert.equal(corners.length, 10, 'five sharp corners, two lots each');
+    // Shopfront and interior triangles (behind the walkway, under the beam) of each corner lot that lie in the other edge's arcade (less than D in from its face).
+    const measure = (on: boolean) => {
+      setV9(on);
+      try {
+        const rows = new Map(MB.map((def) => [def.id, rowOf(def)]));
+        return corners.map(({ def, key, o, at }) => {
+          const row = rows.get(def.id)!, l = row.lots.get(key)!;
+          const [onx, onz] = edgeOutward(row.ring, o, row.a2), c = at === 'start' ? (o + 1) % row.n : o, cx = row.ring[c * 2], cz = row.ring[c * 2 + 1];
+          const inward = (q: Vx) => { const x = l.x0 + l.ex * q.a - l.nx * q.d, z = l.z0 + l.ez * q.a - l.nz * q.d; return -((x - cx) * onx + (z - cz) * onz); };
+          const behind = trisOf(row, l).filter((p) => p.every((q) => q.d >= D - 1e-6 && q.y <= l.b0 + 1e-6));
+          const bad = behind.filter((p) => p.some((q) => inward(q) < D - 1e-6)).length;
+          const near = Math.min(...behind.flatMap((p) => p.map((q) => (at === 'start' ? q.a : l.w - q.a))));
+          return { name: `${nm(l)} (${at}, corner onto ${def.id}:${o})`, bad, tris: behind.length, near, w: l.w };
+        });
+      } finally { setV9(false); }
+    };
+    const on = measure(true), off = measure(false);
+    on.forEach((c, k) => {
+      console.log(`corner ${c.name}: lot ${c.w.toFixed(2)} m, shopfront / interior from ${c.near.toFixed(2)} m off the corner, ${c.bad} of ${c.tris} triangles in the other arcade (V8.6: ${off[k].bad} of ${off[k].tris})`);
+      assert.equal(c.bad, 0, `${c.name}: shopfront / interior clear of the other arcade`);
+      assert.ok(c.tris >= 8 && c.w - c.near > 1.5, `${c.name}: the lot keeps a shopfront`);
+    });
+    assert.ok(off.every((c) => c.bad > 0), 'bites: in V8.6 every corner lot stands in the other arcade');
+  });
+
+  /**
+   * 1A (ac4a58a, V9-P2 as accepted), flag on, mock terrain: per-lot geometry hash (position, normal, uv, index; not colour, which V9-P3
+   * repaints on every lot) of the Main Bazaar lots without a corner clip, and the plan hash (x, z, normal, uv, index) of No 2.
+   */
+  const P2_LOT_GEOM: Record<number, string> = { 3: 'ece9eec4c3020b70', 4: '41e6f5c45a8baacd', 5: 'bc66bec3522eb098', 6: '66f86a8b063a8d54', 7: '67fe3257c9dbe894', 8: '29f3f632e64b8313', 9: '908aacb832678a3d', 10: '9bedc5853ee2202f', 11: 'd30bee367cdda300', 12: '5e38c635ce192dee', 13: '3edb8cb4f29efc54', 14: 'f9ebd0ea4e1a1bc5', 15: 'c5fb04a753908041', 16: '12d0f60847e94169', 17: 'b815eeed11225f9d', 18: 'ecd7c23376349798', 19: '99b192e7afb1630a', 20: 'ffa4abf48dea7162', 21: 'b31dae803172c31a', 24: '15f2ebb4369dabae', 25: '727d5720b5c720c4', 26: '34bb1657401a5935', 27: '64592e2acb8b1911', 28: 'dbe8215b0b7e1de8', 29: '647ddbfcdb6da9d1', 30: 'ae2b5be4f6059137', 31: '63ca46cc987b8380', 32: '436b3892069e912b', 33: 'dfbd2a91232f140c', 34: '32e0be992a5cb346', 35: '544d148ecccb9e27', 36: '48433596103e940c', 37: 'f94acc79a8192a5b', 38: '2cef83438d988842', 41: '6018a49ab38b4770', 42: 'd465e0483e8913b8', 43: '877733c2ad1a23b9', 44: '2ec8058a678376a4', 45: 'ba655597ea1072eb', 46: '49d34b35ded3daa4', 47: 'ea17d517e963ff0e', 48: 'e3a55d37a6a788e8', 49: '126769464835287d', 50: 'e86dfa6e91eafcdf', 51: '5d1fc0333bc7f04a', 52: '1467011e969b4d32', 53: '37d79a16036ae642', 54: '127ac94ccd62d612', 55: '98d85a0533c9ac60', 56: '14a8389228ca3eab', 57: 'fbacec47cc91d598', 58: '5dc4b3147b07ec87', 59: 'e41e429782621eb2', 60: 'f0a6b03815f092fa', 61: '21f8b5baa9129f17', 62: '4ab0366d60bc17cc', 63: 'f3e813ab3947b3fe', 64: 'ce096558a181fd94', 65: 'cc035002b274a17b', 66: '47851a75c5778cc3', 67: 'd10e96ac81a107de', 68: 'f37cd879261a6291', 69: 'eede01d103a1eb5e', 70: 'a743df181fb47f00' };
+  const P2_NO2_PLAN = '1a5821bbfbf8c5f0';
+  const geomHash = (r: Row, l: LotRec, plan = false) => {
+    const h = createHash('sha256'), pos = r.buf.pos.slice(l.v[0] * 3, l.v[1] * 3);
+    h.update(Float64Array.from(plan ? pos.filter((_, k) => k % 3 !== 1) : pos));
+    h.update(Float64Array.from(r.buf.nor.slice(l.v[0] * 3, l.v[1] * 3)));
+    h.update(Float64Array.from(r.buf.uv.slice(l.v[0] * 2, l.v[1] * 2)));
+    h.update(Int32Array.from(r.buf.idx.slice(l.i[0], l.i[1]).map((x) => x - l.v[0])));
+    return h.digest('hex').slice(0, 16);
+  };
+
+  test('flag on, P2 geometry kept (V9-P3 round 1): every Main Bazaar lot without a corner clip (clip0 = clip1 = 0) has the jambs, shopfront and geometry of 1A', () => {
+    // Bites: with the clip clamp applied at clip 0 (Math.max(aS(D), 0) at a concave mitre) Nos 49/50 and 59/60 differ.
+    const clipped = sharpCorners().filter((c) => c.no !== null).map((c) => c.no!).sort((a, b) => a - b);
+    assert.deepEqual(clipped, [22, 23, 39, 40, 71], 'the five Main Bazaar corner lots with a clip');
+    setV9(true);
+    try {
+      const rows = MB.map((def) => ({ def, row: rowOf(def, ctx) }));
+      const differ: string[] = [];
+      let n = 0;
+      for (const l of all71(rows)) {
+        if (clipped.includes(l.no!)) continue;
+        const row = rows.find((o) => o.def.id === l.id)!.row;
+        n++;
+        // No 1 is mitred onto the seam lot of 233690737 edge 1 since V9-P3 (a party wall where 1A had a run end; see the continuity test).
+        if (l.no === 1) continue;
+        // No 2: the same plan; only its riser and wall foot follow No 1, which is no longer sunk as a run end (14 vertices, +10.9 mm).
+        if (l.no === 2) { if (geomHash(row, l, true) !== P2_NO2_PLAN) differ.push('No 2 (plan)'); continue; }
+        if (geomHash(row, l) !== P2_LOT_GEOM[l.no!]) differ.push(`No ${l.no}`);
+      }
+      assert.equal(n, 66, '71 Main Bazaar lots less the five clipped corner lots');
+      assert.deepEqual(differ, [], `geometry differs from 1A at ${differ.join(', ')}`);
+    } finally { setV9(false); }
+  });
+
+  test('flag on, paint (V9-P3): each building piers, party walls and spandrels are painted from its own upper-facade colour, on every V9 lot; the P2 palette did not match', () => {
     setV9(true);
     try {
       const rows = MB.map((def) => ({ def, row: rowOf(def) }));
-      const lots = all71(rows);
-      const emitted = new Map<string, number>(); // lot -> index of its start pier colour in the palette
-      const pal = V9_ARCADE_PAINT.map((h) => new THREE.Color().setHex(h));
+      const lots = allV9(rows);
+      const hsl = (c: InstanceType<typeof THREE.Color>) => c.getHSL({ h: 0, s: 0, l: 0 });
+      const dHue = (a: number, b: number) => Math.min(Math.abs(a - b), 1 - Math.abs(a - b));
+      // "does not read as the facade's paint": another hue (more than 18 degrees, on a coloured facade) or far lighter / darker
+      const mismatch = (arc: { h: number; s: number; l: number }, fac: { h: number; s: number; l: number }) => (fac.s > 0.05 && dHue(arc.h, fac.h) > 0.05) || Math.abs(arc.l - fac.l) > 0.15;
+      let newMis = 0, p2Mis = 0, p2N = 0, sameBuilding = 0, worstHue = 0, worstDl = 0;
       for (const l of lots) {
         const row = rows.find((o) => o.def.id === l.id)!.row, c = check(row, l);
-        const col = c.piers[0].sig[0][0].c;
-        const idx = pal.findIndex((p) => near(col, p));
-        assert.ok(idx >= 0, `No ${l.no}: pier colour is a palette paint`);
-        emitted.set(`${l.id}:${l.key}`, idx);
-      }
-      const used = new Set(emitted.values());
-      const p514 = new Set(lots.filter((l) => l.no! >= 5 && l.no! <= 14).map((l) => emitted.get(`${l.id}:${l.key}`)));
-      assert.ok(p514.size >= 3, `a variety of paints on Nos 5-14 (${p514.size})`);
-      assert.equal(used.size, 5, 'all five paints appear along the row');
-      const at = (id: number, e: number, u: number) => emitted.get(`${id}:${e}:${u}`)!;
-      const lotCount = (id: number, e: number) => lots.filter((l) => l.id === id && l.edge === e).length;
-      let boundaries = 0, sameBuilding = 0;
-      const order: [number, number][] = Object.keys(FRONTS).map((k) => k.split(':').map(Number) as [number, number]);
-      // consecutive lots of the run: within an edge, and from an edge to the next frontage edge of the same block (corner)
-      for (let ei = 0; ei < order.length; ei++) {
-        const [id, e] = order[ei], cnt = lotCount(id, e), row = rows.find((o) => o.def.id === id)!.row;
-        const plan = lots.filter((l) => l.id === id && l.edge === e);
-        for (let u = 0; u + 1 < cnt; u++) {
-          boundaries++;
-          if (plan[u].group === plan[u + 1].group) { sameBuilding++; assert.equal(at(id, e, u), at(id, e, u + 1), `one building, one paint (${plan[u].no}|${plan[u + 1].no})`); }
-          else assert.notEqual(at(id, e, u), at(id, e, u + 1), `neighbouring buildings differ (${plan[u].no}|${plan[u + 1].no})`);
+        // The arcade carries the lot's paint (piers; party wall faces and reveals where the lot has a wall): checked on the emitted triangles.
+        assert.ok(c.pierPainted && c.wallPainted && c.revealFlat, `${nm(l)}: arcade painted with the paint derived from its facade`);
+        // The upper facade the paint is derived from, as emitted by addUpper: vertex colours above the fascia proportional to lot.wall (x 0.96-1.03).
+        const wall = new THREE.Color().setHex(l.lot.wall), ks = new Set<string>();
+        for (const p of c.tris) for (const q of p) {
+          if (q.y < l.b0 + 0.85 || Math.abs(q.ny) > 0.1) continue;
+          const k = q.c[0] / wall.r;
+          if (k > 0.955 && k < 1.035 && near(q.c, wall, k)) ks.add(k.toFixed(5));
         }
-        const nxt = order[ei + 1];
-        if (nxt && nxt[0] === id && nxt[1] === (e + 1) % row.n) { boundaries++; assert.notEqual(at(id, e, cnt - 1), at(id, nxt[1], 0), `corner ${id}: edge ${e} -> ${nxt[1]} paints differ`); }
+        assert.equal(ks.size, 1, `${nm(l)}: one upper-facade colour, lot.wall x a per-lot tone (${[...ks].join(', ')})`);
+        const facade = wall.clone().multiplyScalar(Number([...ks][0])), fac = hsl(facade), arc = hsl(paintOf(l));
+        if (mismatch(arc, fac)) newMis++;
+        if (fac.s > 0.05) worstHue = Math.max(worstHue, dHue(arc.h, fac.h));
+        worstDl = Math.max(worstDl, Math.abs(arc.l - fac.l));
+        assert.ok(arc.l < fac.l && fac.l - arc.l < 0.15, `${nm(l)}: arcade a little darker than the facade (${fac.l.toFixed(3)} -> ${arc.l.toFixed(3)})`);
+        if (l.no !== null) { p2N++; if (mismatch(hsl(new THREE.Color().setHex(p2Paint(l))), fac)) p2Mis++; }
       }
-      assert.ok(boundaries === 68 && sameBuilding > 5);
-      // The V9-P1 rule (groups restart at every edge) put equal paint on two buildings meeting at an edge: show that the new rule is needed.
-      let p1Clash = 0;
-      for (let ei = 0; ei + 1 < order.length; ei++) {
-        const [id, e] = order[ei], [id2, e2] = order[ei + 1];
-        if (id !== id2 || e2 !== e + 1) continue;
-        const a = planFront(id, e, 0), b = planFront(id2, e2, 0);
-        if (v9ArcadePaint(a[a.length - 1]) === v9ArcadePaint(b[0])) p1Clash++;
+      // One building, one paint: consecutive lots of the same group on an edge.
+      for (const l of lots) {
+        const nx = lots.find((q) => q.id === l.id && q.edge === l.edge && q.u === l.u + 1);
+        if (nx && nx.group === l.group) { sameBuilding++; assert.ok(paintOf(nx).equals(paintOf(l)), `one building, one paint (${nm(l)}|${nm(nx)})`); }
       }
-      console.log(`paint: ${boundaries} boundaries checked; the per-edge group rule of P1 would have clashed at ${p1Clash} corner(s)`);
-      assert.ok(p1Clash >= 1, 'bites: per-edge numbering paints two corner neighbours alike');
+      console.log(`paint: ${lots.length} lots, arcade vs facade: worst hue difference ${(worstHue * 360).toFixed(1)} deg, worst lightness difference ${worstDl.toFixed(3)}, mismatches ${newMis}; the P2 palette mismatched ${p2Mis} of ${p2N} Main Bazaar lots`);
+      assert.equal(newMis, 0, 'every arcade reads as its facade paint');
+      assert.ok(sameBuilding > 20);
+      assert.ok(p2Mis >= 20, `bites: the P2 palette paints many arcades unlike their facades (${p2Mis})`);
+    } finally { setV9(false); }
+  });
+  // ---- V9-P3 round 3: the M2 corner trim (233690737 edge 0 | edge 1, the Main Bazaar No 1 corner; owner-approved 2026-11-20) ----
+  /**
+   * Flag on, mock terrain, V9-P3 round 2 (diff 04d61d71, before the trim): digest of the hash of every lot of the five blocks except the
+   * two lots at the M2 corner. The round-2 tree rebuilt for C:\Kuching3D-evidence\v9-p3\round3 gives the same digest.
+   */
+  const R2_OTHER_LOTS = 'f376179cbe9863aac71d07ab69b74af3c9ceb6fc91142ff3ad1630805b2b0d16';
+  const M2_LOTS = ['233690737:0:3', '233690737:1:0'];
+  const otherLots = () => {
+    const h = createHash('sha256');
+    let n = 0;
+    for (const def of [...MB, ...OTHER]) {
+      const row = rowOf(def, ctx);
+      for (const [key, l] of row.lots) { if (M2_LOTS.includes(`${def.id}:${key}`)) continue; h.update(`${def.id}:${key}:${lotHash(row, l)};`); n++; }
+    }
+    return { digest: h.digest('hex'), n };
+  };
+
+  test('flag on, M2 corner trim (V9-P3 round 3): neither shopfront at the No 1 corner stands in the other walkway, they meet at the inner corner, triangle and draw counts unchanged; flag off keeps the V8.6 jamb', () => {
+    // Shopfront and interior triangles (behind the walkway, under the beam) of a lot with a vertex less than D in from the face of edge o,
+    // corner = ring vertex 1 (end of edge 0, start of edge 1); and the shopfront end at the corner (vertex at depth D nearest the corner).
+    const measure = (on: boolean, c: any) => {
+      setV9(on);
+      try {
+        const row = rowOf(MB[0], c), [onx0, onz0] = edgeOutward(row.ring, 0, row.a2), [onx1, onz1] = edgeOutward(row.ring, 1, row.a2);
+        const cx = row.ring[2], cz = row.ring[3];
+        const side = (key: string, onx: number, onz: number, atEnd: boolean) => {
+          const l = row.lots.get(key)!, behind = trisOf(row, l).filter((p) => p.every((q) => q.d >= D - 1e-6 && q.y <= l.b0 + 1e-6));
+          const inward = (q: Vx) => { const [x, z] = world(l, q.a, q.d); return -((x - cx) * onx + (z - cz) * onz); };
+          const front = behind.flatMap((p) => p).filter((q) => Math.abs(q.d - D) < 1e-6);
+          const endA = atEnd ? Math.max(...front.map((q) => q.a)) : Math.min(...front.map((q) => q.a));
+          return { bad: behind.filter((p) => p.some((q) => inward(q) < D - 1e-6)).length, tris: lotTris(l), end: world(l, endA, D), over: atEnd ? l.w - endA : endA };
+        };
+        const meshes = Object.keys(build('0_-1', c).mesh).length;
+        return { e0: side('0:3', onx1, onz1, true), e1: side('1:0', onx0, onz0, false), meshes };
+      } finally { setV9(false); }
+    };
+    for (const [name, c] of [['mock', ctx], ['shipped', realCtx()]] as const) {
+      const on = measure(true, c), off = measure(false, c);
+      const gap = same(on.e0.end, on.e1.end);
+      console.log(`M2 trim (${name} terrain): edge 0 lot 3 shopfront ends ${on.e0.over.toFixed(3)} m before the corner (V8.6 ${off.e0.over.toFixed(3)}), ${on.e0.bad} triangles in edge 1's walkway (V8.6 ${off.e0.bad}); edge 1 lot 0 starts ${on.e1.over.toFixed(3)} m after it, ${on.e1.bad} in edge 0's walkway (V8.6 ${off.e1.bad}); the two shopfronts meet within ${(gap * 1000).toFixed(2)} mm`);
+      assert.equal(on.e0.bad, 0, `${name}: edge 0 lot 3 (the fin): no shopfront / interior in edge 1's walkway`);
+      assert.equal(on.e1.bad, 0, `${name}: edge 1 lot 0: no shopfront / interior in edge 0's walkway`);
+      assert.ok(off.e0.bad > 0 && off.e1.bad > 0, `${name}: bites: V8.6 (flag off) has both overshoots`);
+      assert.ok(Math.abs(off.e0.over) < 1e-6, `${name}: flag off, edge 0 lot 3 keeps the V8.6 jamb at a = w`);
+      assert.ok(on.e0.over > 0.7 && on.e0.over < 0.85 && on.e1.over > 0.7 && on.e1.over < 0.85, `${name}: trims of 0.78-0.79 m`);
+      assert.ok(gap < 1e-3, `${name}: the two shopfronts meet at the inner corner of the walkways (gap ${gap})`);
+      assert.equal(on.e0.tris, off.e0.tris, `${name}: edge 0 lot 3 keeps its triangle count`);
+      assert.equal(on.meshes, off.meshes, `${name}: chunk 0_-1 keeps its draw calls`);
+    }
+  });
+
+  test('flag on, M2 corner trim (V9-P3 round 3): every other lot of the five blocks (Main Bazaar, seam edges, Carpenter) is byte-identical to round 2', () => {
+    setV9(true);
+    try {
+      const o = otherLots();
+      console.log(`M2 trim: other lots ${o.n}, digest ${o.digest}`);
+      assert.equal(o.n, 137, '139 lots less the two at the M2 corner');
+      assert.equal(o.digest, R2_OTHER_LOTS);
     } finally { setV9(false); }
   });
 }

@@ -12,5 +12,17 @@
   {"name":"v9-11-street-233690737-oblique","x":124.953,"z":-146.796,"eye":1.7,"yaw":-2.425,"pitch":0.04,"fov":78},
   {"name":"v9-12-street-236495303-oblique","x":219.043,"z":-79.551,"eye":1.7,"yaw":-2.404,"pitch":0.04,"fov":75},
   {"name":"v9-13-street-236495776-oblique-west","x":292.912,"z":-28.371,"eye":1.7,"yaw":-2.401,"pitch":0.04,"fov":80},
-  {"name":"v9-14-street-236495776-oblique-east","x":438.654,"z":61.29,"eye":1.7,"yaw":0.955,"pitch":0.04,"fov":80}
+  {"name":"v9-14-street-236495776-oblique-east","x":438.654,"z":61.29,"eye":1.7,"yaw":0.955,"pitch":0.04,"fov":80},
+  {"name":"v9-15-seam-233690737-e1-no1-walkway","x":127.759,"z":-122.976,"eye":1.7,"yaw":0.979,"pitch":0.03,"fov":66},
+  {"name":"v9-16-seam-233690737-e1-no1-street","x":131.505,"z":-130.339,"eye":1.7,"yaw":1.929,"pitch":0.06,"fov":70},
+  {"name":"v9-17-seam-233690737-e3-no22-walkway","x":204.661,"z":-71.262,"eye":1.7,"yaw":-2.163,"pitch":0.03,"fov":66},
+  {"name":"v9-18-seam-233690737-e3-no22-street","x":210.067,"z":-77.509,"eye":1.7,"yaw":-3.113,"pitch":0.06,"fov":70},
+  {"name":"v9-19-seam-236495303-e17-no23-walkway","x":219.662,"z":-58.279,"eye":1.7,"yaw":0.97,"pitch":0.03,"fov":66},
+  {"name":"v9-20-seam-236495303-e17-no23-street","x":223.471,"z":-65.61,"eye":1.7,"yaw":1.921,"pitch":0.06,"fov":70},
+  {"name":"v9-21-seam-236495303-e0-no39-walkway","x":279.012,"z":-17.63,"eye":1.7,"yaw":-2.171,"pitch":0.03,"fov":66},
+  {"name":"v9-22-seam-236495303-e0-no39-street","x":284.47,"z":-23.831,"eye":1.7,"yaw":-3.122,"pitch":0.06,"fov":70},
+  {"name":"v9-23-seam-236495776-e16-no40-walkway","x":293.684,"z":-7.002,"eye":1.7,"yaw":0.971,"pitch":0.03,"fov":66},
+  {"name":"v9-24-seam-236495776-e16-no40-street","x":297.489,"z":-14.334,"eye":1.7,"yaw":1.921,"pitch":0.06,"fov":70},
+  {"name":"v9-25-seam-236495776-e5-no71-walkway","x":415.618,"z":60.884,"eye":1.7,"yaw":-2.431,"pitch":0.03,"fov":66},
+  {"name":"v9-26-seam-236495776-e5-no71-street","x":422.487,"z":56.295,"eye":1.7,"yaw":2.901,"pitch":0.06,"fov":70}
 ]
