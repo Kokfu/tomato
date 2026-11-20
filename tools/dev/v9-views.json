@@ -1,0 +1,16 @@
+[
+  {"name":"v9-01-along-five-foot-way","x":139.302,"z":-114.997,"eye":1.75,"yaw":-2.163,"pitch":0.03,"fov":62},
+  {"name":"v9-02-row-oblique-from-carriageway","x":133.749,"z":-130.035,"eye":1.7,"yaw":-2.383,"pitch":0.04,"fov":70},
+  {"name":"v9-03-from-waterfront-promenade","x":166.802,"z":-115.043,"eye":1.7,"yaw":2.551,"pitch":0.03,"fov":75},
+  {"name":"v9-04-round-arch-party-wall","x":152.855,"z":-105.883,"eye":1.65,"yaw":-2.163,"pitch":0.1,"fov":55},
+  {"name":"v9-05-west-end-five-foot-way","x":136.655,"z":-117.115,"eye":1.834,"yaw":0.979,"pitch":0.03,"fov":66},
+  {"name":"v9-06-east-end-233690737-at-jalan-china","x":199.826,"z":-74.635,"eye":1.821,"yaw":-2.163,"pitch":0.03,"fov":66},
+  {"name":"v9-07-middle-of-236495303","x":249.506,"z":-38.202,"eye":1.831,"yaw":-2.171,"pitch":0.03,"fov":66},
+  {"name":"v9-08-corner-236495776-edge3-to-edge4","x":399.382,"z":47.769,"eye":1.811,"yaw":-2.111,"pitch":0.03,"fov":66},
+  {"name":"v9-09-east-end-236495776","x":414.555,"z":59.495,"eye":1.807,"yaw":-2.431,"pitch":0.03,"fov":66},
+  {"name":"v9-10-jalan-china-junction","x":218.488,"z":-88.505,"eye":1.7,"yaw":2.898,"pitch":0.05,"fov":70},
+  {"name":"v9-11-street-233690737-oblique","x":124.953,"z":-146.796,"eye":1.7,"yaw":-2.425,"pitch":0.04,"fov":78},
+  {"name":"v9-12-street-236495303-oblique","x":219.043,"z":-79.551,"eye":1.7,"yaw":-2.404,"pitch":0.04,"fov":75},
+  {"name":"v9-13-street-236495776-oblique-west","x":292.912,"z":-28.371,"eye":1.7,"yaw":-2.401,"pitch":0.04,"fov":80},
+  {"name":"v9-14-street-236495776-oblique-east","x":438.654,"z":61.29,"eye":1.7,"yaw":0.955,"pitch":0.04,"fov":80}
+]

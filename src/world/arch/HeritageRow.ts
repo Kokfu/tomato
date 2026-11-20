@@ -7,8 +7,9 @@ import { ARCADE_DEPTH, edgeOutward, insetEdges, pointInRingFlat, ringArea2 } fro
 import { quad, rowFrame } from './Shophouse.ts';
 import type { RowFrame } from './Shophouse.ts';
 import { HT, HT_WHITE, htSub, htUV } from './HeritageAtlas.ts';
-import { FRONT, STYLE, planFront } from '../district/mainBazaar.ts';
+import { FRONT, STYLE, planFront, v9ArcadePaint, v9RunGroup } from '../district/mainBazaar.ts';
 import type { Lot } from '../district/mainBazaar.ts';
+import { v9Lot } from '../district/v9flag.ts';
 import { ITEM, lotFloor, lotItems } from '../district/frontLayout.ts';
 import { blob } from '../district/Dressing.ts';
 
@@ -190,54 +191,162 @@ function addUpper(f: Frame, lot: Lot, w: number, g: number): void {
   f.box(w - 0.14, w - 0.04, -0.1, 0, g + HH.beam0, top - 0.3, rgb(c1, 0.78, 0.77, 0.73), HT_WHITE, false);
 }
 
-function addGround(f: Frame, lot: Lot, w: number, g: number, fy: number, first: boolean, last: boolean): void {
+/** V9: round-arch party wall, in segments of the semicircle (the brief allows 10-12). */
+export const V9_ARCH_SEGS = 10;
+/** V9: half-thickness of the party wall, metres. */
+const V9_WALL_T = 0.11;
+/** V9: where the party wall starts (behind the street-edge pier) and the opening's nominal half-width. */
+const V9_WALL_D0 = 0.46, V9_ARCH_R = 0.75;
+/** Springing height above the floor and crown clearance under the flat ceiling, metres. */
+const V9_CROWN_GAP = 0.12, V9_MIN_JAMB = 1.8;
+
+/** Radius of the V9 arch for a walkway between floor fy and flat ceiling b0 (shrinks on steep ground, never below 0.55 m). */
+export function v9ArchRadius(fy: number, b0: number): number {
+  return Math.max(0.55, Math.min(V9_ARCH_R, b0 - V9_CROWN_GAP - fy - V9_MIN_JAMB));
+}
+
+/** How a V9 lot meets its neighbours (see addHeritageRow). */
+export interface V9Lot {
+  /** Hex arcade paint of the building. */
+  paint: number;
+  /** a = 0 end: 'wall' = straight arched party wall, 'mitre' = arched wall on the bisector of a corner, 'end' = run end (flush end pier, no wall). */
+  start: 'wall' | 'mitre' | 'end';
+  /** a = w end: 'none' = the next lot draws the wall, 'mitre' = corner bisector, 'end' = run end. */
+  end: 'none' | 'mitre' | 'end';
+  /** Mitre slopes: along-frontage shift per metre of depth of the start line / end line. */
+  s0: number; s1: number;
+  /** Floor level of the lot before this one (null at a run end): a riser fills the step. */
+  prevFy: number | null;
+}
+
+/** V9 run-end piers are 3 mm larger than the column: where the neighbouring (old) lot has its own pier on the same square, the V9 pier wins instead of z-fighting with it. */
+const V9_PIER_GROW = 0.003;
+/** A V9 run-end lot lies 3 mm under the lower of its own floor and the neighbouring old lot's floor, as a whole (one height, so no seam between its tiles): the old floor always wins in the overlap. */
+const V9_FLOOR_SINK = 0.003;
+
+/** Subtle per-face tone of a wall (0.97 .. 1.03), by vertex colour only. */
+function v9Tone(h: number, face: number): number {
+  return 0.97 + (((Math.imul(h ^ (face * 0x9e3779b1), 2246822519) >>> 9) % 7) / 100);
+}
+
+/**
+ * V9: party wall between two bays, a slab of masonry pierced by a semicircular (round-headed)
+ * arch, as in the Commons photos of the real five-foot way (M3/M4). Drawn at the start of a lot.
+ * Both faces and the reveals are drawn so a tunnel of arches reads along the walkway. The faces use
+ * the flat white atlas cell with the arcade paint as vertex colour (the plaster tile's rain
+ * streaks read as curtain folds under strong paint). At a corner the wall stands on the bisector:
+ * its centre line is a = s * d. The opening is 2r wide (1.5 m) and at least 1.8 m to the springing:
+ * the 0.7 m walking circle and a 1.72 m figure pass (the wall is not part of collision).
+ * prevFy: the previous lot's floor level, when it differs a riser closes the step in the opening.
+ */
+function addV9Arch(f: Frame, fy: number, b0: number, paint: THREE.Color, s: number, h: number, prevFy: number | null): void {
+  const T = V9_WALL_T, d0 = V9_WALL_D0, dEnd = D, dc = (d0 + dEnd) / 2;
+  const r = v9ArchRadius(fy, b0), ys = b0 - V9_CROWN_GAP - r;
+  const rev = paint.clone().multiplyScalar(0.9);
+  const P = (a: number, d: number, y: number): P3 => f.p(a + s * d, d, y);
+  // Face normal of the (sheared) wall plane, dir = +-1 along the frontage.
+  const wn = (dir: number): [number, number] => { const x = f.ex * dir + s * dir * f.nx, z = f.ez * dir + s * dir * f.nz, l = Math.hypot(x, z) || 1; return [x / l, z / l]; };
+  const dArc: number[] = [], yArc: number[] = [];
+  for (let k = 0; k <= V9_ARCH_SEGS; k++) { const t = (Math.PI * k) / V9_ARCH_SEGS; dArc.push(dc - r * Math.cos(t)); yArc.push(ys + r * Math.sin(t)); }
+  const dl = dArc[0], dr = dArc[V9_ARCH_SEGS];
+  // The wall (strips and jambs) stands on the lower of the two floors it separates, so a rising step leaves no gap under it.
+  const yb = prevFy === null ? fy : Math.min(fy, prevFy);
+  for (const dir of [-1, 1]) {
+    const a = dir * T, [nx, nz] = wn(dir), col = paint.clone().multiplyScalar(v9Tone(h, dir));
+    quad(f.buf, P(a, d0, yb), P(a, dl, yb), P(a, dl, b0), P(a, d0, b0), nx, 0, nz, col, HT_WHITE);
+    quad(f.buf, P(a, dr, yb), P(a, dEnd, yb), P(a, dEnd, b0), P(a, dr, b0), nx, 0, nz, col, HT_WHITE);
+    for (let k = 0; k < V9_ARCH_SEGS; k++) quad(f.buf, P(a, dArc[k], yArc[k]), P(a, dArc[k + 1], yArc[k + 1]), P(a, dArc[k + 1], b0), P(a, dArc[k], b0), nx, 0, nz, col, HT_WHITE);
+  }
+  // Reveals: the two jambs and the curved soffit of the opening.
+  quad(f.buf, P(-T, dl, yb), P(T, dl, yb), P(T, dl, ys), P(-T, dl, ys), -f.nx, 0, -f.nz, rev, HT_WHITE);
+  quad(f.buf, P(T, dr, yb), P(-T, dr, yb), P(-T, dr, ys), P(T, dr, ys), f.nx, 0, f.nz, rev, HT_WHITE);
+  for (let k = 0; k < V9_ARCH_SEGS; k++) {
+    const tm = (Math.PI * (k + 0.5)) / V9_ARCH_SEGS, c = Math.cos(tm), sn = Math.sin(tm);
+    quad(f.buf, P(-T, dArc[k], yArc[k]), P(T, dArc[k], yArc[k]), P(T, dArc[k + 1], yArc[k + 1]), P(-T, dArc[k + 1], yArc[k + 1]), -f.nx * c, -sn, -f.nz * c, rev, HT_WHITE);
+  }
+  // Step between this lot's floor and the previous one's: a terracotta riser across the opening, facing the lower floor.
+  if (prevFy !== null && Math.abs(prevFy - fy) > 1e-4) {
+    const lo = Math.min(fy, prevFy), hi = Math.max(fy, prevFy), dir = prevFy < fy ? -1 : 1, [nx, nz] = wn(dir);
+    quad(f.buf, P(0, dl, lo), P(0, dr, lo), P(0, dr, hi), P(0, dl, hi), nx, 0, nz, hex(c1, 0xa65a40, 0.85), HT_WHITE);
+  }
+}
+
+/**
+ * V9: walkway floor of plain terracotta/brown square tiles (single tone, slight variation per
+ * tile), as vertex-coloured squares on the white atlas cell: no atlas tile and no new material.
+ * aS / aE give the start / end line of the lot at depth d (straight, or the mitre of a corner).
+ */
+function addV9Floor(f: Frame, w: number, fy: number, h: number, aS: (d: number) => number, aE: (d: number) => number): void {
+  const nc = Math.max(1, Math.round(w / 0.6)), nr = Math.max(1, Math.round(D / 0.575));
+  const x = (d: number, k: number) => aS(d) + ((aE(d) - aS(d)) * k) / nc;
+  for (let j = 0; j < nr; j++) for (let i = 0; i < nc; i++) {
+    const v = 0.9 + (((Math.imul(h, 2654435761) ^ Math.imul(i * 31 + j * 7 + 1, 2246822519)) >>> 7) % 21) / 100; // 0.90 .. 1.10
+    const d0 = (D * j) / nr, d1 = (D * (j + 1)) / nr;
+    quad(f.buf, f.p(x(d0, i), d0, fy), f.p(x(d0, i + 1), d0, fy), f.p(x(d1, i + 1), d1, fy), f.p(x(d1, i), d1, fy), 0, 1, 0, hex(c1, 0xa65a40, v), HT_WHITE);
+  }
+}
+
+function addGround(f: Frame, lot: Lot, w: number, g: number, fy: number, first: boolean, last: boolean, v9: V9Lot | null = null): void {
   const b0 = g + HH.beam0, b1 = g + HH.beam1;
   const wallC = hex(c1, lot.wall, 0.95).clone();
   const trim = hex(c2, lot.trim).clone();
   const join = hex(c3, lot.joinery).clone();
   const h = lot.h;
+  // V9 arcade paint (observed in Commons photos M3/M4, 2010-2012; typology, not per-lot survey).
+  const paint = v9 ? new THREE.Color().setHex(v9.paint) : wallC;
+  // V9 lot extent at depth d: straight, or cut by the mitre line of a corner.
+  const aS = (d: number) => (v9 && v9.start === 'mitre' ? v9.s0 * d : 0);
+  const aE = (d: number) => w + (v9 && v9.end === 'mitre' ? v9.s1 * d : 0);
   // Raised five-foot way: tiled floor and its kerb face.
-  const ft = htUV(HT.floorTile);
-  const tint = rgb(c1, 0.92 + ((h >>> 2) % 8) / 100, 0.92, 0.9).clone();
-  f.flat(0, w / 2, 0, D, fy, 1, tint, [ft[0], ft[1], ft[2], ft[1] + (ft[3] - ft[1]) * 0.96]);
-  f.flat(w / 2, w, 0, D, fy, 1, tint, [ft[0], ft[1], ft[2], ft[1] + (ft[3] - ft[1]) * 0.96]);
+  if (v9) addV9Floor(f, w, fy, h, aS, aE);
+  else {
+    const ft = htUV(HT.floorTile);
+    const tint = rgb(c1, 0.92 + ((h >>> 2) % 8) / 100, 0.92, 0.9).clone();
+    f.flat(0, w / 2, 0, D, fy, 1, tint, [ft[0], ft[1], ft[2], ft[1] + (ft[3] - ft[1]) * 0.96]);
+    f.flat(w / 2, w, 0, D, fy, 1, tint, [ft[0], ft[1], ft[2], ft[1] + (ft[3] - ft[1]) * 0.96]);
+  }
   f.face(0, w, fy - 0.6, fy, 0, rgb(c1, 0.62, 0.6, 0.56));
-  // Ceiling of the walkway with the floor beam at each party wall.
-  f.flat(0, w, 0, D, b0, -1, rgb(c1, 0.9, 0.89, 0.85));
-  f.box(-0.12, 0.12, 0, D, b0 - 0.22, b0, trim, HT_WHITE, false);
-  f.flat(-0.12, 0.12, 0, D, b0 - 0.22, -1, trim);
-  // Shallow arch across the walkway at the party wall (the openings between adjoining shops).
-  const AS = 6, inner0 = 0.46, span = D - inner0;
-  for (let k = 0; k < AS; k++) {
-    const t0 = k / AS, t1 = (k + 1) / AS;
-    const drop = (t: number) => 0.22 + 0.62 * Math.pow(Math.abs(2 * t - 1), 2.6);
-    quad(f.buf, f.p(0, inner0 + span * t0, b0 - drop(t0)), f.p(0, inner0 + span * t1, b0 - drop(t1)), f.p(0, inner0 + span * t1, b0), f.p(0, inner0 + span * t0, b0), f.ex, 0, f.ez, wallC, HT_WHITE);
+  // Ceiling of the walkway (flat) with the floor beam at each party wall.
+  if (v9) quad(f.buf, f.p(aS(0), 0, b0), f.p(aE(0), 0, b0), f.p(aE(D), D, b0), f.p(aS(D), D, b0), 0, -1, 0, rgb(c1, 0.9, 0.89, 0.85), HT_WHITE);
+  else f.flat(0, w, 0, D, b0, -1, rgb(c1, 0.9, 0.89, 0.85));
+  if (v9) { if (v9.start !== 'end') addV9Arch(f, fy, b0, paint, v9.start === 'mitre' ? v9.s0 : 0, h, v9.prevFy); }
+  else {
+    f.box(-0.12, 0.12, 0, D, b0 - 0.22, b0, trim, HT_WHITE, false);
+    f.flat(-0.12, 0.12, 0, D, b0 - 0.22, -1, trim);
+    // Shallow arch across the walkway at the party wall (the openings between adjoining shops).
+    const AS = 6, inner0 = 0.46, span = D - inner0;
+    for (let k = 0; k < AS; k++) {
+      const t0 = k / AS, t1 = (k + 1) / AS;
+      const drop = (t: number) => 0.22 + 0.62 * Math.pow(Math.abs(2 * t - 1), 2.6);
+      quad(f.buf, f.p(0, inner0 + span * t0, b0 - drop(t0)), f.p(0, inner0 + span * t1, b0 - drop(t1)), f.p(0, inner0 + span * t1, b0), f.p(0, inner0 + span * t0, b0), f.ex, 0, f.ez, wallC, HT_WHITE);
+    }
   }
 
   // Shopfront on the recessed line.
   const j = 0.24, yo = fy + 2.5;
+  const x0 = v9 ? aS(D) + j : j, x1 = v9 ? aE(D) - j : w - j; // shopfront between the jambs
   const jamb = wallC.clone().multiplyScalar(0.92);
-  f.face(0, j, fy, b0, D, jamb, htSub(HT.plaster, 0, 0, 0.1, 0.6));
-  f.face(w - j, w, fy, b0, D, jamb, htSub(HT.plaster, 0.9, 0, 1, 0.6));
+  f.face(x0 - j, x0, fy, b0, D, jamb, htSub(HT.plaster, 0, 0, 0.1, 0.6));
+  f.face(x1, v9 ? x1 + j : w, fy, b0, D, jamb, htSub(HT.plaster, 0.9, 0, 1, 0.6));
   if (lot.front === FRONT.doors) {
-    f.face(j, w - j, fy, yo + 0.2, D, hex(c1, [0xffffff, 0xd9c9b0, 0xb9d0c0, 0xc8d4e0][(h >>> 9) % 4]), htUV(HT.timberDoor));
-    f.face(j, w - j, yo + 0.2, b0, D, jamb, htSub(HT.plaster, 0.1, 0.6, 0.9, 0.75));
+    f.face(x0, x1, fy, yo + 0.2, D, hex(c1, [0xffffff, 0xd9c9b0, 0xb9d0c0, 0xc8d4e0][(h >>> 9) % 4]), htUV(HT.timberDoor));
+    f.face(x0, x1, yo + 0.2, b0, D, jamb, htSub(HT.plaster, 0.1, 0.6, 0.9, 0.75));
   } else if (lot.front === FRONT.roller) {
-    f.face(j, w - j, fy, b0, D, hex(c1, [0xb9c0c4, 0x9fb3a6, 0xc9c2b0, 0x8fa3b8, 0xb8b8b6][(h >>> 9) % 5]), htUV(HT.roller));
+    f.face(x0, x1, fy, b0, D, hex(c1, [0xb9c0c4, 0x9fb3a6, 0xc9c2b0, 0x8fa3b8, 0xb8b8b6][(h >>> 9) % 5]), htUV(HT.roller));
   } else {
     const ID = 3.4;
     const tile = [HT.shopCraft, HT.shopCafe, HT.shopDry][lot.interior];
     const lit = rgb(c1, 1.75, 1.62, 1.4).clone();
-    f.face(j, w - j, fy, yo, D + ID, lit, htUV(tile));
+    f.face(x0, x1, fy, yo, D + ID, lit, htUV(tile));
     const sideC = rgb(c1, 1.1, 1.02, 0.9).clone();
-    f.side(j, D, D + ID, fy, yo, 1, sideC, htSub(tile, 0.02, 0.12, 0.6, 0.86));
-    f.side(w - j, D, D + ID, fy, yo, -1, sideC, htSub(tile, 0.4, 0.12, 0.98, 0.86));
-    f.flat(j, w - j, D, D + ID, fy + 0.01, 1, rgb(c1, 0.62, 0.58, 0.52), htSub(HT.floorTile, 0, 0, 1, 0.5));
-    f.flat(j, w - j, D, D + ID, yo, -1, rgb(c1, 0.75, 0.72, 0.66));
+    f.side(x0, D, D + ID, fy, yo, 1, sideC, htSub(tile, 0.02, 0.12, 0.6, 0.86));
+    f.side(x1, D, D + ID, fy, yo, -1, sideC, htSub(tile, 0.4, 0.12, 0.98, 0.86));
+    f.flat(x0, x1, D, D + ID, fy + 0.01, 1, rgb(c1, 0.62, 0.58, 0.52), htSub(HT.floorTile, 0, 0, 1, 0.5));
+    f.flat(x0, x1, D, D + ID, yo, -1, rgb(c1, 0.75, 0.72, 0.66));
     // Transom over the opening: timber ventilation bars.
-    f.face(j, w - j, yo, b0, D, jamb, htSub(HT.plaster, 0.1, 0.6, 0.9, 0.75));
-    f.box(j, w - j, D - 0.12, D, yo - 0.16, yo + 0.04, rgb(c1, 0.5, 0.52, 0.53));
-    if (lot.front === FRONT.half) f.face(j, w - j, yo - 1.15, yo, D - 0.03, hex(c1, 0xb9c0c4), htSub(HT.roller, 0, 0.5, 1, 1));
+    f.face(x0, x1, yo, b0, D, jamb, htSub(HT.plaster, 0.1, 0.6, 0.9, 0.75));
+    f.box(x0, x1, D - 0.12, D, yo - 0.16, yo + 0.04, rgb(c1, 0.5, 0.52, 0.53));
+    if (lot.front === FRONT.half) f.face(x0, x1, yo - 1.15, yo, D - 0.03, hex(c1, 0xb9c0c4), htSub(HT.roller, 0, 0.5, 1, 1));
     // Red lanterns under the beam outside dry-goods and craft shops.
     if (lot.interior !== 1 && (h >>> 21) % 2 === 0) {
       for (const a of [w * 0.3, w * 0.7]) {
@@ -269,6 +378,11 @@ function addGround(f: Frame, lot: Lot, w: number, g: number, fy: number, first: 
     const a0 = it.a - it.ha, a1 = it.a + it.ha, d0 = it.d - it.hd, d1 = it.d + it.hd;
     switch (it.kind) {
       case ITEM.column: {
+        if (v9) {
+          const g = (v9.start === 'end' && a0 > -1e-9 && a1 < 0.46 + 1e-9) || (v9.end === 'end' && a1 > w - 1e-9) ? V9_PIER_GROW : 0; // run-end pier
+          f.box(a0 - g, a1 + g, d0 - g, d1 + g, fy - 0.6, b0, paint, HT_WHITE, false);
+          break;
+        } // square plastered pier, no capital
         const dado = (lot.group + (h >>> 30)) % 2 === 0;
         f.box(a0, a1, d0, d1, fy - 0.6, b0, wallC, htSub(HT.plaster, 0.3, 0, 0.5, 1), false);
         if (dado) f.box(a0 - 0.005, a1 + 0.005, d0 - 0.005, d1 + 0.005, fy, fy + 1.05, join.clone().multiplyScalar(0.9), HT_WHITE);
@@ -339,7 +453,7 @@ export function heritageFascia(fr: RowFrame, buildingId: number, edge: number, t
 }
 
 /** Full-detail district row. Returns the frame and the lot plans (needed by the roof). */
-export function addHeritageRow(b: BuildingData, ox: number, oz: number, ctx: BuildContext, buf: GeoBuf): HeritageRow {
+export function addHeritageRow(b: BuildingData, ox: number, oz: number, ctx: BuildContext, buf: GeoBuf, onLot?: (edge: number, u: number, lot: Lot) => void): HeritageRow {
   assertGeneric(b, 'heritage shophouse row');
   const fr = rowFrame(b, ox, oz, ctx);
   const { ring, inner, ground } = fr;
@@ -349,6 +463,38 @@ export function addHeritageRow(b: BuildingData, ox: number, oz: number, ctx: Bui
   const baseTop = ground + HH.beam1 + HH.upper;
   const simple = ctx.detail !== 'high';
   const side = hex(c3, 0xdcd6c8, 0.9 + ((b.id % 12) / 100)).clone();
+
+  // V9 (flag on): how consecutive frontage edges meet. Only the lots of the Main Bazaar frontages (FRONTS) take part.
+  const edgeFrame = (e: number) => {
+    const k = (e + 1) % n, len = Math.hypot(ring[k * 2] - ring[e * 2], ring[k * 2 + 1] - ring[e * 2 + 1]);
+    const [nx, nz] = edgeOutward(ring, e, fr.area2);
+    return { ax: ring[e * 2], az: ring[e * 2 + 1], len, ex: (ring[k * 2] - ring[e * 2]) / len, ez: (ring[k * 2 + 1] - ring[e * 2 + 1]) / len, nx, nz };
+  };
+  const v9Edge = (e: number): boolean => { const l = plans.get(e); return !!l && v9Lot(b.id, l[0].no); };
+  const floorAt = (e: number, u: number): number => {
+    const g = edgeFrame(e), w = g.len / plans.get(e)!.length;
+    return lotFloor((x, z) => ctx.height.sample(x, z), ox + g.ax + g.ex * w * (u + 0.5), oz + g.az + g.ez * w * (u + 0.5), g.nx, g.nz);
+  };
+  /**
+   * Floor level actually drawn for lot u of edge e. A V9 lot at a run end (corner onto a non-V9 edge) lies 3 mm under the lower of its own
+   * floor and the floor of the neighbouring old lot it overlaps: one height for the whole lot, so the old checker floor always wins in the
+   * overlap and no step or seam is left between the lot's own tiles. Every other lot keeps its natural level (collision is unchanged).
+   */
+  const drawnFloor = (e: number, u: number): number => {
+    let y = floorAt(e, u);
+    const cnt = plans.get(e)!.length, nb: number[] = [];
+    if (u === 0 && !joint((e + n - 1) % n)) { const pe = (e + n - 1) % n, pl = plans.get(pe); if (pl && !v9Edge(pe)) nb.push(floorAt(pe, pl.length - 1)); }
+    if (u === cnt - 1 && !joint(e)) { const ne = (e + 1) % n, nl = plans.get(ne); if (nl && !v9Edge(ne)) nb.push(floorAt(ne, 0)); }
+    return nb.length ? Math.min(y, ...nb) - V9_FLOOR_SINK : y;
+  };
+  /** Mitre between the end of V9 edge e and the start of the next one: slopes of both cut lines, or null (a run end). */
+  const joint = (e: number): { s1: number; s0: number } | null => {
+    const k = (e + 1) % n;
+    if (k === e || !v9Edge(e) || !v9Edge(k)) return null;
+    const p1 = edgeFrame(e), p2 = edgeFrame(k), c = p1.nx * p2.nx + p1.nz * p2.nz;
+    if (c < 0.5) return null; // a sharp turn is not mitred: both sides end
+    return { s1: -(p2.nx * p1.ex + p2.nz * p1.ez) / (1 + c), s0: -(p1.nx * p2.ex + p1.nz * p2.ez) / (1 + c) };
+  };
 
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
@@ -379,7 +525,20 @@ export function addHeritageRow(b: BuildingData, ox: number, oz: number, ctx: Bui
       }
       const mx = ox + ax + ex * w * (u + 0.5), mz = oz + az + ez * w * (u + 0.5);
       const fy = lotFloor((x, z) => ctx.height.sample(x, z), mx, mz, nx, nz);
-      addGround(f, lot, w, ground, fy, u === 0, u === lots.length - 1);
+      onLot?.(i, u, lot); // test hook: called before each lot is drawn
+      let v9: V9Lot | null = null;
+      if (v9Lot(b.id, lot.no)) {
+        const lastLot = u === lots.length - 1, pj = u === 0 ? joint((i + n - 1) % n) : null, nj = lastLot ? joint(i) : null;
+        v9 = {
+          paint: v9ArcadePaint({ group: v9RunGroup(b.id, i, lot.group) }),
+          start: u > 0 ? 'wall' : pj ? 'mitre' : 'end',
+          end: !lastLot ? 'none' : nj ? 'mitre' : 'end',
+          s0: pj ? pj.s0 : 0, s1: nj ? nj.s1 : 0,
+          prevFy: u > 0 ? drawnFloor(i, u - 1) : pj ? drawnFloor((i + n - 1) % n, plans.get((i + n - 1) % n)!.length - 1) : null,
+        };
+      }
+      // Columns: a run end keeps its flush end pier; a party wall or corner gets one shared pier centred on it.
+      addGround(f, lot, w, ground, v9 ? drawnFloor(i, u) : fy, v9 ? v9.start === 'end' : u === 0, v9 ? v9.end === 'end' : u === lots.length - 1, v9);
       addUpper(f, lot, w, ground);
     });
   }
