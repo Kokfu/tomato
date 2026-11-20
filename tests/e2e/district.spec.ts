@@ -74,18 +74,29 @@ test.describe('Main Bazaar district', () => {
     expect(r.everInBuilding).toBe(false);
   });
 
-  test('pinned businesses carry a sign on their numbered lot and can be inspected', async ({ page }) => {
+  test('pinned verified businesses carry a sign; unverified pinned businesses stay on their lot without one', async ({ page }) => {
     await start(page);
     await teleport(page, 166.6, -109.8);
     await waitChunks(page);
     const pins = await page.evaluate(() => {
       const k = (window as any).__k3d;
-      const out: { name: string; no: number; evidence: string; sign: boolean }[] = [];
-      for (const key of ['0_-1', '1_0']) for (const p of k.world.places.inChunk(key)) if (p.pin) out.push({ name: p.name, no: p.pin.no, evidence: p.pin.evidence, sign: !!p.sign });
+      const out: { name: string; no: number; evidence: string; sign: unknown; src: string; v: number; onLot: boolean }[] = [];
+      for (const key of ['0_-1', '1_0']) for (const p of k.world.places.inChunk(key)) if (p.pin) out.push({ name: p.name, no: p.pin.no, evidence: p.pin.evidence, sign: p.sign, src: p.src, v: p.v, onLot: p.b !== undefined && p.e !== undefined && p.t !== undefined });
       return out;
     });
     expect(pins.length).toBeGreaterThanOrEqual(10);
-    expect(pins.every((p) => p.sign)).toBe(true);
+    // Owner rule, by trust value: verified (v >= 1: OSM or owner) pins carry a sign, unverified (v === 0) pins do not.
+    expect(pins.filter((p) => p.v >= 1).every((p) => p.sign === true)).toBe(true);
+    const unverified = pins.filter((p) => p.v === 0);
+    expect(unverified.length).toBeGreaterThanOrEqual(7);
+    expect(unverified.every((p) => p.sign === false)).toBe(true);
+    // Unverified pins are still listed (inspectable) and anchored to their numbered lot.
+    expect(unverified.every((p) => p.onLot)).toBe(true);
+    expect(pins.filter((p) => p.src === 'osm').length).toBeGreaterThanOrEqual(4);
+    // No. 42 is signed from the verified OSM record, not from its Overture duplicate.
+    const no42 = pins.filter((p) => p.no === 42);
+    expect(no42.length).toBe(1);
+    expect(no42[0]).toMatchObject({ src: 'osm', v: 1, sign: true, name: 'JD Massage Centre' });
     expect(pins.find((p) => p.name === 'Little Borneo')?.no).toBe(12);
   });
 });
