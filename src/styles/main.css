@@ -278,3 +278,13 @@ body.touch-drive #attribution { font-size: 9px; line-height: 1.25; }
 @media (min-width: 721px) and (max-width: 1100px) and (min-height: 521px) {
   #hud #nav-hint { left: calc(12px + var(--safe-l)); transform: none; top: calc(74px + var(--safe-t)); max-width: calc(100vw - 260px); }
 }
+
+/* UX1 prototype guide (only exists in the DOM with ?ux1=1) */
+.guide { text-align: left; font-size: 12.5px; line-height: 1.4; color: #d5e2e8; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; }
+.guide p { margin: 0; }
+.guide p + p { margin-top: 4px; }
+/* OP-mode hint shown above the full map (z-index 15), which covers the shared toast. */
+.guide-hint { position: fixed; left: 50%; bottom: calc(56px + var(--safe-b)); transform: translateX(-50%); z-index: 16; max-width: calc(100vw - 24px); padding: 8px 14px; border-radius: 9px; font-size: 13px; font-weight: 500; text-align: center; color: #fff; background: rgba(6, 14, 19, 0.94); border: 1px solid var(--accent); pointer-events: none; }
+@media (max-height: 520px) { .guide { font-size: 11px; line-height: 1.3; padding: 5px 8px; } .guide p + p { margin-top: 2px; } }
+/* Landscape phones: widen the Start-card guide past the 520px card and tighten the card gap (only when a guide exists) so the credit line stays on screen. */
+@media (max-height: 520px) { .start-card .guide { width: min(760px, calc(100vw - 40px)); margin-top: -6px; padding: 4px 8px; line-height: 1.25; } .start-card:has(.guide) { gap: 6px; } }
