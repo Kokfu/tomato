@@ -1,8 +1,10 @@
 // V9-VISUAL prototype switch. Pure (no three.js), safe under node (no `location`) and in a worker.
 //
-// New behaviour is on only when the page URL carries ?v9=1. The URL is read once, on first use, and
-// cached. In a worker, `location` is the worker script's URL, so a page that builds chunks in a
-// worker must either append its own query string to the worker URL or call setV9(true) there.
+// New behaviour is on only when the page URL carries ?v9=1, or ?lab=1 without ?v9=0 (see src/flags.ts and
+// docs/FLAGS.md). The URL is read once, on first use, and cached by the registry. In a worker, `location` is
+// the worker script's URL, so a page that builds chunks in a worker must either append its own query string
+// to the worker URL or call setV9(true) there.
+import { getFlags, resetFlags } from '../../flags.ts';
 import { FRONTS, lotOfNumber } from './mainBazaar.ts';
 
 /** First block of the run the prototype redraws (Jalan Main Bazaar, frontage edge 2). */
@@ -16,22 +18,16 @@ export const V9_NOS: readonly [number, number] = (() => {
   return [lo, hi] as const;
 })();
 
-let cached: boolean | null = null;
+let override: boolean | null = null;
 
 /** Explicit override (tests, workers). Pass null to forget it and read the URL again. */
 export function setV9(v: boolean | null): void {
-  cached = v;
+  override = v;
+  if (v === null) resetFlags();
 }
 
 export function v9Enabled(): boolean {
-  if (cached !== null) return cached;
-  let on = false;
-  try {
-    const loc = (globalThis as { location?: { search?: string } }).location;
-    if (loc && typeof loc.search === 'string') on = new URLSearchParams(loc.search).get('v9') === '1';
-  } catch { on = false; }
-  cached = on;
-  return on;
+  return override !== null ? override : getFlags().v9;
 }
 
 /** True for the lots the prototype changes: flag on and a numbered lot of a FRONTS frontage of that block (Main Bazaar Nos 1-71). */

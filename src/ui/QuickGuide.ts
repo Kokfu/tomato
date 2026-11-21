@@ -1,9 +1,10 @@
-// UX1 prototype (opt-in, `?ux1=1`): a first-minute controls guide on the Start and Pause cards, and a short message
-// when E, G, R or P is pressed and nothing applies. Text and DOM only: no key binding, physics, camera or car change.
+// UX1 prototype (opt-in: `?ux1=1`, or `?lab=1` unless `?ux1=0`): a first-minute controls guide on the Start and
+// Pause cards, and a short message when E, G, R or P is pressed and nothing applies. Text and DOM only: no key binding, physics, camera or car change.
 // Off (the default) nothing here runs and the page is exactly V8.6. Rollback: delete this file and its main.ts calls.
+import { parseFlags } from '../flags.ts';
 import { worldDirToBearing } from '../world/GeoProjection.ts';
 
-export const ux1Enabled = (search: string): boolean => new URLSearchParams(search).get('ux1') === '1';
+export const ux1Enabled = (search: string): boolean => parseFlags(search).ux1;
 
 export type HintKind = 'noCar' | 'gps' | 'reset' | 'op';
 export type PlayState = 'foot' | 'drive' | 'fly' | 'map' | 'off';
