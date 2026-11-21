@@ -11,6 +11,8 @@ export interface MenuCallbacks {
   onReset: () => void;
   /** Pause menu "Drive Car": take the character to the car (the menu stays open until it is there). */
   onDriveCar?: () => void;
+  /** Developer cycle button (shown only with ?char): switch to the next player character. */
+  onChangeCharacter?: () => void;
   onQuality: (q: QualityName) => void;
   onAdaptive: (on: boolean) => void;
   onSensitivity: (v: number) => void;
@@ -37,6 +39,7 @@ export class GameMenu {
     $('btn-pause').addEventListener('click', () => this.pause());
     $('pause-resume').addEventListener('click', () => this.resume());
     $('pause-drive').addEventListener('click', () => cb.onDriveCar?.());
+    $('pause-char').addEventListener('click', () => cb.onChangeCharacter?.());
     $('build-version').textContent = `Version: ${buildLabel()}`;
     $('pause-reset').addEventListener('click', () => {
       cb.onReset();
@@ -105,6 +108,14 @@ export class GameMenu {
     if (b.textContent !== text) b.textContent = text;
     b.disabled = !enabled;
     b.title = title;
+  }
+
+  /** The developer character button of the pause menu: hidden (null) unless ?char is on. */
+  setCharacterButton(label: string | null, busy = false): void {
+    const b = $('pause-char') as HTMLButtonElement;
+    b.classList.toggle('hidden', label === null);
+    if (label !== null && b.textContent !== label) b.textContent = label;
+    b.disabled = busy;
   }
 
   resume(): void {

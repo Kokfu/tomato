@@ -10,6 +10,36 @@ export interface CharacterSource {
 
 export const CHARACTER_HEIGHT = 1.72;
 
+/** Clip roles a profile can name explicitly. `jump` is the airborne pose; turnL/turnR are optional turn-in-place clips. */
+export type ClipNames = Partial<Record<'idle' | 'walk' | 'run' | 'jump' | 'turnL' | 'turnR', string>>;
+
+/** Optional, additive settings. With none given the character behaves exactly as before (1.72 m, clips found by name). */
+export interface GlbCharacterOptions {
+  /** Normalisation height in metres (default CHARACTER_HEIGHT). */
+  height?: number;
+  /** Exact clip names (the full name or the part after '|'); a missing or unknown name falls back to the word search. */
+  clips?: ClipNames;
+  /** Playback-rate factor of the gait cycle (per metre travelled), the idle loop and turn clips. Default 1. */
+  animRate?: number;
+  /** Turn on the spot when the body yaw changes while standing: turn clips if present, else a slowed walk cycle. */
+  turnInPlace?: boolean;
+  /** Extra yaw (radians) applied to the model after the facing direction was detected. */
+  yawFix?: number;
+  /** Extra uniform scale applied after normalisation (the feet stay on y = 0). */
+  scale?: number;
+  /** Extra offset of the model (metres) applied after normalisation. */
+  offset?: readonly [number, number, number];
+  /** Exact left/right foot bone names when the automatic match fails. */
+  feet?: readonly [string, string];
+}
+
+/** Find a clip by its exact name: the full name or the part after the last '|' (case-insensitive). */
+export function findClipByName(clips: readonly THREE.AnimationClip[], name: string | undefined): THREE.AnimationClip | null {
+  if (!name) return null;
+  const want = name.toLowerCase();
+  return clips.find((c) => c.name.toLowerCase() === want) ?? clips.find((c) => (c.name.split('|').pop() ?? '').toLowerCase() === want) ?? null;
+}
+
 /** Distance covered by one full gait cycle (two steps) when it cannot be measured from the clip. */
 const FALLBACK_STRIDE = { walk: 1.45, run: 3.0 };
 /** Speeds (m/s) between which the walk cycle blends into the run cycle. */
@@ -75,9 +105,20 @@ export class GlbCharacter implements CharacterVisual {
   private walk: THREE.AnimationAction;
   private run: THREE.AnimationAction;
   private airAction: THREE.AnimationAction;
+  private turnL: THREE.AnimationAction | null = null;
+  private turnR: THREE.AnimationAction | null = null;
+  private readonly rate: number;
+  private readonly turnInPlace: boolean;
+  private turn = 0;
+  private turnT = 0;
+  private yawPrev: number | null = null;
+  private yawRate = 0;
   private walkGait: Gait;
   private runGait: Gait;
   private airTime = 0;
+  /** Only for an explicitly named jump clip: the shoe vertices that can reach the ground, and the model's resting height. */
+  private soleVerts: { mesh: THREE.SkinnedMesh; index: number }[] | null = null;
+  private baseY = 0;
   private phase = 0;
   private idleT = 0;
   private move = 0;
@@ -85,12 +126,19 @@ export class GlbCharacter implements CharacterVisual {
   private air = 0;
 
   /** Throws when the source has no skinned mesh or lacks an idle, walk or run clip. */
-  constructor(src: CharacterSource) {
-    const idleClip = findClip(src.animations, 'idle');
-    const walkClip = findClip(src.animations, 'walk');
-    const runClip = findClip(src.animations, 'run');
+  constructor(src: CharacterSource, opts: GlbCharacterOptions = {}) {
+    const names = opts.clips ?? {};
+    const pick = (role: 'idle' | 'walk' | 'run' | 'jump') => findClipByName(src.animations, names[role]) ?? findClip(src.animations, role);
+    const idleClip = pick('idle');
+    const walkClip = pick('walk');
+    const runClip = pick('run');
     if (!idleClip || !walkClip || !runClip) throw new Error('character model lacks idle/walk/run animation clips');
-    const jumpClip = findClip(src.animations, 'jump');
+    const jumpClip = pick('jump');
+    const turnLClip = findClipByName(src.animations, names.turnL);
+    const turnRClip = findClipByName(src.animations, names.turnR);
+    this.rate = opts.animRate !== undefined && opts.animRate > 0 ? opts.animRate : 1;
+    this.turnInPlace = !!opts.turnInPlace;
+    const targetHeight = opts.height !== undefined && opts.height > 0 ? opts.height : CHARACTER_HEIGHT;
 
     this.model = src.scene;
     this.root.add(this.model);
@@ -124,6 +172,10 @@ export class GlbCharacter implements CharacterVisual {
     this.run = action(runClip);
     // Without a jump clip the airborne pose is the flight phase of the run cycle.
     this.airAction = jumpClip ? action(jumpClip) : this.mixer.clipAction(runClip.clone()).setEffectiveWeight(0).play();
+    if (this.turnInPlace) {
+      if (turnLClip) this.turnL = action(turnLClip);
+      if (turnRClip) this.turnR = action(turnRClip);
+    }
 
     // Normalise: idle pose -> skinned bounds -> scale to 1.72 m with the soles on y = 0.
     this.pose(this.idle, 0);
@@ -134,26 +186,71 @@ export class GlbCharacter implements CharacterVisual {
     }
     const height = box.max.y - box.min.y;
     if (!(height > 1e-6) || !Number.isFinite(height)) throw new Error('character model has degenerate bounds');
-    const s = CHARACTER_HEIGHT / height;
+    const s = targetHeight / height;
     this.model.scale.multiplyScalar(s);
     this.model.position.multiplyScalar(s);
     this.model.position.y -= box.min.y * s;
 
     // Measure the gait of each clip (stride per cycle, foot phase, facing direction).
-    const feet = findFeet(this.model);
-    this.walkGait = this.measureGait(this.walk, feet, FALLBACK_STRIDE.walk);
-    this.runGait = this.measureGait(this.run, feet, FALLBACK_STRIDE.run);    if (this.walkGait.facing < 0 && this.runGait.facing < 0) this.model.rotation.y += Math.PI;
+    const feet = findFeet(this.model, opts.feet);
+    this.walkGait = this.measureGait(this.walk, feet, FALLBACK_STRIDE.walk * (targetHeight / CHARACTER_HEIGHT));
+    this.runGait = this.measureGait(this.run, feet, FALLBACK_STRIDE.run * (targetHeight / CHARACTER_HEIGHT));
+    if (this.walkGait.facing < 0 && this.runGait.facing < 0) this.model.rotation.y += Math.PI;
     this.airTime = this.findAirTime(this.airAction, feet, jumpClip ? 0.5 : 0.25);
+    // Profile fine-tuning, after the measurements (they only depend on the normalised proportions).
+    if (opts.yawFix) this.model.rotation.y += opts.yawFix;
+    if (opts.scale && opts.scale > 0 && opts.scale !== 1) this.model.scale.multiplyScalar(opts.scale);
+    if (opts.offset) this.model.position.add(new THREE.Vector3(...opts.offset));
+
+    // An authored jump pose (an explicitly named clip) has its own ground offset: its shoes sit below the root. Keep the
+    // lowest sole vertices so update() can lift the model by exactly that much while the pose is blended in or out.
+    if (jumpClip && names.jump && findClipByName(src.animations, names.jump) === jumpClip) this.collectSoleVertices(skinned, targetHeight);
+    this.baseY = this.model.position.y;
 
     this.update(0, { speed: 0, grounded: true, vy: 0 });
   }
 
+  /** The skinned vertices within 0.25 m of the soles in the idle pose: whichever of them is lowest is the sole in any pose. */
+  private collectSoleVertices(skinned: THREE.SkinnedMesh[], targetHeight: number): void {
+    this.pose(this.idle, 0);
+    const v = new THREE.Vector3();
+    const limit = this.root.position.y + 0.25 * (targetHeight / CHARACTER_HEIGHT);
+    const out: { mesh: THREE.SkinnedMesh; index: number }[] = [];
+    for (const mesh of skinned) {
+      const n = mesh.geometry.attributes.position.count;
+      for (let i = 0; i < n; i++) {
+        mesh.getVertexPosition(i, v).applyMatrix4(mesh.matrixWorld);
+        if (v.y <= limit) out.push({ mesh, index: i });
+      }
+    }
+    if (out.length) this.soleVerts = out;
+  }
+
+  /** Metres the lowest sole vertex is below the root (0 when none is). Expects the pose and matrices to be current. */
+  private soleDepth(): number {
+    const v = new THREE.Vector3();
+    const rootY = this.root.matrixWorld.elements[13];
+    let low = Infinity;
+    for (const { mesh, index } of this.soleVerts!) {
+      mesh.getVertexPosition(index, v).applyMatrix4(mesh.matrixWorld);
+      if (v.y < low) low = v.y;
+    }
+    return Math.max(0, rootY - low);
+  }
+
   /** Show a single action at a given time (used while measuring; update() restores the blend). */
   private pose(a: THREE.AnimationAction, time: number): void {
-    for (const o of [this.idle, this.walk, this.run, this.airAction]) o.setEffectiveWeight(o === a ? 1 : 0);
+    for (const o of this.actions()) o.setEffectiveWeight(o === a ? 1 : 0);
     a.time = time;
     this.mixer.update(0);
     this.root.updateMatrixWorld(true);
+  }
+
+  private actions(): THREE.AnimationAction[] {
+    const all = [this.idle, this.walk, this.run, this.airAction];
+    if (this.turnL) all.push(this.turnL);
+    if (this.turnR) all.push(this.turnR);
+    return all;
   }
 
   private sampleFeet(a: THREE.AnimationAction, feet: [THREE.Object3D, THREE.Object3D]): THREE.Vector3[][] {
@@ -214,6 +311,17 @@ export class GlbCharacter implements CharacterVisual {
 
   update(dt: number, s: CharacterState): void {
     const k = 1 - Math.exp(-dt * 10);
+    // Body yaw rate (rad/s, positive = turning to the character's left), from the root the controller rotates.
+    const yaw = this.root.rotation.y;
+    let rate = 0;
+    if (this.yawPrev !== null && dt > 0) rate = Math.atan2(Math.sin(yaw - this.yawPrev), Math.cos(yaw - this.yawPrev)) / dt;
+    this.yawPrev = yaw;
+    this.yawRate += (rate - this.yawRate) * (dt > 0 ? 1 - Math.exp(-dt * 20) : 1);
+    const turning = this.turnInPlace && s.grounded && s.speed <= 0.15 && Math.abs(this.yawRate) > 0.5 ? 1 : 0;
+    this.turn += (turning - this.turn) * k;
+    if (dt === 0) this.turn = turning;
+    const turnClips = !!(this.turnL || this.turnR);
+
     const run01 = THREE.MathUtils.clamp((s.speed - RUN_BLEND_START) / (RUN_BLEND_END - RUN_BLEND_START), 0, 1);
     this.move += ((s.speed > 0.15 ? 1 : 0) - this.move) * k;
     this.runBlend += (run01 - this.runBlend) * k;
@@ -225,21 +333,46 @@ export class GlbCharacter implements CharacterVisual {
     }
 
     // Advance the shared gait phase by distance travelled so both cycles stay locked to the ground.
+    // Turning on the spot without turn clips: a slowed walk cycle, as if stepping around the heel.
     const stride = THREE.MathUtils.lerp(this.walkGait.stride, this.runGait.stride, this.runBlend);
-    if (s.grounded) this.phase = (this.phase + (s.speed * dt) / stride) % 1;
-    this.idleT += dt;
+    const stepSpeed = turnClips ? s.speed : Math.max(s.speed, this.turn * Math.min(Math.abs(this.yawRate) * 0.3, 0.9));
+    if (s.grounded) this.phase = (this.phase + (stepSpeed * dt * this.rate) / stride) % 1;
+    this.idleT += dt * this.rate;
+    // The turn clips are one-shot 90 degree turns: start each turn from the first frame, not from wherever the loop was.
+    if (this.turn < 0.02) this.turnT = 0;
+    this.turnT += dt * this.rate;
 
     const ground = 1 - this.air;
-    this.idle.setEffectiveWeight(ground * (1 - this.move));
-    this.walk.setEffectiveWeight(ground * this.move * (1 - this.runBlend));
-    this.run.setEffectiveWeight(ground * this.move * this.runBlend);
+    const walkMove = turnClips ? this.move : Math.max(this.move, this.turn);
+    const still = ground * (1 - walkMove);
+    const turnW = turnClips ? still * this.turn : 0;
+    this.idle.setEffectiveWeight(still - turnW);
+    this.walk.setEffectiveWeight(ground * walkMove * (1 - this.runBlend));
+    this.run.setEffectiveWeight(ground * walkMove * this.runBlend);
     this.airAction.setEffectiveWeight(this.air);
+    const left = this.yawRate > 0;
+    // A character with only one turn clip uses it for both directions.
+    const wl = this.turnL && (left || !this.turnR) ? turnW : 0;
+    const wr = this.turnR && (!left || !this.turnL) ? turnW : 0;
+    this.turnL?.setEffectiveWeight(wl);
+    this.turnR?.setEffectiveWeight(wr);
 
     this.idle.time = this.idleT % this.idle.getClip().duration;
     this.walk.time = ((this.phase + this.walkGait.offset) % 1) * this.walk.getClip().duration;
     this.run.time = ((this.phase + this.runGait.offset) % 1) * this.run.getClip().duration;
     this.airAction.time = this.airTime;
+    if (this.turnL) this.turnL.time = this.turnT % this.turnL.getClip().duration;
+    if (this.turnR) this.turnR.time = this.turnT % this.turnR.getClip().duration;
     this.mixer.update(0);
+    // A jump pose that is blended in or out must not push the shoes through the ground: lift the model by the measured depth.
+    if (this.soleVerts) {
+      this.model.position.y = this.baseY;
+      if (this.air > 0.005) {
+        // updateMatrixWorld, not updateWorldMatrix: only the former refreshes a SkinnedMesh's inverse bind matrix.
+        this.root.updateMatrixWorld(true);
+        this.model.position.y = this.baseY + this.soleDepth();
+      }
+    }
   }
 
   dispose(): void {
@@ -284,13 +417,17 @@ function disposeMaterial(m: THREE.Material): void {
   m.dispose();
 }
 
-/** Left and right foot bones, matched on common naming schemes (Foot.L, LeftFoot, mixamorigLeftFoot, foot_r...). */
-function findFeet(model: THREE.Object3D): [THREE.Object3D, THREE.Object3D] | null {
+/** Left and right foot bones, matched on common naming schemes (Foot.L, LeftFoot, mixamorigLeftFoot, foot_r, "Bip01 L Foot"...). */
+function findFeet(model: THREE.Object3D, names?: readonly [string, string]): [THREE.Object3D, THREE.Object3D] | null {
+  if (names) {
+    const l = model.getObjectByName(names[0]), r = model.getObjectByName(names[1]);
+    if (l && r) return [l, r];
+  }
   let left: THREE.Object3D | null = null, right: THREE.Object3D | null = null;
   model.traverse((o) => {
     const n = o.name.toLowerCase();
     if (!(o as THREE.Bone).isBone || !n.includes('foot')) return;
-    const rest = n.replace('foot', '');
+    const rest = n.replace('foot', '').trim();
     if (!left && /(left|(^|[^a-z])l$|^l([^a-z]|$))/.test(rest)) left = o;
     else if (!right && /(right|(^|[^a-z])r$|^r([^a-z]|$))/.test(rest)) right = o;
   });

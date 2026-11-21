@@ -7,7 +7,10 @@ import { registerLandmarks } from './world/landmarks/index.ts';
 import { Input } from './player/Input.ts';
 import { PlayerController } from './player/PlayerController.ts';
 import { ProceduralHumanoid } from './player/CharacterAnimator.ts';
-import { loadCharacter } from './player/CharacterLoader.ts';
+import { CharacterRegistry } from './player/character/CharacterRegistry.ts';
+import { CharacterSwapper } from './player/character/swap.ts';
+import { bodyVisible } from './player/character/visibility.ts';
+import { getProfile, loadSavedCharacter, nextProfileId, resolveStartCharacter, saveCharacter } from './player/character/CharacterProfile.ts';
 import { ThirdPersonCamera } from './player/ThirdPersonCamera.ts';
 import { GameMenu } from './ui/GameMenu.ts';
 import { Minimap } from './ui/Minimap.ts';
@@ -113,6 +116,7 @@ async function boot(): Promise<void> {
       },
       onReset: () => { endCarTrip(); resetLocation(); },
       onDriveCar: () => driveCar(),
+      onChangeCharacter: () => { void swapper.swap(nextProfileId(swapper.currentId), { persist: charStart.flag }).then(syncCharacterButton); syncCharacterButton(); },
       onQuality: (q) => {
         qualityName = q;
         quality = QUALITY[q];
@@ -178,6 +182,21 @@ async function boot(): Promise<void> {
   player.onFootstep = (speed, deck, impact) => steps.step(speed, deck ? 'deck' : 'paving', impact);
   world.scene.add(player.visual.root);
   const tpc = new ThirdPersonCamera(camera, world.collision);
+  // CHAR-P2a: character profiles. Without ?char nothing changes: the default model is loaded as before.
+  const charStart = resolveStartCharacter(location.search, new URLSearchParams(location.search).has('char') ? loadSavedCharacter() : null);
+  const charRegistry = new CharacterRegistry();
+  /** The single rule for showing the player's body (src/player/character/visibility.ts). */
+  const syncBody = () => { player.visual.root.visible = bodyVisible({ firstPerson: tpc.firstPerson, driving: driving.active, flying: fly.active }); };
+  const swapper = new CharacterSwapper({
+    registry: charRegistry,
+    install: (next) => player.setVisual(next, { disposeOld: false }),
+    prepare: (root) => whenCompiled(renderer, prepareObject(root)),
+    applyCamera: (p) => tpc.setProfile(p),
+    syncBody,
+    warn: (m, e) => (e === undefined ? console.warn(m) : console.warn(m, e)),
+    persist: (id) => saveCharacter(id),
+  });
+  const syncCharacterButton = () => menu.setCharacterButton(charStart.flag ? `Character: ${getProfile(swapper.currentId)?.label ?? swapper.currentId}${swapper.loading ? ' (loading…)' : ''}` : null, swapper.loading);
   const spawn = world.manifest.spawn;
   player.position.set(spawn.x, world.height.sample(spawn.x, spawn.z), spawn.z);
   // Face the river (north) at spawn; the camera sits behind, to the south.
@@ -193,19 +212,20 @@ async function boot(): Promise<void> {
   const leaveCar = () => {
     if (!driving.active) return;
     driving.exit(player, true);
-    player.visual.root.visible = !tpc.firstPerson;
+    syncBody();
     minimap.setDriving(false);
   };
   const toggleCar = () => {
     if (driving.active) {
       if (driving.exit(player)) {
-        player.visual.root.visible = !tpc.firstPerson;
+        syncBody();
         tpc.yaw = driving.camera.yaw;
         tpc.snap();
         minimap.setDriving(false);
       }
     } else if (driving.enter(player)) {
       if (tpc.firstPerson) tpc.firstPerson = false;
+      syncBody();
       minimap.setDriving(true);
     }
   };
@@ -283,7 +303,7 @@ async function boot(): Promise<void> {
     // The driving camera is third-person only: at the wheel V steps the chase distance (near, standard, far).
     if (driving.active) { driving.camera.cycleDistance(); return; }
     tpc.firstPerson = !tpc.firstPerson;
-    player.visual.root.visible = !tpc.firstPerson;
+    syncBody();
   };
 
   const minimap = new Minimap({
@@ -322,11 +342,11 @@ async function boot(): Promise<void> {
         fly.yaw = tpc.yaw;
         fly.pitch = -tpc.pitch;
         player.velocity.set(0, 0, 0);
-        player.visual.root.visible = !driving.active;
+        syncBody();
         driving.hidePrompt();
       } else {
         // The character never moved: walking resumes from its last safe position, with collision and gravity.
-        player.visual.root.visible = !tpc.firstPerson && !driving.active;
+        syncBody();
         tpc.snap();
         driving.camera.snap();
         // The comparison panel belongs to the inspection mode only.
@@ -403,15 +423,13 @@ async function boot(): Promise<void> {
     if (document.hidden && started && !paused) menu.pause();
   });
 
-  // Swap in the GLB character when one is available; the procedural humanoid is the fallback.
-  loadCharacter()
-    .then((visual) => {
-      if (visual) {
-        player.setVisual(visual);
-        visual.root.visible = !tpc.firstPerson;
-      }
-    })
-    .catch((e) => console.warn('Character model unavailable, using procedural humanoid:', e));
+  // Swap in the GLB character when one is available; the procedural humanoid is the fallback. Without ?char this is
+  // the default model exactly as before (no compile step, no clone, the same requests in the same order); with ?char=<id> the chosen profile
+  // loads, compiles in the background and then replaces the humanoid. A model that finishes loading while driving
+  // stays hidden (swapper -> syncBody).
+  if (charStart.invalid) console.warn(`Unknown character "${charStart.invalid}" in ?char, using "${charStart.id}"`);
+  void swapper.swap(charStart.id, { persist: charStart.persist, compile: charStart.flag, direct: !charStart.flag }).then(syncCharacterButton);
+  syncCharacterButton();
 
   // Blob shadow for the low preset (no shadow maps).
   const blob = new THREE.Mesh(
@@ -587,6 +605,18 @@ async function boot(): Promise<void> {
     get fps() { return fps; },
     get ready() { return spawnReady && renderReady; },
     controls,
+    /** CHAR debug hook: current profile id, loaded files, swap(id). Only with ?char: without the flag there is no hook. */
+    character: !charStart.flag ? undefined : {
+      get id() { return swapper.currentId; },
+      get loading() { return swapper.loading; },
+      get fallback() { return swapper.usingFallback; },
+      get loadedUrls() { return [...charRegistry.fetched]; },
+      get live() { return charRegistry.liveCount; },
+      get heights() { return tpc.heights; },
+      get flag() { return charStart.flag; },
+      swap: (id: string) => swapper.swap(id, { persist: charStart.flag }).then((r) => { syncCharacterButton(); return r; }),
+      bodyVisible: () => bodyVisible({ firstPerson: tpc.firstPerson, driving: driving.active, flying: fly.active }),
+    },
     driveCar,
     setSimulatedDt: (v: number) => (simulatedDt = v),
     setStepsPerFrame: (n: number) => (stepsPerFrame = Math.max(1, n | 0)),

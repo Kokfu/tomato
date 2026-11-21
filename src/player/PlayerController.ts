@@ -48,12 +48,25 @@ export class PlayerController {
     this.visual = visual;
   }
 
-  setVisual(visual: CharacterVisual): void {
-    const parent = this.visual.root.parent;
-    parent?.remove(this.visual.root);
-    this.visual.dispose();
+  /**
+   * Replace the character model. The new root takes over the old root's pose and visibility (so a swap while the
+   * body is hidden, e.g. in the car, never pops it into view); update() rewrites the pose on the next walking frame.
+   * By default the old model is disposed; pass `disposeOld: false` to dispose it elsewhere (the character registry).
+   * Returns the old model.
+   */
+  setVisual(visual: CharacterVisual, opts: { disposeOld?: boolean } = {}): CharacterVisual {
+    const old = this.visual;
+    const parent = old.root.parent;
+    visual.root.position.copy(old.root.position);
+    // Yaw only: copying the old quaternion lets three.js decompose it as (pi, pi-h, pi) for |h| > 90 degrees, and update()
+    // writes only rotation.y, so the model would render mirrored (CHAR-P2a review F1).
+    visual.root.rotation.set(0, this.heading, 0);
+    visual.root.visible = old.root.visible;
+    parent?.remove(old.root);
+    if (opts.disposeOld !== false) old.dispose();
     this.visual = visual;
     parent?.add(visual.root);
+    return old;
   }
 
   /** Place the character on the ground at (x, z). */
