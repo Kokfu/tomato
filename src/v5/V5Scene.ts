@@ -14,12 +14,13 @@ import { Kit, hex, rnd } from './kit.ts';
 import type { Buf } from './kit.ts';
 import { createMaterials } from './materials.ts';
 import type { KuchingMaterials, MaterialName } from './materials.ts';
-import { autoLot, buildLot, eaveY, ARCADE } from './shophouse.ts';
+import { autoLot, buildLot, eaveY, ARCADE, KERB } from './shophouse.ts';
 import type { LotSpec, SignSource } from './shophouse.ts';
 import { ROWS, BLOCKS, rowFrame, V5_LANDMARK_IDS, CHINA_WEST, CHINA_EAST, CHINA_BLOCK } from './geo.ts';
 import { buildChinaStreet } from './china.ts';
 import type { RowDef } from './geo.ts';
 import { LOT_OVERRIDES } from './lots.ts';
+import { c1Enabled, c1FullNameSign } from './c1flag.ts';
 import { buildRoad, buildApron, lampPost, cables, pushcart, streetLanterns } from './street.ts';
 import { vehicle, plateFor } from './vehicles.ts';
 import { buildTemple, buildGenericTemple } from './landmarks/temple.ts';
@@ -30,7 +31,7 @@ import { paintAtlas, ATLAS_SIZE } from './landmarks/atlas.ts';
 export type V5Mode = 'a' | 'b' | 'c';
 
 interface SiteLike { id: string; anchor: { x: number; z: number; y: number; yaw: number }; widthM?: number; depthM?: number }
-interface PlaceLike { name: string; cat: string; x: number; z: number; b?: number; sign?: boolean }
+interface PlaceLike { id?: string; name: string; cat: string; x: number; z: number; b?: number; sign?: boolean }
 
 export interface V5Host {
   height(x: number, z: number): number;
@@ -152,6 +153,52 @@ const NO_RECEIVE = new Set<string>(['poly', 'glow', 'wire', 'contact', 'pane']);
 const TRADE: Record<string, string> = { jewelry: '金铺', watches: '钟表', restaurant: '饭店', cafe: '茶室', convenience: '便利店' };
 const SIGN_STYLES: [string, string][] = [['#f6efe0', '#8c1c15'], ['#f3d98a', '#1f3f6a'], ['#ffffff', '#1f6a45'], ['#f6e7b0', '#3a2a1e'], ['#b3261e', '#f4efe2'], ['#f2c53d', '#7a1612']];
 
+/**
+ * C1a corner wrap (?c1=1 only): walkable floor under the return five-foot way that shophouse.ts wrapReturn draws, which
+ * ramps from this lot's floor to the side-street neighbour's floor. Collision floors are flat, so the paving is cut into
+ * bands at most 0.5 m long, each at the drawn paving height at its centre (within a few mm on today's 0.081 / 0.189 m
+ * rises), with the kerb beside each band and one kerb piece round the corner at the front five-foot-way height;
+ * with a positive skew also the corner sliver of drawn front paving left of the front floor rectangle.
+ * Return frame as in shophouse.ts: u from the far end of the return (0) to the corner front line (len), v outward;
+ * lot x = -cos(skew) v + sin(skew) (u - len), lot z = sin(skew) v + cos(skew) (u - len). at(x, z) maps lot coordinates
+ * to world xz; base is the lot's floor datum. Returns [] for a lot without a wrap.
+ */
+export function wrapReturnFloors(s: LotSpec, at: (x: number, z: number) => number[], base: number): { ring: number[]; h: number }[] {
+  const W = s.wrap;
+  if (!W) return [];
+  const c = Math.cos(W.skew), sn = Math.sin(W.skew), L = W.len, A = ARCADE, R = W.rise, y = base + KERB;
+  const u0 = L - A / c, u1 = L - (A * (1 - sn)) / c; // the paving meets the front five-foot way (z = -A) at v = 0 / v = -A
+  // drawn height above the front floor: the two triangles of the paving quad [0,R,0] [u0,0,0] [u1,0,-A] [0,R,-A] (Kit.poly fan)
+  const pave = (u: number, v: number) => (v * u1 >= -A * u ? R * (1 - u / u0) + ((R * (1 - u1 / u0)) / A) * v : R * (1 - u / u1));
+  const ring = (pts: number[][]) => pts.flatMap(([u, v]) => at(-c * v + sn * (u - L), sn * v + c * (u - L)));
+  // the paving quad cut to ua <= u <= ub (convex clip)
+  const clip = (pts: number[][], k: number, side: number) => {
+    const out: number[][] = [];
+    pts.forEach((p, i) => {
+      const q = pts[(i + 1) % pts.length], dp = (p[0] - k) * side, dq = (q[0] - k) * side;
+      if (dp >= 0) out.push(p);
+      if (dp * dq < 0) { const t = dp / (dp - dq); out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); }
+    });
+    return out;
+  };
+  const floors: { ring: number[]; h: number }[] = [], um = Math.max(u0, u1), n = Math.ceil(um / 0.5), d = um / n;
+  for (let i = 0; i < n; i++) {
+    const ua = i * d, ub = (i + 1) * d;
+    const p = clip(clip([[0, 0], [u0, 0], [u1, -A], [0, -A]], ua, 1), ub, -1);
+    if (p.length >= 3) {
+      const cu = p.reduce((a, q) => a + q[0], 0) / p.length, cv = p.reduce((a, q) => a + q[1], 0) / p.length;
+      floors.push({ ring: ring(p), h: y + pave(cu, cv) });
+    }
+    if (ua < u0) { const kb = Math.min(ub, u0); floors.push({ ring: ring([[ua, 0.24], [kb, 0.24], [kb, 0], [ua, 0]]), h: y + 0.003 + R * (1 - (ua + kb) / 2 / u0) }); }
+  }
+  // kerb round the corner, level with the front five-foot way so that where it meets the front floor nothing changes
+  floors.push({ ring: ring([[u0, 0.24], [L + 0.255, 0.24], [L + 0.255, 0], [u0, 0]]), h: y });
+  // positive skew: the drawn front five-foot way reaches past the front floor (lot x < 0) to the return line, a sliver
+  // lot (0,0) (-A tan, -A) (0,-A); floor it at the front five-foot-way height (Auditor walkfix F1)
+  if (sn > 0) floors.push({ ring: ring([[L, 0], [u0, 0], [L - A * c, -A * sn]]), h: y });
+  return floors;
+}
+
 export class V5Scene {
   readonly group = new THREE.Group();
   readonly materials: KuchingMaterials;
@@ -257,12 +304,14 @@ export class V5Scene {
     // Shop names: mapped places of this building, assigned to the lot they fall in front of.
     if (row.lod === 0) for (const p of places) {
       // Only businesses with a shop name: mapped notes such as "... - pushcart in front of temple" are not signboards.
-      if (p.b !== row.building || !p.sign || p.name.length > 30 || p.name.includes(' - ')) continue;
+      // C1a (?c1=1 only): an owner-approved full-name board keyed by place id (c1flag.ts); null for every other place.
+      const full = c1FullNameSign(p);
+      if (p.b !== row.building || !p.sign || (full === null && (p.name.length > 30 || p.name.includes(' - ')))) continue;
       const t = (p.x - fr.ox) * fr.dx + (p.z - fr.oz) * fr.dz, d = (p.x - fr.ox) * fr.nx + (p.z - fr.oz) * fr.nz;
       if (t < 0 || t > len || d < -row.depth || d > 3) continue;
       const s = specs[Math.min(row.lots - 1, Math.floor(t / w))];
       const st = SIGN_STYLES[Math.floor(rnd(p.name.length, p.name.charCodeAt(0)) * SIGN_STYLES.length)];
-      if (!s.sign) s.sign = { text: p.name, fg: st[0], bg: st[1] };
+      if (!s.sign) s.sign = { text: full ?? p.name, fg: st[0], bg: st[1] };
       if (!s.hang && TRADE[p.cat]) s.hang = { text: TRADE[p.cat], fg: '#f6e2a0', bg: p.cat === 'jewelry' ? '#8c1c15' : '#1f3f6a' };
       // The mapped category decides the kind of shopfront (a rule, used by both approaches).
       if (p.cat === 'convenience') s.shop = 'glass';
@@ -307,6 +356,8 @@ export class V5Scene {
         // walkable five-foot way
         const c = (u: number, v: number) => [x + fr.dx * u + fr.nx * v, z + fr.dz * u + fr.nz * v];
         floors.push({ ring: [...c(0, 0.24), ...c(w, 0.24), ...c(w, -ARCADE), ...c(0, -ARCADE)], h: base + 0.14 });
+        // C1a (?c1=1 only): the corner wrap's return five-foot way (Auditor S1)
+        if (s.wrap && c1Enabled()) floors.push(...wrapReturnFloors(s, c, base));
         lots++;
       });
       kit.lod = 0;

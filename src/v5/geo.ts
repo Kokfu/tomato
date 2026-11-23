@@ -3,6 +3,7 @@
 // Nothing here is drawn by hand: every coordinate is a vertex of a mapped outline or road in the
 // generated chunk data (public/data/kuching/chunks/0_0.json and 0_-1.json, i.e. OpenStreetMap after
 // the V4 landmark-site and road-alignment steps). World metres: +x east, +z south.
+import { c1Enabled } from './c1flag.ts';
 
 /** V4 building records that the V5 scene replaces (whole blocks facing the section, and the three landmark sites). */
 export const V5_BUILDING_IDS = [236495089, 8000000000000001, 233690735, 8000000000000004, 233690739, 8000000000000002, 8000000000000003, 8000000000000005];
@@ -25,6 +26,8 @@ export interface RowDef {
   lod: 0 | 1;
   /** Skip this many metres at the start of the edge (corner already occupied by another row). */
   skip?: number;
+  /** C1a rows: approximate outward direction (world x, z). Fixes the facing instead of the Carpenter Street distance probe. */
+  face?: [number, number];
 }
 
 export const ROWS: RowDef[] = [
@@ -44,6 +47,23 @@ export const BLOCKS: number[][] = [
   [84.7, -25, 100.1, -48.6, 140.3, -23.4, 132, -10.6, 124.7, 0.8],
   [167.9, -44.6, 145.8, -20, 152.4, -15.8, 136.6, 8.5, 152, 18.4, 200.8, -54.7, 193.9, -58.8, 184.9, -46.7, 174.8, -52.3],
 ];
+
+// C1a experiment (?c1=1 only): the Upper China Street corner. Both blocks at the Carpenter / Upper China junction get
+// frontages on Upper China Street, and 236495235 (the block east of the junction) joins the V5 scene. Row ends are mapped
+// ring vertices: S2 block e2 (148.2,24.6)->(135.4,44.4), and 236495235 v1 (156.89,27.74) -> v2 (145.81,43.6) / v0 (178.98,41.09).
+// S2 is cut to 12 m deep so its corner lot can wrap round into Upper China Street; the first 12 m of UW and UX are those
+// corner returns (skip). Nothing changes while the flag is off.
+if (c1Enabled()) {
+  const s2 = ROWS.find((r) => r.id === 'S2')!;
+  s2.depth = 12;
+  ROWS.push(
+    { id: 'UW', building: 8000000000000001, a: [148.2, 24.6], b: [135.4, 44.4], lots: 2, depth: 12, lod: 0, skip: 12, face: [0.839, 0.545] },
+    { id: 'UE', building: 236495235, a: [156.89, 27.74], b: [145.81, 43.6], lots: 4, depth: 12, lod: 0, face: [-0.82, -0.57] },
+    { id: 'UX', building: 236495235, a: [156.89, 27.74], b: [178.98, 41.09], lots: 3, depth: 12, lod: 0, skip: 12, face: [0.518, -0.855] },
+  );
+  BLOCKS.push([178.98, 41.09, 156.89, 27.74, 145.81, 43.6, 170.02, 58.73]);
+  V5_BUILDING_IDS.push(236495235);
+}
 
 /** Distance from (x, z) to the street centre line. */
 export function distToStreet(x: number, z: number): number {
@@ -146,7 +166,7 @@ export function rowFrame(r: RowDef): RowFrame {
   let nx = ez / len, nz = -ex / len;
   // The outward normal points toward the nearer street: Carpenter Street, or for the Jalan China row away from its block.
   const probe = (s: number) => (r.id === 'JC' ? -Math.hypot(mx + nx * s * 6 - 160, mz + nz * s * 6 + 20) : distToStreet(mx + nx * s * 3, mz + nz * s * 3));
-  if (probe(1) > probe(-1)) { nx = -nx; nz = -nz; }
+  if (r.face ? nx * r.face[0] + nz * r.face[1] < 0 : probe(1) > probe(-1)) { nx = -nx; nz = -nz; }
   const dx = nz, dz = -nx; // local +x in world
   const aIsLeft = (r.b[0] - r.a[0]) * dx + (r.b[1] - r.a[1]) * dz > 0;
   const o = aIsLeft ? r.a : r.b;
