@@ -35,6 +35,14 @@ export interface CharacterProfile {
   readonly licence: string;
   /** Developer-only profile: never offered by the cycle button, only reachable by `?char=<id>`. */
   readonly dev?: boolean;
+  /**
+   * CHAR-P5 G2: a retired test character (the CHAR-P2a Rocketbox prototypes). Not in the picker, not in the cycle and never
+   * restored from the saved choice; still reachable by `?char=<id>` and the debug hook so the existing tests keep their reference
+   * models. The GLB files stay in the repository.
+   */
+  readonly legacy?: boolean;
+  /** CHAR-P5 G2: the picker card of a player-selectable character (only the six approved MPFB characters have one). */
+  readonly picker?: { readonly name: string; readonly height: string };
 }
 
 /** The adult-man proportions the camera was tuned for: pivot 1.52 m and eye 1.62 m at 1.72 m. */
@@ -77,20 +85,21 @@ export const CHARACTER_PROFILES: readonly CharacterProfile[] = [
   // place; the turn clips have their +-90 degree body rotation removed, so the controller's yaw supplies it). There is no
   // jump clip: the airborne pose comes from the run cycle. three.js sanitises the bone names ("Bip01 L Foot" becomes
   // "Bip01_L_Foot"), which the automatic foot finder does not match, so the feet are named here.
-  defineProfile({ id: 'adult-man', label: 'Adult man', url: `${BASE}adult-man.glb`, heightM: 1.70, licence: 'MIT-Rocketbox', turnInPlace: true, clips: ROCKETBOX_CLIPS, feet: ROCKETBOX_FEET }),
-  defineProfile({ id: 'adult-woman', label: 'Adult woman', url: `${BASE}adult-woman.glb`, heightM: 1.58, licence: 'MIT-Rocketbox', turnInPlace: true, clips: ROCKETBOX_CLIPS, feet: ROCKETBOX_FEET }),
+  defineProfile({ id: 'adult-man', label: 'Adult man', url: `${BASE}adult-man.glb`, heightM: 1.70, licence: 'MIT-Rocketbox', turnInPlace: true, clips: ROCKETBOX_CLIPS, feet: ROCKETBOX_FEET, legacy: true }),
+  defineProfile({ id: 'adult-woman', label: 'Adult woman', url: `${BASE}adult-woman.glb`, heightM: 1.58, licence: 'MIT-Rocketbox', turnInPlace: true, clips: ROCKETBOX_CLIPS, feet: ROCKETBOX_FEET, legacy: true }),
   // CHAR-P4: the six MakeHuman/MPFB characters (Studio, docs/ASSETS.md). One rig and one clip set: Idle, Walk, Run,
   // TurnLeft, TurnRight, Jump (names read from the GLBs); feet foot_l / foot_r. The GLBs are authored in metres, so
   // heightM is their idle height with hair, trimmed by the measured hair offset (e2e, in-game) so that the body alone,
   // without hair, is 1.70 / 1.58 / 1.66 / 1.56 / 1.28 / 1.27 m; the whole figure with hair is 1.1-1.5 cm taller. The clips are retargeted Rocketbox (MIT)
   // plus the Quaternius CC0 jump; the turn clips are in place, so turnInPlace is on and the controller's yaw rotates the body.
+  // CHAR-P5 G2 picker card (Studio): the short name and the body height without hair, above.
   ...[
-    ['man', 'Adult Man', 'man.glb', 1.707], ['woman', 'Adult Woman', 'woman.glb', 1.589],
-    ['teen-boy', 'Teen Boy', 'teen-boy.glb', 1.666], ['teen-girl', 'Teen Girl', 'teen-girl.glb', 1.572],
-    ['young-boy', 'Young Boy', 'young-boy.glb', 1.294], ['young-girl', 'Young Girl', 'young-girl.glb', 1.277],
-  ].map(([id, label, file, h]) => defineProfile({
+    ['man', 'Adult Man', 'man.glb', 1.707, 'Man', '1.70 m'], ['woman', 'Adult Woman', 'woman.glb', 1.589, 'Woman', '1.58 m'],
+    ['teen-boy', 'Teen Boy', 'teen-boy.glb', 1.666, 'Teen boy', '1.66 m'], ['teen-girl', 'Teen Girl', 'teen-girl.glb', 1.572, 'Teen girl', '1.56 m'],
+    ['young-boy', 'Young Boy', 'young-boy.glb', 1.294, 'Young boy', '1.28 m'], ['young-girl', 'Young Girl', 'young-girl.glb', 1.277, 'Young girl', '1.27 m'],
+  ].map(([id, label, file, h, name, height]) => defineProfile({
     id: id as string, label: label as string, url: `${BASE}${file}`, heightM: h as number, licence: MPFB_LICENCE,
-    turnInPlace: true, clips: MPFB_CLIPS, feet: MPFB_FEET,
+    turnInPlace: true, clips: MPFB_CLIPS, feet: MPFB_FEET, picker: { name: name as string, height: height as string },
   })),
   // Test-only: the default model at another height, to exercise the seam without new art (reachable by ?char=test-short).
   defineProfile({ id: 'test-short', label: 'Test (default model, 1.30 m)', url: `${BASE}casual-character.glb`, heightM: 1.3, licence: 'CC0-1.0', turnInPlace: true, animRate: 1.1, dev: true }),
@@ -107,9 +116,19 @@ export function defaultProfile(): CharacterProfile {
   return byId.get(DEFAULT_CHARACTER_ID)!;
 }
 
-/** Profiles offered by the developer cycle button (everything except dev-only ones). */
+/** Profiles offered by the cycle (everything except dev-only and retired test characters). */
 export function listProfiles(): CharacterProfile[] {
-  return CHARACTER_PROFILES.filter((p) => !p.dev);
+  return CHARACTER_PROFILES.filter((p) => !p.dev && !p.legacy);
+}
+
+/** CHAR-P5 G2: the characters of the picker, in order: the six approved MPFB characters (adults, teens, children). */
+export function pickerProfiles(): CharacterProfile[] {
+  return CHARACTER_PROFILES.filter((p) => !!p.picker);
+}
+
+/** True for an id a player can choose (and that a saved choice may restore). */
+export function isPickable(id: string | null | undefined): boolean {
+  return !!getProfile(id)?.picker;
 }
 
 /** The next profile in the cycle after `id` (unknown id: the first). */
@@ -123,15 +142,19 @@ export const CHARACTER_STORAGE_KEY = 'k3d.character';
 
 /**
  * Which character to start with. No `?char` flag: always the default (the feature is dormant and nothing is read
- * from storage). With the flag: `?char=<id>` for a known id, otherwise (`?char`, or an unknown id) the saved id, and
- * the default when that is missing or no longer valid. `persist` is true only for a valid `?char=<id>`.
+ * from storage). With the flag: `?char=<id>` for a known id (developer/test link: any profile), otherwise (`?char`, or an
+ * unknown id) the saved id when it is one of the six selectable characters. `persist` is true only for a valid `?char=<id>`.
+ * `needsPick` (CHAR-P5 G2): the flag is on and nothing valid was asked for or saved, so the picker is shown after Start; the id is
+ * then the default placeholder, which is not loaded. A saved id that is unknown, removed or retired (a Rocketbox prototype, the
+ * default model) counts as no saved choice.
  */
-export function resolveStartCharacter(search: string, saved: string | null): { id: string; flag: boolean; persist: boolean; invalid: string | null } {
+export function resolveStartCharacter(search: string, saved: string | null): { id: string; flag: boolean; persist: boolean; invalid: string | null; needsPick: boolean } {
   const q = new URLSearchParams(search);
-  if (!q.has('char')) return { id: DEFAULT_CHARACTER_ID, flag: false, persist: false, invalid: null };
+  if (!q.has('char')) return { id: DEFAULT_CHARACTER_ID, flag: false, persist: false, invalid: null, needsPick: false };
   const asked = q.get('char') ?? '';
-  if (asked && getProfile(asked)) return { id: asked, flag: true, persist: true, invalid: null };
-  return { id: getProfile(saved) ? saved! : DEFAULT_CHARACTER_ID, flag: true, persist: false, invalid: asked || null };
+  if (asked && getProfile(asked)) return { id: asked, flag: true, persist: true, invalid: null, needsPick: false };
+  const ok = isPickable(saved);
+  return { id: ok ? saved! : DEFAULT_CHARACTER_ID, flag: true, persist: false, invalid: asked || null, needsPick: !ok };
 }
 
 /** localStorage access with the existing k3d.* try/catch pattern (private windows, blocked storage). */

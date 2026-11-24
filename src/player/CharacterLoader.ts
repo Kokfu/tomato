@@ -5,15 +5,18 @@ import type { CharacterSource, GlbCharacterOptions } from './GlbCharacter.ts';
 export const CHARACTER_MODEL = 'models/characters/casual-character.glb';
 
 /** Fetch and parse a character GLB (`url` is relative to the app base). The glTF loader is imported lazily. */
-export async function loadGltf(url: string): Promise<CharacterSource> {
+export async function loadGltf(url: string, onProgress?: (e: ProgressEvent) => void): Promise<CharacterSource> {
   const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
-  return new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}${url}`);
+  return new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}${url}`, onProgress);
 }
 
-/** Build the animated character from a parsed glTF (the character code is imported lazily). Throws on a bad model. */
-export async function buildCharacter(src: CharacterSource, opts?: GlbCharacterOptions): Promise<CharacterVisual> {
+/**
+ * Build the animated character from a parsed glTF (the character code is imported lazily). Throws on a bad model. With
+ * `yieldToMain` the build runs in steps with a yield between them (CHAR-P5), otherwise in one go.
+ */
+export async function buildCharacter(src: CharacterSource, opts?: GlbCharacterOptions, yieldToMain?: () => Promise<void>): Promise<CharacterVisual> {
   const { GlbCharacter } = await import('./GlbCharacter.ts');
-  return new GlbCharacter(src, opts);
+  return yieldToMain ? GlbCharacter.buildStaged(src, opts ?? {}, yieldToMain) : new GlbCharacter(src, opts);
 }
 
 /**

@@ -159,12 +159,15 @@ test.describe('character seam (CHAR-P2a)', () => {
 
   test('invalid ?char id and a bad saved id fall back to the default; storage is not touched', async ({ page }) => {
     const run = await boot(page, '?char=no-such-character', { init: () => { try { localStorage.setItem('k3d.character', 'removed-profile'); } catch { /* ignore */ } } });
-    await settled(page, 'default');
+    // CHAR-P5 G2: with no valid saved choice the player is asked (the picker), instead of silently getting the default model.
+    await expect(page.locator('#char-picker')).toBeVisible({ timeout: 60_000 });
+    expect(await page.evaluate(() => (window as any).__k3d.character.needsPick)).toBe(true);
+    expect(await page.evaluate(() => (window as any).__k3d.character.id)).toBe('default');
     expect(run.warns.filter((w) => /Unknown character/.test(w)).length).toBe(1);
     expect(await page.evaluate(() => localStorage.getItem('k3d.character'))).toBe('removed-profile');
     await page.reload();
     await start(page, { navigate: false });
-    await settled(page, 'default');
+    await expect(page.locator('#char-picker')).toBeVisible({ timeout: 60_000 });
   });
 
   test('a broken model url falls back to the default with exactly one warning', async ({ page }) => {
@@ -528,17 +531,17 @@ test.describe('character seam (CHAR-P2a)', () => {
   });
 
   test('persistence: only with the flag; a bare ?char reuses the saved id', async ({ page }) => {
-    await boot(page, '?char=test-short');
-    await settled(page, 'test-short');
-    expect(await page.evaluate(() => localStorage.getItem('k3d.character'))).toBe('test-short');
+    await boot(page, '?char=man'); // G2: the bare flag restores only one of the six pickable characters (test-short and the Rocketbox ones are not restored)
+    await settled(page, 'man');
+    expect(await page.evaluate(() => localStorage.getItem('k3d.character'))).toBe('man');
     await page.goto('./?char');
     await start(page, { navigate: false });
-    await settled(page, 'test-short');
+    await settled(page, 'man');
     // without the flag the saved choice is ignored and the default is used
     await page.goto('./');
     await start(page, { navigate: false });
     await glbShown(page);
-    expect(await page.evaluate(() => localStorage.getItem('k3d.character'))).toBe('test-short');
+    expect(await page.evaluate(() => localStorage.getItem('k3d.character'))).toBe('man');
     // there is no debug hook (and so no debug swap) without the flag
     expect(await page.evaluate(() => (window as any).__k3d.character)).toBeUndefined();
     // with the flag the choice is stored again
@@ -546,20 +549,28 @@ test.describe('character seam (CHAR-P2a)', () => {
     await start(page, { navigate: false });
     await settled(page, 'default');
     expect(await page.evaluate(() => localStorage.getItem('k3d.character'))).toBe('default');
+    // ...and a saved "default" is not a choice the picker restores: the bare flag asks again
+    await page.goto('./?char');
+    await start(page, { navigate: false });
+    await expect(page.locator('#char-picker')).toBeVisible({ timeout: 60_000 });
   });
 
-  test('the developer cycle button exists only with the flag and switches the character', async ({ page }) => {
+  // CHAR-P5 G2: the one-click developer cycle (default -> adult-man -> ...) became "Change character", which opens the picker
+  // (six MPFB characters; the Rocketbox prototypes are retired). The full picker flows are in character-picker.spec.ts.
+  test('"Change character" exists only with the flag and opens the picker; confirming switches the character', async ({ page }) => {
     const run = await boot(page, '?char=default');
     await settled(page, 'default');
     await page.keyboard.press('Escape');
     const btn = page.locator('#pause-char');
     await expect(btn).toBeVisible();
-    await expect(btn).toContainText('Character');
+    await expect(btn).toContainText('Change character');
     await btn.click();
-    // next in the cycle is adult-man
-    await settled(page, 'adult-man');
-    await page.waitForFunction(() => !(window as any).__k3d.character.loading, null, { timeout: 30_000 });
-    expect((await ids(page)).id).toBe('adult-man');
-    await expect(btn).toContainText('Adult man');
+    await expect(page.locator('#char-picker')).toBeVisible();
+    await page.locator('#char-picker [role=radio][data-id=man]').click();
+    await page.locator('#pk-confirm').click();
+    await settled(page, 'man');
+    expect((await ids(page)).id).toBe('man');
+    await expect(page.locator('#char-picker')).toBeHidden();
+    expect(run.errors).toEqual([]);
   });
 });

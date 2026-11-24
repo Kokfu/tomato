@@ -11,7 +11,7 @@ export interface MenuCallbacks {
   onReset: () => void;
   /** Pause menu "Drive Car": take the character to the car (the menu stays open until it is there). */
   onDriveCar?: () => void;
-  /** Developer cycle button (shown only with ?char): switch to the next player character. */
+  /** "Change character" row of the pause menu (shown only with ?char): open the character picker. Not called while the row is blocked. */
   onChangeCharacter?: () => void;
   onQuality: (q: QualityName) => void;
   onAdaptive: (on: boolean) => void;
@@ -39,7 +39,7 @@ export class GameMenu {
     $('btn-pause').addEventListener('click', () => this.pause());
     $('pause-resume').addEventListener('click', () => this.resume());
     $('pause-drive').addEventListener('click', () => cb.onDriveCar?.());
-    $('pause-char').addEventListener('click', () => cb.onChangeCharacter?.());
+    $('pause-char').addEventListener('click', () => { if ($('pause-char').getAttribute('aria-disabled') !== 'true') cb.onChangeCharacter?.(); });
     $('build-version').textContent = `Version: ${buildLabel()}`;
     $('pause-reset').addEventListener('click', () => {
       cb.onReset();
@@ -110,12 +110,44 @@ export class GameMenu {
     b.title = title;
   }
 
-  /** The developer character button of the pause menu: hidden (null) unless ?char is on. */
-  setCharacterButton(label: string | null, busy = false): void {
+  /**
+   * CHAR-P5 G2: the pause menu's "Change character" row. Hidden (null) unless ?char is on. `blocked` is the reason to show
+   * (driving, flying): the button then carries aria-disabled (it stays focusable, the reason is read out by aria-describedby)
+   * and ignores clicks, and the reason line appears under it.
+   */
+  setCharacterButton(state: { blocked: string | null } | null): void {
     const b = $('pause-char') as HTMLButtonElement;
-    b.classList.toggle('hidden', label === null);
-    if (label !== null && b.textContent !== label) b.textContent = label;
-    b.disabled = busy;
+    b.classList.toggle('hidden', state === null);
+    if (state === null) { $('pause-char-why')?.classList.add('hidden'); return; }
+    if (b.textContent !== 'Change character') b.textContent = 'Change character';
+    b.title = '';
+    let why = document.getElementById('pause-char-why');
+    if (!why) {
+      why = document.createElement('p');
+      why.id = 'pause-char-why';
+      why.className = 'pause-why hidden';
+      why.setAttribute('role', 'status');
+      b.insertAdjacentElement('afterend', why);
+    }
+    if (state.blocked) {
+      b.setAttribute('aria-disabled', 'true');
+      b.setAttribute('aria-describedby', 'pause-char-why');
+      if (why.textContent !== state.blocked) why.textContent = state.blocked;
+      why.classList.remove('hidden');
+    } else {
+      b.removeAttribute('aria-disabled');
+      b.removeAttribute('aria-describedby');
+      why.classList.add('hidden');
+    }
+  }
+
+  private pauseHeld = false;
+  /** CHAR-P5 G2: the picker covers the pause menu: it is hidden while the picker is open and comes back on Cancel. */
+  setPickerOpen(open: boolean, restorePause: boolean): void {
+    const p = $('pause');
+    if (open) { this.pauseHeld = !p.classList.contains('hidden'); p.classList.add('hidden'); return; }
+    if (restorePause && this.pauseHeld) p.classList.remove('hidden');
+    this.pauseHeld = false;
   }
 
   resume(): void {

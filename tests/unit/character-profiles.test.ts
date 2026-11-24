@@ -49,22 +49,31 @@ test('other profiles scale the camera heights with their height', () => {
 test('dev-only profiles are reachable by id but not offered by the cycle', () => {
   assert.ok(getProfile('test-short'));
   assert.ok(!listProfiles().some((p) => p.id === 'test-short'));
-  assert.equal(nextProfileId(DEFAULT_CHARACTER_ID), 'adult-man');
-  assert.equal(nextProfileId('adult-woman'), 'man');
+  // CHAR-P5 G2 (owner D3-D5, item 9): the two retired Rocketbox test characters are not in the cycle any more.
+  assert.ok(!listProfiles().some((p) => p.id === 'adult-man' || p.id === 'adult-woman'));
+  assert.equal(nextProfileId(DEFAULT_CHARACTER_ID), 'man');
+  assert.equal(nextProfileId('woman'), 'teen-boy');
   assert.equal(nextProfileId('young-girl'), DEFAULT_CHARACTER_ID);
+  assert.equal(nextProfileId('adult-woman'), DEFAULT_CHARACTER_ID); // a retired id is not in the cycle: back to the first
   assert.equal(nextProfileId('nonsense'), DEFAULT_CHARACTER_ID);
 });
 
 test('resolveStartCharacter: no flag is dormant, the flag selects, invalid ids fall back', () => {
-  assert.deepEqual(resolveStartCharacter('', 'adult-man'), { id: 'default', flag: false, persist: false, invalid: null });
-  assert.deepEqual(resolveStartCharacter('?quality=low', null), { id: 'default', flag: false, persist: false, invalid: null });
-  assert.deepEqual(resolveStartCharacter('?char=adult-woman', null), { id: 'adult-woman', flag: true, persist: true, invalid: null });
-  // bare flag: use the saved choice, nothing to persist
-  assert.deepEqual(resolveStartCharacter('?char', 'adult-man'), { id: 'adult-man', flag: true, persist: false, invalid: null });
-  // invalid asked id: saved if valid, else default
-  assert.deepEqual(resolveStartCharacter('?char=zzz', 'adult-man'), { id: 'adult-man', flag: true, persist: false, invalid: 'zzz' });
-  assert.deepEqual(resolveStartCharacter('?char=zzz', 'old-removed-id'), { id: 'default', flag: true, persist: false, invalid: 'zzz' });
-  assert.deepEqual(resolveStartCharacter('?char', 'old-removed-id'), { id: 'default', flag: true, persist: false, invalid: null });
+  assert.deepEqual(resolveStartCharacter('', 'man'), { id: 'default', flag: false, persist: false, invalid: null, needsPick: false });
+  assert.deepEqual(resolveStartCharacter('?quality=low', null), { id: 'default', flag: false, persist: false, invalid: null, needsPick: false });
+  assert.deepEqual(resolveStartCharacter('?char=adult-woman', null), { id: 'adult-woman', flag: true, persist: true, invalid: null, needsPick: false }); // developer link: any profile
+  assert.deepEqual(resolveStartCharacter('?char=teen-girl', null), { id: 'teen-girl', flag: true, persist: true, invalid: null, needsPick: false });
+  // bare flag: use the saved choice (one of the six), nothing to persist
+  assert.deepEqual(resolveStartCharacter('?char', 'woman'), { id: 'woman', flag: true, persist: false, invalid: null, needsPick: false });
+  // invalid asked id: the saved choice if it is selectable, else the picker (first launch)
+  assert.deepEqual(resolveStartCharacter('?char=zzz', 'young-boy'), { id: 'young-boy', flag: true, persist: false, invalid: 'zzz', needsPick: false });
+  assert.deepEqual(resolveStartCharacter('?char=zzz', 'old-removed-id'), { id: 'default', flag: true, persist: false, invalid: 'zzz', needsPick: true });
+  assert.deepEqual(resolveStartCharacter('?char', 'old-removed-id'), { id: 'default', flag: true, persist: false, invalid: null, needsPick: true });
+  assert.deepEqual(resolveStartCharacter('?char', null), { id: 'default', flag: true, persist: false, invalid: null, needsPick: true });
+  // a retired Rocketbox prototype, the default model and the dev profile are no longer restored from a saved choice
+  for (const old of ['adult-man', 'adult-woman', 'default', 'test-short']) {
+    assert.deepEqual(resolveStartCharacter('?char', old), { id: 'default', flag: true, persist: false, invalid: null, needsPick: true }, old);
+  }
 });
 
 test('character storage uses the k3d.* try/catch pattern', () => {
