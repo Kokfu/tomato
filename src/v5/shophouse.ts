@@ -75,7 +75,46 @@ export interface LotSpec {
   panes?: number;
   /** Where this lot's appearance comes from: 'typical' (rule) or a reference note. */
   basis: string;
+  /** C1a corner lot (?c1=1 only): the left side turns the corner into the side street. See Wrap. */
+  wrap?: Wrap;
 }
+
+/**
+ * Corner wrap (C1a experiment, set only through the ?c1=1 lot tables). The lot's left side becomes a second street
+ * front: five-foot way with piers, kerb and drain, an upper side wall with windows, and the string course and cornice
+ * mitred round the corner. len: return length along the side street (it ends at the next row's first lot).
+ * skew: angle of the mapped side edge against the lot's left side (radians, + = the side wall leans outward toward
+ * the back). rise: floor height of the neighbouring lot at the far end of the return, above this lot's floor.
+ */
+export interface Wrap { side: 'L'; len: number; skew: number; rise: number }
+
+/** Derived wrap geometry. RF (return frame): u along the return from its far end (0) to the corner front line (len), v outward. */
+interface WrapGeo { c: number; sn: number; t: number; L: number; R: number; u0: number; u1: number; uP: number; uQ: number; xi: number; xQ: number; m: number; ramp: (u: number) => number }
+function wrapGeo(s: LotSpec): WrapGeo {
+  const W = s.wrap!, c = Math.cos(W.skew), sn = Math.sin(W.skew), L = W.len, A = ARCADE, P = PIER;
+  const u0 = L - A / c; // outer line meets the shopfront line z = -A
+  return {
+    c, sn, t: Math.tan(W.skew), L, R: W.rise, u0,
+    u1: L - (A * (1 - sn)) / c, // shopfront line of the return (v = -A) meets z = -A
+    uP: L - (A - sn * P) / c,   // inner face of the return beam (v = -P) meets z = -A
+    uQ: L - (P * (1 - sn)) / c, // inner faces of the two beams meet (v = -P, z = -P)
+    xi: (A * (1 - sn)) / c, xQ: (P * (1 - sn)) / c, m: (1 - sn) / c,
+    ramp: (u: number) => W.rise * Math.max(0, 1 - u / u0),
+  };
+}
+/** Run fn in the return frame: lot x = -c v + s (u - len), z = s v + c (u - len). */
+function inRF(k: Kit, s: LotSpec, fn: () => void): void { k.at({ ry: s.wrap!.skew }, () => k.at({ z: -s.wrap!.len, ry: -Math.PI / 2 }, fn)); }
+/** Prism along x whose ends follow xa(z) / xb(z) per section point (mitred ends). */
+function mitrePrism(k: Kit, sec: [number, number][], xa: (z: number) => number, xb: (z: number) => number, col: Col, capA = false): void {
+  const n = sec.length;
+  for (let i = 0; i < n; i++) {
+    const p = sec[i], q = sec[(i + 1) % n];
+    k.quad([xa(p[0]), p[1], p[0]], [xb(p[0]), p[1], p[0]], [xb(q[0]), q[1], q[0]], [xa(q[0]), q[1], q[0]], col);
+  }
+  if (capA) k.poly(sec.map((p) => [xa(p[0]), p[1], p[0]] as V3), col);
+}
+const stringSec = (fy: number): [number, number][] => [[0, fy - 0.06], [0.06, fy - 0.06], [0.12, fy + 0.02], [0.12, fy + 0.08], [0.05, fy + 0.12], [0, fy + 0.12]];
+const corniceSec = (top: number): [number, number][] => [[0, top - 0.3], [0.08, top - 0.3], [0.1, top - 0.2], [0.2, top - 0.1], [0.2, top], [0, top]];
 
 /** Supplies UV rectangles for text drawn at run time (browser fonts, one shared canvas). */
 export interface SignSource {
@@ -110,21 +149,22 @@ const DARK = hex(0x14181a);
 /** Height of the top of the wall / eave line. */
 export const eaveY = (s: LotSpec) => F1 + UP * (s.storeys - 1);
 
-function pier(k: Kit, s: LotSpec, x0: number, x1: number, skipL: boolean, skipR: boolean): void {
+function pier(k: Kit, s: LotSpec, x0: number, x1: number, skipL: boolean, skipR: boolean, abutL = false): void {
   const sk = (skipL ? 'x-' : '') + (skipR ? 'x+' : '') + 'y-';
   const body = s.wall;
   k.use('plaster');
-  // plinth, dado band, shaft, capital
-  k.box(x0 - (skipL ? 0 : 0.04), x1 + (skipR ? 0 : 0.04), 0, 0.32, -PIER - 0.04, 0.04, shade(s.dado ?? body, 0.9), sk, 0.6);
+  // plinth, dado band, shaft, capital (abutL: the neighbour's exposed plinth and capital already overhang x0)
+  k.box(abutL ? x0 + 0.04 : x0 - (skipL ? 0 : 0.04), x1 + (skipR ? 0 : 0.04), 0, 0.32, -PIER - 0.04, 0.04, shade(s.dado ?? body, 0.9), sk, 0.6);
   k.box(x0, x1, 0.32, 1.15, -PIER, 0, s.dado ?? body, sk + 'y+');
   k.box(x0, x1, 1.15, 2.85, -PIER, 0, body, sk + 'y+');
-  k.box(x0 - (skipL ? 0 : 0.035), x1 + (skipR ? 0 : 0.035), 2.85, 2.97, -PIER - 0.035, 0.035, s.trim, sk);
+  k.box(abutL ? x0 + 0.035 : x0 - (skipL ? 0 : 0.035), x1 + (skipR ? 0 : 0.035), 2.85, 2.97, -PIER - 0.035, 0.035, s.trim, sk);
   k.box(x0, x1, 2.97, F1 - 0.5, -PIER, 0, body, sk + 'y+');
 }
 
 function shopfront(k: Kit, s: LotSpec, signs: SignSource | null): void {
-  const z = -ARCADE, x0 = 0.12, x1 = s.w - 0.12, ao = 0.62;
-  const ox0 = 0.5, ox1 = s.w - 0.5, oy1 = s.shop === 'glass' ? 2.75 : 2.95;
+  const xi = s.wrap ? wrapGeo(s).xi : 0;
+  const z = -ARCADE, x0 = s.wrap ? xi : 0.12, x1 = s.w - 0.12, ao = 0.62;
+  const ox0 = s.wrap ? xi + 0.38 : 0.5, ox1 = s.w - 0.5, oy1 = s.shop === 'glass' ? 2.75 : 2.95;
   const wallC = shade(s.wall, ao);
   k.use('plaster');
   k.wall(x0, x1, KERB, SOFFIT, z, 0.22, [{ x0: ox0, x1: ox1, y0: KERB, y1: oy1 }], wallC, shade(wallC, 0.7), 0.75);
@@ -235,19 +275,26 @@ function interior(k: Kit, s: LotSpec, x0: number, x1: number, top: number, zf: n
 }
 
 function arcade(k: Kit, s: LotSpec): void {
-  const w = s.w;
+  const w = s.w, g = s.wrap ? wrapGeo(s) : null;
   // floor: brighter at the open edge, darker toward the shopfront (baked sky occlusion)
   k.use('paving');
   const f0 = shade(s.floor, 0.95), f1 = shade(s.floor, 0.55);
-  k.quad([0, KERB, 0], [w, KERB, 0], [w, KERB, -ARCADE], [0, KERB, -ARCADE], [f0, f0, f1, f1]);
-  // ceiling boards on joists
+  if (g) k.poly([[0, KERB, 0], [w, KERB, 0], [w, KERB, -ARCADE], [-ARCADE * g.t, KERB, -ARCADE]], [f0, f0, f1, f1]); // left edge on the return line
+  else k.quad([0, KERB, 0], [w, KERB, 0], [w, KERB, -ARCADE], [0, KERB, -ARCADE], [f0, f0, f1, f1]);
+  // ceiling boards on joists (wrapped: they start at the inner face of the return beam)
   k.use('timber');
   const st = s.soffit ?? 0.42, cb = hex(0x8d8474, st);
-  k.quad([0, SOFFIT + 0.16, -ARCADE], [w, SOFFIT + 0.16, -ARCADE], [w, SOFFIT + 0.16, -PIER], [0, SOFFIT + 0.16, -PIER], [shade(cb, 0.8), shade(cb, 0.8), cb, cb]);
-  if (k.detail) for (let x = 0.3; x < w - 0.1; x += 0.52) k.box(x - 0.04, x + 0.04, SOFFIT, SOFFIT + 0.16, -ARCADE, -PIER, hex(0x6f6557, (0.5 * st) / 0.42), 'y+z+z-');
-  // bressummer over the piers
+  const cA = g ? PIER / g.c - ARCADE * g.t : 0, cP = g ? PIER / g.c - PIER * g.t : 0, xm = g ? Math.max(cA, cP) + 0.05 : -1;
+  k.quad([cA, SOFFIT + 0.16, -ARCADE], [w, SOFFIT + 0.16, -ARCADE], [w, SOFFIT + 0.16, -PIER], [cP, SOFFIT + 0.16, -PIER], [shade(cb, 0.8), shade(cb, 0.8), cb, cb]);
+  if (k.detail) for (let x = 0.3; x < w - 0.1; x += 0.52) { if (x - 0.04 < xm) continue; k.box(x - 0.04, x + 0.04, SOFFIT, SOFFIT + 0.16, -ARCADE, -PIER, hex(0x6f6557, (0.5 * st) / 0.42), 'y+z+z-'); }
+  // bressummer over the piers (wrapped: front part of an L-shaped beam, mitred to the return part)
   k.use('plaster');
-  k.box(0, w, F1 - 0.5, F1, -PIER, 0, s.wall, 'x+x-y+');
+  if (g) {
+    const y0 = F1 - 0.5, y1 = F1;
+    k.quad([0, y0, 0], [w, y0, 0], [w, y1, 0], [0, y1, 0], s.wall);
+    k.quad([w, y0, -PIER], [g.xQ, y0, -PIER], [g.xQ, y1, -PIER], [w, y1, -PIER], s.wall);
+    k.quad([g.xQ, y0, -PIER], [w, y0, -PIER], [w, y0, 0], [0, y0, 0], shade(s.wall, 0.7));
+  } else k.box(0, w, F1 - 0.5, F1, -PIER, 0, s.wall, 'x+x-y+');
   // party walls with an arched walk-through on each side
   const side = (left: boolean) => {
     const col = shade(s.wall, 0.6);
@@ -257,9 +304,11 @@ function arcade(k: Kit, s: LotSpec): void {
       k.wall(left ? PIER : -ARCADE, left ? ARCADE : -PIER, KERB, SOFFIT + 0.16, 0, 0.12, ops, col, shade(col, 0.85), 0.8);
     });
   };
-  side(true); side(false);
-  // piers (half a pier at each lot boundary; neighbours complete it)
-  pier(k, s, 0, PIER / 2, !s.exposedL, false);
+  if (!g) side(true);
+  side(false);
+  // piers (half a pier at each lot boundary; neighbours complete it; a wrapped lot has a full corner pier)
+  if (g) pier(k, s, 0, PIER, false, false);
+  else pier(k, s, 0, PIER / 2, !s.exposedL, false);
   pier(k, s, w - PIER / 2, w, false, !s.exposedR);
 }
 
@@ -340,16 +389,18 @@ function upper(k: Kit, s: LotSpec): void {
     }
     // string course at the floor line
     k.use('plaster');
-    k.prism([[0, fy - 0.06], [0.06, fy - 0.06], [0.12, fy + 0.02], [0.12, fy + 0.08], [0.05, fy + 0.12], [0, fy + 0.12]], 0, w, s.trim, false);
+    if (s.wrap) { const m = wrapGeo(s).m; mitrePrism(k, stringSec(fy), (z) => -z * m, () => w, s.trim); }
+    else k.prism([[0, fy - 0.06], [0.06, fy - 0.06], [0.12, fy + 0.02], [0.12, fy + 0.08], [0.05, fy + 0.12], [0, fy + 0.12]], 0, w, s.trim, false);
   }
   // pilasters with capitals up the lot edges
   k.use('plaster');
   if (s.storeys > 1) for (const [a, b] of [[0, pil], [w - pil, w]]) {
-    k.box(a, b, F1 + 0.12, top - 0.3, 0, 0.07, s.wall, 'z-y-y+' + (a === 0 && !s.exposedL ? 'x-' : '') + (a !== 0 && !s.exposedR ? 'x+' : ''));
+    k.box(a, b, F1 + 0.12, top - 0.3, 0, 0.07, s.wall, 'z-y-y+' + (a === 0 && (!s.exposedL || s.wrap) ? 'x-' : '') + (a !== 0 && !s.exposedR ? 'x+' : ''));
     k.box(a - (a === 0 ? 0 : 0.03), b + (a === 0 ? 0.03 : 0), top - 0.42, top - 0.3, 0, 0.1, s.trim, 'z-');
   }
   // eave cornice
-  k.prism([[0, top - 0.3], [0.08, top - 0.3], [0.1, top - 0.2], [0.2, top - 0.1], [0.2, top], [0, top]], 0, w, s.trim, false);
+  if (s.wrap) { const m = wrapGeo(s).m; mitrePrism(k, corniceSec(top), (z) => -z * m, () => w, s.trim); }
+  else k.prism([[0, top - 0.3], [0.08, top - 0.3], [0.1, top - 0.2], [0.2, top - 0.1], [0.2, top], [0, top]], 0, w, s.trim, false);
 }
 
 function roof(k: Kit, s: LotSpec): void {
@@ -362,14 +413,15 @@ function roof(k: Kit, s: LotSpec): void {
     const d = Math.max(0, -z), i = Math.min(mods - 1, Math.floor(d / (2 * half))), t = d - i * 2 * half;
     return top + (z > 0 ? -z * pitch : (t < half ? t : 2 * half - t) * pitch) + 0.06;
   };
+  const tw = s.wrap ? Math.tan(s.wrap.skew) : 0, xl = (z: number): number => (s.wrap ? z * tw : 0);
   k.use(s.roof);
   for (let i = 0; i < mods; i++) {
     const za = -i * 2 * half, zr = za - half, zb = za - 2 * half, zf = i === 0 ? over : za;
-    k.quad([0, y(zf), zf], [w, y(zf), zf], [w, top + rise + 0.06, zr], [0, top + rise + 0.06, zr], tc);
-    k.quad([w, top + 0.06, zb], [0, top + 0.06, zb], [0, top + rise + 0.06, zr], [w, top + rise + 0.06, zr], shade(tc, 0.92));
+    k.quad([xl(zf), y(zf), zf], [w, y(zf), zf], [w, top + rise + 0.06, zr], [xl(zr), top + rise + 0.06, zr], tc);
+    k.quad([w, top + 0.06, zb], [xl(zb), top + 0.06, zb], [xl(zr), top + rise + 0.06, zr], [w, top + rise + 0.06, zr], shade(tc, 0.92));
     // ridge cap
     k.use('plaster');
-    k.prism([[zr - 0.13, top + rise + 0.02], [zr + 0.13, top + rise + 0.02], [zr + 0.07, top + rise + 0.17], [zr - 0.07, top + rise + 0.17]], 0, w, hex(0xb9b2a4, 0.9), false);
+    k.prism([[zr - 0.13, top + rise + 0.02], [zr + 0.13, top + rise + 0.02], [zr + 0.07, top + rise + 0.17], [zr - 0.07, top + rise + 0.17]], xl(zr), w, hex(0xb9b2a4, 0.9), false);
     k.use(s.roof);
   }
   if (!s.parapet) {
@@ -398,13 +450,14 @@ function roof(k: Kit, s: LotSpec): void {
   for (const [xa, xb, exposed] of [[0, 0.11, s.exposedL], [w - 0.11, w, s.exposedR]] as [number, number, boolean][]) {
     for (let i = 0; i < N; i++) {
       const z0 = -i * half, z1 = z0 - half, y0 = y(z0) + 0.3, y1 = y(z1) + 0.3;
-      k.quad([xa, y0, z0], [xb, y0, z0], [xb, y1, z1], [xa, y1, z1], pc);
+      const o0 = xa === 0 ? xl(z0) : 0, o1 = xa === 0 ? xl(z1) : 0;
+      k.quad([xa + o0, y0, z0], [xb + o0, y0, z0], [xb + o1, y1, z1], [xa + o1, y1, z1], pc);
       const xi = xa === 0 ? xb : xa, dir = xa === 0 ? 1 : -1;
-      const a: V3 = [xi, y(z0) - 0.05, z0], b: V3 = [xi, y(z1) - 0.05, z1], c: V3 = [xi, y1, z1], d: V3 = [xi, y0, z0];
+      const a: V3 = [xi + o0, y(z0) - 0.05, z0], b: V3 = [xi + o1, y(z1) - 0.05, z1], c: V3 = [xi + o1, y1, z1], d: V3 = [xi + o0, y0, z0];
       if (dir > 0) k.quad(a, b, c, d, shade(pc, 0.85)); else k.quad(b, a, d, c, shade(pc, 0.85));
       if (exposed) {
         const xo = xa === 0 ? 0 : w;
-        const A: V3 = [xo, top, z0], B: V3 = [xo, top, z1], C: V3 = [xo, y1, z1], D: V3 = [xo, y0, z0];
+        const A: V3 = [xo + o0, top, z0], B: V3 = [xo + o1, top, z1], C: V3 = [xo + o1, y1, z1], D: V3 = [xo + o0, y0, z0];
         if (xa === 0) k.quad(B, A, D, C, s.wall); else k.quad(A, B, C, D, s.wall);
       }
     }
@@ -415,7 +468,8 @@ function shell(k: Kit, s: LotSpec): void {
   // Back wall and exposed side walls below the eave: plain plaster with a few real window openings.
   const w = s.w, top = eaveY(s), d = s.depth;
   k.use('plaster');
-  k.at({ x: w, z: -d, ry: Math.PI }, () => k.wall(0, w, 0, top, 0, 0.2, [], shade(s.wall, 0.9), undefined, 0.7));
+  const xb = s.wrap ? -d * Math.tan(s.wrap.skew) : 0; // wrapped: the back wall reaches the skewed return wall
+  k.at({ x: w, z: -d, ry: Math.PI }, () => k.wall(0, w - xb, 0, top, 0, 0.2, [], shade(s.wall, 0.9), undefined, 0.7));
   const side = (left: boolean) => {
     k.at({ x: left ? 0 : w, z: left ? -d : 0, ry: left ? -Math.PI / 2 : Math.PI / 2 }, () => {
       const ops: Opening[] = [];
@@ -427,20 +481,105 @@ function shell(k: Kit, s: LotSpec): void {
       // side wall runs from the frontage to the back; the arcade end is open below the bressummer
       k.wall(left ? 0 : ARCADE, left ? d - ARCADE : d, 0, F1, 0, 0.2, [], s.wall, undefined, 0.7);
       k.wall(0, d, F1, top, 0, 0.24, ops, s.wall, shade(s.wall, 0.66));
-      for (const o of ops) {
-        k.use('glass');
-        k.quad([o.x0, o.y0, -0.18], [o.x1, o.y0, -0.18], [o.x1, o.y1, -0.18], [o.x0, o.y1, -0.18], hex(0x33424a, 0.6));
-        k.use('paint');
-        const fr = hex(0x8a8f8c);
-        k.box(o.x0, o.x1, o.y0, o.y0 + 0.05, -0.18, -0.13, fr); k.box((o.x0 + o.x1) / 2 - 0.02, (o.x0 + o.x1) / 2 + 0.02, o.y0, o.y1, -0.18, -0.13, fr);
-        k.use('plaster');
-        k.prism([[0, o.y0 - 0.09], [0.11, o.y0 - 0.09], [0.11, o.y0], [0, o.y0]], o.x0 - 0.08, o.x1 + 0.08, s.trim);
-        k.prism([[0, o.y1 + 0.02], [0.14, o.y1 + 0.06], [0.14, o.y1 + 0.11], [0, o.y1 + 0.11]], o.x0 - 0.1, o.x1 + 0.1, s.trim);
-      }
+      for (const o of ops) sideWindow(k, s, o);
     });
   };
-  if (s.exposedL) side(true);
+  if (s.wrap) wrapReturn(k, s, wrapGeo(s));
+  else if (s.exposedL) side(true);
   if (s.exposedR) side(false);
+}
+
+/** Two-leaf casement in a side wall (wall face at z = 0, 0.24 thick). */
+function sideWindow(k: Kit, s: LotSpec, o: Opening): void {
+  k.use('glass');
+  k.quad([o.x0, o.y0, -0.18], [o.x1, o.y0, -0.18], [o.x1, o.y1, -0.18], [o.x0, o.y1, -0.18], hex(0x33424a, 0.6));
+  k.use('paint');
+  const fr = hex(0x8a8f8c);
+  k.box(o.x0, o.x1, o.y0, o.y0 + 0.05, -0.18, -0.13, fr); k.box((o.x0 + o.x1) / 2 - 0.02, (o.x0 + o.x1) / 2 + 0.02, o.y0, o.y1, -0.18, -0.13, fr);
+  k.use('plaster');
+  k.prism([[0, o.y0 - 0.09], [0.11, o.y0 - 0.09], [0.11, o.y0], [0, o.y0]], o.x0 - 0.08, o.x1 + 0.08, s.trim);
+  k.prism([[0, o.y1 + 0.02], [0.14, o.y1 + 0.06], [0.14, o.y1 + 0.11], [0, o.y1 + 0.11]], o.x0 - 0.1, o.x1 + 0.1, s.trim);
+}
+
+/**
+ * C1a corner return (wrapped lot only), built in the return frame RF: u from the far end of the return (0, where the
+ * side street's first lot starts) to the corner front line (len); v outward; y from this lot's floor datum.
+ * Five-foot way with ramped floor, kerb and drain (meeting the neighbour's higher floor at u = 0), joisted ceiling,
+ * return part of the L-shaped bressummer, intermediate piers (bays <= 4.2 m), an end party wall with the same opening
+ * as the neighbour's, the shop side wall with two dark windows, the upper side wall with casements, and the string
+ * course, cornice and corner pilaster carried round the corner.
+ */
+function wrapReturn(k: Kit, s: LotSpec, g: WrapGeo): void {
+  const { L, R, u0, u1, uP, uQ, ramp } = g, A = ARCADE, P = PIER, top = eaveY(s), S = SOFFIT + 0.16;
+  inRF(k, s, () => {
+    // five-foot-way floor
+    k.use('paving');
+    const f0 = shade(s.floor, 0.95), f1 = shade(s.floor, 0.55);
+    k.poly([[0, KERB + R, 0], [u0, KERB, 0], [u1, KERB, -A], [0, KERB + R, -A]], [f0, f0, f1, f1]);
+    // kerb (3 mm proud of the front kerb where they meet), running past the corner to close it
+    k.use('stone');
+    const kc = hex(0x9a988e), ky = KERB + 0.003, ke = L + 0.255, kd = shade(kc, 0.85);
+    k.quad([0, ky + R, 0.24], [u0, ky, 0.24], [u0, ky, 0], [0, ky + R, 0], kc);
+    k.quad([u0, ky, 0.24], [ke, ky, 0.24], [ke, ky, 0], [u0, ky, 0], kc);
+    k.quad([0, -0.3, 0.24], [u0, -0.3, 0.24], [u0, ky, 0.24], [0, ky + R, 0.24], kd);
+    k.quad([u0, -0.3, 0.24], [ke, -0.3, 0.24], [ke, ky, 0.24], [u0, ky, 0.24], kd);
+    k.quad([ke, -0.3, 0.24], [ke, -0.3, 0], [ke, ky, 0], [ke, ky, 0.24], kd);
+    // drain slabs and gutter (4 mm proud of the front drain)
+    const dy = 0.049, de = L + 0.78;
+    k.use('concrete');
+    for (let u = 0.02, i = 0; u < de - 0.1; u += 0.92, i++) {
+      const ub = Math.min(de, u + 0.89), r = ramp((u + ub) / 2);
+      k.box(u, ub, dy - 0.06 + r, dy + r, 0.3, 0.78, hex(0x8f8d86, 0.9 + rnd(s.seed, 200 + i) * 0.2), 'y-');
+    }
+    k.quad([0, R + 0.004, 0.32], [u0, 0.004, 0.32], [u0, 0.004, 0.24], [0, R + 0.004, 0.24], hex(0x77756f));
+    k.quad([u0, 0.004, 0.32], [de, 0.004, 0.32], [de, 0.004, 0.24], [u0, 0.004, 0.24], hex(0x77756f));
+    // ceiling boards on joists
+    k.use('timber');
+    const st = s.soffit ?? 0.42, cb = hex(0x8d8474, st);
+    k.poly([[0, S, -A], [u1, S, -A], [uP, S, -P], [0, S, -P]], [shade(cb, 0.8), shade(cb, 0.8), cb, cb]);
+    if (k.detail) for (let u = 0.3; u < Math.min(u1, uP) - 0.1; u += 0.52) k.box(u - 0.04, u + 0.04, SOFFIT, S, -A, -P, hex(0x6f6557, (0.5 * st) / 0.42), 'y+z+z-');
+    // return part of the bressummer: outer, inner, underside (mitred to the front part), end
+    k.use('plaster');
+    const y0 = F1 - 0.5, y1 = F1;
+    k.quad([0, y0, 0], [L, y0, 0], [L, y1, 0], [0, y1, 0], s.wall);
+    k.quad([uQ, y0, -P], [0, y0, -P], [0, y1, -P], [uQ, y1, -P], s.wall);
+    k.quad([0, y0, -P], [uQ, y0, -P], [L, y0, 0], [0, y0, 0], shade(s.wall, 0.7));
+    k.quad([0, y0, -P], [0, y0, 0], [0, y1, 0], [0, y1, -P], s.wall);
+    // piers: bays of at most 4.2 m between the corner pier and the half pier at the far end
+    const bays = Math.ceil((L - P / 2) / 4.0);
+    for (let j = 1; j < bays; j++) { const uc = ((L - P / 2) * j) / bays; k.at({ y: ramp(uc) }, () => pier(k, s, uc - P / 2, uc + P / 2, false, false)); }
+    k.at({ y: R }, () => pier(k, s, 0, P / 2, true, false, true));
+    // end party wall facing along the return, opening matched to the neighbour's (sideArch is set on both lots)
+    const pw = shade(s.wall, 0.6), sq = s.sideArch === undefined ? rnd(s.seed, 17) < 0.45 : !s.sideArch;
+    k.at({ x: 0.12, y: R, ry: Math.PI / 2 }, () => k.wall(P, A, KERB, S, 0, 0.12, [{ x0: 0.72, x1: A - 0.25, y0: KERB, y1: sq ? 2.6 : 2.72, arch: sq ? 0 : 0.55 }], pw, shade(pw, 0.85), 0.8));
+    // shop side wall along the return with two dark windows
+    k.use('plaster');
+    const ic = shade(s.wall, 0.62), iops: Opening[] = [{ x0: 1.4, x1: 2.5, y0: 1.0, y1: 2.4 }, { x0: 5.3, x1: 6.45, y0: 1.0, y1: 2.4 }];
+    k.wall(0, u1, KERB, S, -A, 0.22, iops, ic, shade(ic, 0.7), 0.75);
+    k.use('glass');
+    for (const o of iops) k.quad([o.x0, o.y0, -A - 0.2], [o.x1, o.y0, -A - 0.2], [o.x1, o.y1, -A - 0.2], [o.x0, o.y1, -A - 0.2], hex(0x33424a, 0.4));
+    // upper side wall: one casement per bay and storey
+    const ops: Opening[] = [];
+    for (let stn = 1; stn < s.storeys; stn++) for (let j = 0; j < bays; j++) {
+      const uc = ((L - P / 2) * (2 * j + 1)) / (2 * bays), fy = F1 + UP * (stn - 1);
+      ops.push({ x0: uc - 0.5, x1: uc + 0.5, y0: fy + 0.95, y1: fy + 2.25 });
+    }
+    k.use('plaster');
+    k.wall(0, L, F1, top, 0, 0.24, ops, s.wall, shade(s.wall, 0.66));
+    for (const o of ops) sideWindow(k, s, o);
+    // string course and cornice round the corner (mitred to the front runs), corner pilaster
+    k.use('plaster');
+    for (let stn = 1; stn < s.storeys; stn++) mitrePrism(k, stringSec(F1 + UP * (stn - 1)), () => 0, (z) => L + z * g.m, s.trim, true);
+    mitrePrism(k, corniceSec(top), () => 0, (z) => L + z * g.m, s.trim, true);
+    if (s.storeys > 1) {
+      k.box(L - 0.26, L + 0.07, F1 + 0.12, top - 0.3, 0, 0.07, s.wall, 'z-y-y+');
+      k.box(L - 0.29, L + 0.1, top - 0.42, top - 0.3, 0, 0.1, s.trim, 'z-');
+    }
+  });
+  // drain and gutter in the corner square, between the front drain and the return drain
+  k.use('concrete');
+  k.box(-0.36, 0.02, -0.015, 0.045, 0.3, 0.78, hex(0x8f8d86), 'y-');
+  k.quad([-0.36, 0.002, 0.32], [0, 0.002, 0.32], [0, 0.002, 0.24], [-0.36, 0.002, 0.24], hex(0x77756f));
 }
 
 function dressing(k: Kit, s: LotSpec, signs: SignSource | null): void {
@@ -450,9 +589,10 @@ function dressing(k: Kit, s: LotSpec, signs: SignSource | null): void {
     const drop = 0.35 + rnd(s.seed, 90) * 0.75, y1 = F1 - 0.52, y0 = y1 - drop;
     const c = hex([0xd9cfae, 0x7f9a86, 0xc8b78f, 0x8fa0a8][s.seed % 4]);
     k.use('fabric');
-    k.quad([PIER / 2 + 0.05, y0, -0.08], [w - PIER / 2 - 0.05, y0, -0.08], [w - PIER / 2 - 0.05, y1, -0.08], [PIER / 2 + 0.05, y1, -0.08], [shade(c, 0.85), shade(c, 0.85), c, c]);
+    const pl = s.wrap ? PIER : PIER / 2;
+    k.quad([pl + 0.05, y0, -0.08], [w - PIER / 2 - 0.05, y0, -0.08], [w - PIER / 2 - 0.05, y1, -0.08], [pl + 0.05, y1, -0.08], [shade(c, 0.85), shade(c, 0.85), c, c]);
     k.use('paint');
-    k.tube([[PIER / 2 + 0.02, y0, -0.08], [w - PIER / 2 - 0.02, y0, -0.08]], 0.035, 6, shade(c, 0.7));
+    k.tube([[pl + 0.02, y0, -0.08], [w - PIER / 2 - 0.02, y0, -0.08]], 0.035, 6, shade(c, 0.7));
   }
   if (signs && s.hang) {
     const hgt = Math.min(1.7, 0.34 * s.hang.text.length + 0.2), wd = 0.42, x = w - 0.02, y = F1 + 0.5;

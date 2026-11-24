@@ -8,6 +8,8 @@
 // that particular building. A street-level photo walk is needed to replace them (see the report).
 import { hex } from './kit.ts';
 import type { LotSpec } from './shophouse.ts';
+import { c1Enabled } from './c1flag.ts';
+import { ROWS, rowFrame } from './geo.ts';
 
 type O = Partial<LotSpec>;
 const W = { white: 0xe9e6dc, warm: 0xe4dccb, grey: 0xd3d5d0, blue: 0xc6d3d9, cream: 0xe7dbb9, green: 0xd3dcc8, pink: 0xe3a79c, orange: 0xe9a04a, stained: 0xdcd8cb };
@@ -56,3 +58,39 @@ export const LOT_OVERRIDES: Record<string, O[]> = {
     { wall: hex(W.cream), joinery: hex(J.green), win: 'arched', shop: 'open', roof: 'tile', hoods: true, basis: typical },
   ],
 };
+
+// C1a experiment (?c1=1 only): the Upper China Street corner. Nothing below runs, and LOT_OVERRIDES is untouched, with the flag off.
+// The nine new lots are 'typical' forms (not surveyed) from the palette above; no plants (condition C10). Shop names and the
+// shopfront kind of a named lot still come from the mapped places by the existing rule. Arched party-wall openings on the lots
+// that meet a corner return, so the return's end wall matches its neighbour.
+if (c1Enabled()) {
+  const row = (id: string) => ROWS.find((r) => r.id === id)!;
+  /** Skew of a corner lot's left side against the mapped side edge (radians), from the row frame and the side row's direction. */
+  const skew = (rowId: string, sideRowId: string): number => {
+    const fr = rowFrame(row(rowId)), sr = row(sideRowId), l = Math.hypot(sr.b[0] - sr.a[0], sr.b[1] - sr.a[1]);
+    const ex = (sr.b[0] - sr.a[0]) / l, ez = (sr.b[1] - sr.a[1]) / l;
+    return Math.atan2(-(ex * fr.dx + ez * fr.dz), -(ex * fr.nx + ez * fr.nz));
+  };
+  const c1 = 'typical (C1a): plausible form for Upper China Street, not surveyed';
+  const plain: O = { plants: 0, sideArch: true, basis: c1 };
+  // S2 lot 0 (Carpenter Street corner) wraps into Upper China Street; rise = UW lot 1 floor above S2 lot 0 (real terrain, gate 2 probe).
+  LOT_OVERRIDES.S2 = LOT_OVERRIDES.S2.map((o, i) => (i === 0 ? { ...o, sideArch: true, wrap: { side: 'L', len: 12, skew: skew('S2', 'UW'), rise: 0.081 } } : o));
+  // Upper China west face (S2 block), lot 0 south, lot 1 against the S2 corner return.
+  LOT_OVERRIDES.UW = [
+    { ...plain, wall: hex(W.blue), joinery: hex(J.slate), win: 'arched', shop: 'folding', roof: 'zinc', hoods: false },
+    { ...plain, wall: hex(W.cream), joinery: hex(J.brown), win: 'louvre', shop: 'roller', roof: 'tile', hoods: true },
+  ];
+  // Upper China east face (building 236495235), lot 0 is the Carpenter Street corner and wraps into it; rise = UX lot 2 above UE lot 0.
+  LOT_OVERRIDES.UE = [
+    { ...plain, wall: hex(W.white), joinery: hex(J.teal), win: 'louvre', shop: 'roller', roof: 'tile', hoods: true, wrap: { side: 'L', len: 12, skew: skew('UE', 'UX'), rise: 0.189 } },
+    { ...plain, wall: hex(W.green), joinery: hex(J.green), win: 'casement', shop: 'open', roof: 'zinc', hoods: false },
+    { ...plain, wall: hex(W.grey), joinery: hex(J.blue), win: 'arched', shop: 'folding', roof: 'tile', hoods: false },
+    { ...plain, wall: hex(W.warm), joinery: hex(J.brown), win: 'louvre', shop: 'open', roof: 'tile', hoods: true },
+  ];
+  // Carpenter Street face of 236495235, lot 0 east, lot 2 against the UE corner return.
+  LOT_OVERRIDES.UX = [
+    { ...plain, wall: hex(W.cream), joinery: hex(J.green), win: 'slider', shop: 'roller', roof: 'zinc', hoods: false, ac: 1 },
+    { ...plain, wall: hex(W.blue), joinery: hex(J.teal), win: 'louvre', shop: 'folding', roof: 'tile', hoods: false },
+    { ...plain, wall: hex(W.stained), joinery: hex(J.grey), win: 'arched', shop: 'open', roof: 'tile', hoods: true },
+  ];
+}
