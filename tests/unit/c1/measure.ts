@@ -21,7 +21,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 const [flagArg] = process.argv.slice(2), rootArg = process.cwd();
 const FLAG = flagArg === 'on';
-(globalThis as any).location = { search: FLAG ? '?c1=1' : '' };
+(globalThis as any).location = { search: FLAG ? '?c1=1' : '?c1=0' };
 const root = rootArg.split(String.fromCharCode(92)).join('/');
 const U = (p: string) => 'file:///' + root + '/' + p;
 const THREE = await import(U('node_modules/three/build/three.module.js'));

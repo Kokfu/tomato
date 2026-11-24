@@ -50,8 +50,8 @@ An orchestrator session starts **one worker session per milestone** (M5 and M6 a
 
 | # | Milestone | Status | Commit | Notes |
 |---|---|---|---|---|
-| M0 | Baseline and city tour gate | DONE | (this commit; hash goes in M1's commit) | 87 tests, load 5.0 s, phone p95 A/B/C 88/74/73 ms; mean realism 2.3/5 |
-| M1 | Integrate finished experiments | TODO | | |
+| M0 | Baseline and city tour gate | DONE | 2232f94 | 87 tests, load 5.0 s, phone p95 A/B/C 88/74/73 ms; mean realism 2.3/5 |
+| M1 | Integrate finished experiments | DONE | (hash goes in M2's commit) | v9, ux1, c1 and character picker merged and ON by default (`?name=0` turns one off); phone p95 A/B/C 78/54/51 ms, load 4.9 s, 222 unit tests |
 | M2 | Citywide atmosphere, light and ground | TODO | | |
 | M3 | Buildings everywhere | TODO | | |
 | M4 | Streets everywhere | TODO | | |
@@ -190,3 +190,7 @@ Each place needs:
 (one line each: date-time, milestone, decision, reason)
 - 2026-11-25 M0: tour cameras are first-person, snapped to the nearest mapped road (generator kept in `tools/dev/city-tour-gen.mts`), then frozen; reason: reproducible, never inside water or a wall.
 - 2026-11-25 M0: desktop FPS is vsync-capped at 60 in all views, so desktop budget is checked as min fps >= 50 plus calls/triangles; reason: no uncapped baseline signal.
+- 2026-11-25 M1: merged integration/dev-preview-1, experiment/char-p5, experiment/c1-upper-china (no conflicts); did NOT merge experiment/omb-gps, its G1 data freeze blocks `data:*` regeneration that M3/M4 need.
+- 2026-11-25 M1: v9 arcade, sign fix (part of dev-preview), UX1 guide, character picker and C1 Upper China are ON by default in a browser; `?v9=0`, `?ux1=0`, `?c1=0`, `?char=0` restore the old behaviour; reason: all passed unit, e2e and the phone budget (p95 A +10 %, B and C better, start-up +6 %, no compile stall over 200 ms).
+- 2026-11-25 M1: defaults live in `src/flags.ts` (one registry); with no `location` (node tests, tools) everything stays off so tables keep their V8.6 values; `?lab=1` is a harmless alias now.
+- 2026-11-25 M1: e2e helper `start()` and tools (drive-bench, load-probe, shots) seed `k3d.character=man` so the first-launch picker does not block them; specs that test the "no flag" game now use `?char=0`.

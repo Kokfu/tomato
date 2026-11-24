@@ -14,6 +14,7 @@ for (let r = 0; r < repeat; r++) for (const [i, dist] of dists.entries()) {
   const browser = await chromium.launch({ channel: 'msedge', args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
   try {
     const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+    await page.addInitScript(() => { try { if (!localStorage.getItem('k3d.character')) localStorage.setItem('k3d.character', 'man'); } catch { /* ignore */ } }); // N1-M1: skip the first-launch character picker
     const t0 = Date.now();
     await page.goto(`http://localhost:${port}/`);
     await page.waitForFunction(() => (window as any).__k3d?.ready, null, { timeout: 120_000 });

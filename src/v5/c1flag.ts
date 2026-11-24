@@ -1,7 +1,9 @@
-// C1a experiment switch (Upper China Street corner). Off unless the page URL carries ?c1=1, so the default build is unchanged.
+// C1a experiment switch (Upper China Street corner). On by default (N1-M1); ?c1=0 restores the V8.6 corner.
+import { getFlags } from '../flags.ts';
 let v: boolean | undefined;
+/** On by default in a browser since N1-M1; ?c1=0 turns it off. Off without a `location` (node tests). Read once. */
 export function c1Enabled(): boolean {
-  if (v === undefined) v = /[?&]c1=1(&|$)/.test(String((globalThis as any).location?.search ?? ''));
+  if (v === undefined) v = getFlags().c1;
   return v;
 }
 

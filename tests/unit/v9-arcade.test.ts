@@ -64,7 +64,8 @@ test('v9flag: false when location is undefined, true only for ?v9=1, read once',
     assert.deepEqual([...V9_TRIM_CORNERS], ['233690737:0']);
     assert.equal(v9TrimCorner(233690737, 0), true);
     for (const [b, e] of [[233690737, 1], [233690737, 3], [236495303, 0], [236495776, 0], [233690736, 0]]) assert.equal(v9TrimCorner(b, e), false, `${b}:${e}`);
-    for (const s of ['', '?v9=0', '?v9=true', '?v90=1']) { g.location = { search: s }; setV9(null); assert.equal(v9Enabled(), false, s); }
+    for (const s of ['?v9=0']) { g.location = { search: s }; setV9(null); assert.equal(v9Enabled(), false, s); }
+    for (const s of ['', '?v9=true', '?v90=1']) { g.location = { search: s }; setV9(null); assert.equal(v9Enabled(), true, s); } // N1-M1: on by default in a browser
     g.location = { search: '?x=2&v9=1' }; setV9(null);
     assert.equal(v9Enabled(), true);
   } finally {

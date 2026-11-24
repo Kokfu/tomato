@@ -78,7 +78,7 @@ test.describe('character seam (CHAR-P2a)', () => {
       (window as any).__reads = [];
       Storage.prototype.getItem = function (k: string) { (window as any).__reads.push(k); return orig.call(this, k); };
     });
-    const run = await boot(page);
+    const run = await boot(page, '?char=0'); // N1-M1: ?char=0 is the old no-flag game
     await glbShown(page);
     expect(run.glbs).toEqual([DEFAULT_GLB]);
     expect(await page.evaluate(() => (window as any).__k3d.character), 'the debug hook exists only with ?char').toBeUndefined();
@@ -229,7 +229,7 @@ test.describe('character seam (CHAR-P2a)', () => {
   });
 
   test('regression: the model finishing its load while driving stays hidden (default path, no flag)', async ({ page }) => {
-    const run = await boot(page, '', { delayGlb: 20_000 });
+    const run = await boot(page, '?char=0', { delayGlb: 20_000 });
     expect(await hasGlb(page), 'still the procedural stand-in').toBe(false);
     await enterCar(page);
     expect((await ids2(page)).visible).toBe(false);
@@ -246,7 +246,7 @@ test.describe('character seam (CHAR-P2a)', () => {
   test("the player root's world +Z follows the heading after a late default load (no flag, GLB held back until released)", async ({ page }) => {
     let release!: () => void;
     const gate = new Promise<void>((r) => { release = r; });
-    const run = await boot(page, '', { gate });
+    const run = await boot(page, '?char=0', { gate });
     expect(await hasGlb(page)).toBe(false);
     for (const h of [Math.PI, 2.5]) {
       await page.evaluate((h) => { (window as any).__k3d.player.heading = h; }, h);
@@ -538,7 +538,7 @@ test.describe('character seam (CHAR-P2a)', () => {
     await start(page, { navigate: false });
     await settled(page, 'man');
     // without the flag the saved choice is ignored and the default is used
-    await page.goto('./');
+    await page.goto('./?char=0');
     await start(page, { navigate: false });
     await glbShown(page);
     expect(await page.evaluate(() => localStorage.getItem('k3d.character'))).toBe('man');

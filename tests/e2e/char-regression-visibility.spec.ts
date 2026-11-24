@@ -9,7 +9,7 @@ test('regression: a character model finishing its load while driving stays hidde
   page.on('pageerror', (e) => errors.push(e.message));
   await page.addInitScript(() => { try { localStorage.setItem('k3d.quality', 'low'); } catch { /* ignore */ } });
   await page.route('**/casual-character.glb', async (route) => { await new Promise((r) => setTimeout(r, 20_000)); await route.continue(); });
-  await page.goto('./');
+  await page.goto('./?char=0');
   await start(page, { navigate: false });
   await waitChunks(page);
   await page.evaluate(() => { (window as any).__v0 = (window as any).__k3d.player.visual; });

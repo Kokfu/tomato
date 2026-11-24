@@ -148,9 +148,15 @@ export const CHARACTER_STORAGE_KEY = 'k3d.character';
  * then the default placeholder, which is not loaded. A saved id that is unknown, removed or retired (a Rocketbox prototype, the
  * default model) counts as no saved choice.
  */
+/** N1-M1: the character picker path is on by default in a browser; `?char=0` is the old no-flag game. */
+export function charEnabled(search: string): boolean {
+  const q = new URLSearchParams(search);
+  return q.has('char') ? q.get('char') !== '0' : true;
+}
+
 export function resolveStartCharacter(search: string, saved: string | null): { id: string; flag: boolean; persist: boolean; invalid: string | null; needsPick: boolean } {
   const q = new URLSearchParams(search);
-  if (!q.has('char')) return { id: DEFAULT_CHARACTER_ID, flag: false, persist: false, invalid: null, needsPick: false };
+  if (!charEnabled(search)) return { id: DEFAULT_CHARACTER_ID, flag: false, persist: false, invalid: null, needsPick: false };
   const asked = q.get('char') ?? '';
   if (asked && getProfile(asked)) return { id: asked, flag: true, persist: true, invalid: null, needsPick: false };
   const ok = isPickable(saved);

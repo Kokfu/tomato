@@ -59,8 +59,9 @@ test('dev-only profiles are reachable by id but not offered by the cycle', () =>
 });
 
 test('resolveStartCharacter: no flag is dormant, the flag selects, invalid ids fall back', () => {
-  assert.deepEqual(resolveStartCharacter('', 'man'), { id: 'default', flag: false, persist: false, invalid: null, needsPick: false });
-  assert.deepEqual(resolveStartCharacter('?quality=low', null), { id: 'default', flag: false, persist: false, invalid: null, needsPick: false });
+  assert.deepEqual(resolveStartCharacter('?char=0', 'man'), { id: 'default', flag: false, persist: false, invalid: null, needsPick: false }); // N1-M1: ?char=0 is the old no-flag game
+  assert.deepEqual(resolveStartCharacter('?char=0&quality=low', null), { id: 'default', flag: false, persist: false, invalid: null, needsPick: false });
+  assert.deepEqual(resolveStartCharacter('', 'man'), { id: 'man', flag: true, persist: false, invalid: null, needsPick: false }); // on by default
   assert.deepEqual(resolveStartCharacter('?char=adult-woman', null), { id: 'adult-woman', flag: true, persist: true, invalid: null, needsPick: false }); // developer link: any profile
   assert.deepEqual(resolveStartCharacter('?char=teen-girl', null), { id: 'teen-girl', flag: true, persist: true, invalid: null, needsPick: false });
   // bare flag: use the saved choice (one of the six), nothing to persist

@@ -12,7 +12,7 @@ import { CharacterSwapper } from './player/character/swap.ts';
 import { bodyVisible } from './player/character/visibility.ts';
 import { CharacterTimings, yieldToMain } from './player/character/timings.ts';
 import { uploadTexturesStaged } from './player/character/stagedPrepare.ts';
-import { DEFAULT_CHARACTER_ID, getProfile, loadSavedCharacter, resolveStartCharacter, saveCharacter } from './player/character/CharacterProfile.ts';
+import { DEFAULT_CHARACTER_ID, charEnabled, getProfile, loadSavedCharacter, resolveStartCharacter, saveCharacter } from './player/character/CharacterProfile.ts';
 import type { CharacterPicker, PickerMode } from './ui/CharacterPicker.ts';
 import { ThirdPersonCamera } from './player/ThirdPersonCamera.ts';
 import { GameMenu } from './ui/GameMenu.ts';
@@ -191,7 +191,7 @@ async function boot(): Promise<void> {
   world.scene.add(player.visual.root);
   const tpc = new ThirdPersonCamera(camera, world.collision);
   // CHAR-P2a: character profiles. Without ?char nothing changes: the default model is loaded as before.
-  const charStart = resolveStartCharacter(location.search, new URLSearchParams(location.search).has('char') ? loadSavedCharacter() : null);
+  const charStart = resolveStartCharacter(location.search, charEnabled(location.search) ? loadSavedCharacter() : null);
   // CHAR-P5 G2 (D3): shader error checking is a named configuration. DIAGNOSTIC (checks on) is the default in the dev server and in
   // `vite build --mode diagnostic`; BENCHMARK/RUNTIME (checks off, see below) is the default of a normal build. `?charcfg=diagnostic|benchmark`
   // picks either in any build, so one build can measure both. `?charcache=<MB>` forces the parsed-model cache budget (the 32 MB phone

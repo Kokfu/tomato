@@ -4,10 +4,10 @@ import assert from 'node:assert/strict';
 import { HINT_COOLDOWN_MS, QuickGuide, carWhere, enterCarToast, guideFor, hintText, ux1Enabled } from '../../src/ui/QuickGuide.ts';
 import type { GuideEnv, PlayState } from '../../src/ui/QuickGuide.ts';
 
-test('flag is opt-in: only ?ux1=1 turns it on', () => {
-  assert.equal(ux1Enabled(''), false);
+test('flag is on by default (N1-M1): only ?ux1=0 turns it off', () => {
+  assert.equal(ux1Enabled(''), true);
   assert.equal(ux1Enabled('?ux1=0'), false);
-  assert.equal(ux1Enabled('?ux=1'), false);
+  assert.equal(ux1Enabled('?ux=1'), true);
   assert.equal(ux1Enabled('?render=v4&ux1=1'), true);
 });
 

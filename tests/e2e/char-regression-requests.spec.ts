@@ -21,7 +21,7 @@ test('regression: no flag requests the same scripts and the same single characte
     if (/\.glb(\?|$)/.test(u) || r.resourceType() === 'script') seen.push(norm(u, baseURL ?? ''));
   });
   await page.addInitScript(() => { try { localStorage.setItem('k3d.quality', 'low'); } catch { /* ignore */ } });
-  await page.goto('./');
+  await page.goto('./?char=0');
   await start(page, { navigate: false });
   await waitChunks(page);
   // The GLB model replaces the procedural stand-in.

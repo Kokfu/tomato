@@ -46,7 +46,9 @@ test('G2.4 the saved choice: a selectable id restores, anything else is first la
   for (const bad of ['adult-man', 'adult-woman', 'removed-character', '']) assert.equal(resolveStartCharacter('?char', bad).needsPick, true, bad);
   assert.equal(resolveStartCharacter('?char', null).needsPick, true);
   assert.equal(resolveStartCharacter('', 'man').needsPick, false);
-  assert.equal(resolveStartCharacter('?other=1', 'man').flag, false);
+  assert.equal(resolveStartCharacter('', null).needsPick, true); // N1-M1: first launch shows the picker without a flag
+  assert.equal(resolveStartCharacter('?char=0', 'man').flag, false);
+  assert.equal(resolveStartCharacter('?other=1', 'man').flag, true); // N1-M1: on by default
 });
 
 // ---------------------------------------------------------------- strict swap

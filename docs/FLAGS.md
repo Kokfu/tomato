@@ -1,28 +1,16 @@
-# Preview flags
+# Feature flags (N1-M1)
 
-Flags are URL query parameters, read once from `location.search` by `src/flags.ts`. With no parameters every
-flag is off and the page is the accepted build. A flag is on only for the exact value `1`.
+Flags are URL query parameters read once from `location.search` by `src/flags.ts`.
+Since N1-M1 the four merged features are **on by default** in a browser; `?name=0` turns one off (the previous accepted build).
 
-| URL | v9 (Main Bazaar arcade) | ux1 (controls guide) |
+| Flag | Feature | Off with |
 |---|---|---|
-| (none) | off | off |
-| `?v9=1` | on | off |
-| `?ux1=1` | off | on |
-| `?lab=1` | on | on |
-| `?lab=1&v9=0` | off | on |
-| `?lab=1&ux1=0` | on | off |
+| `v9` | Main Bazaar arcade (V9) and the sign fix | `?v9=0` |
+| `ux1` | Controls quick guide | `?ux1=0` |
+| `c1` | Upper China Street corner | `?c1=0` |
+| `char` | Six-character picker (first launch shows the picker; "Change character" in the pause menu) | `?char=0` |
 
-## Precedence
-
-1. An explicit `v9=` or `ux1=` always decides that flag: `1` is on, anything else (`0`, `true`, empty) is off.
-2. Otherwise `?lab=1` turns the flag on.
-3. Otherwise the flag is off.
-
-`?lab=1` is the integrated-preview switch. It covers only `v9` and `ux1`. Flags that are not listed in
-`LAB_FLAGS` (`src/flags.ts`) are never enabled by it and keep their own behaviour, including any flag from a branch
-that is not merged here. Omitting a flag means it is off, never a hidden default.
-
-`v9Enabled()` and `ux1Enabled(search)` keep their names and call sites and delegate to the registry.
-`setV9(null)` also clears the registry cache, so tests can change `location.search` and re-read it.
-
-Rollback: revert the A5 commit; the two original one-line parsers return.
+- Any value other than `0` (or no value) means on. `?char=<id>` is still a developer link for one character.
+- Without a `location` (node unit tests, tools) every flag is off, so the data tables stay at their V8.6 values.
+- `?lab=1` is kept as an alias and changes nothing now.
+- Tests and tools that must not meet the picker seed `localStorage['k3d.character'] = 'man'`.

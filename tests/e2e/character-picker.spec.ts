@@ -676,7 +676,7 @@ test('N3b a double confirm (Enter twice): ONE model built, one install, one save
 
 test('P9 no flag: no picker, no portrait or picker request, no pause button, the saved choice is not read', async ({ page }) => {
   test.setTimeout(120_000);
-  const run = await boot(page, '', 'woman');
+  const run = await boot(page, '?char=0', 'woman');
   await waitChunks(page);
   await expect(page.locator('#char-picker')).toHaveCount(0);
   await page.keyboard.press('Escape');

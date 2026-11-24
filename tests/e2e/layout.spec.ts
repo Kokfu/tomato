@@ -4,6 +4,7 @@ import { watch, start, waitChunks } from './helpers.ts';
 test.describe('layout', () => {
   test('start screen, HUD, settings, map and pause fit the viewport', async ({ page }, info) => {
     const issues = watch(page);
+    await page.addInitScript(() => { try { if (!localStorage.getItem('k3d.character')) localStorage.setItem('k3d.character', 'man'); } catch { /* ignore */ } }); // N1-M1: skip the first-launch picker
     await page.goto('./');
     await expect(page.locator('#start h1')).toHaveText('KUCHING 3D');
     await expect(page.locator('.tagline')).toHaveText('Explore the real streets of Kuching, Sarawak.');

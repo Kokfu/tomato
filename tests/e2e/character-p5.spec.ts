@@ -210,7 +210,7 @@ test('E4.1 N9 (?char): entering OP fly mode in mid-air settles the hidden body t
 test('E4.2 N9 without ?char: no settle call on entering OP mode (the no-flag game is unchanged)', async ({ page }) => {
   test.setTimeout(120_000);
   await page.addInitScript(() => { try { localStorage.setItem('k3d.quality', 'low'); } catch { /* ignore */ } });
-  await page.goto('./');
+  await page.goto('./?char=0');
   await start(page, { navigate: false });
   await waitChunks(page);
   expect(await page.evaluate(() => (window as any).__k3d.character), 'no character hook without the flag').toBeUndefined();

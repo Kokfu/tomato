@@ -23,7 +23,11 @@ export function watch(page: Page): Issues {
 
 /** Load the app and press Start. `navigate: false` when the test has already opened the page. */
 export async function start(page: Page, opts: { navigate?: boolean } = {}): Promise<void> {
-  if (opts.navigate !== false) await page.goto('./');
+  // N1-M1: the character picker is on by default; a saved choice skips it, so every spec starts in the world.
+  if (opts.navigate !== false) {
+    await page.addInitScript(() => { try { if (!localStorage.getItem('k3d.character')) localStorage.setItem('k3d.character', 'man'); } catch { /* ignore */ } });
+    await page.goto('./');
+  }
   await page.waitForFunction(() => (window as any).__k3d?.ready === true, null, { timeout: 90_000 });
   await expect(page.locator('#btn-start')).toBeEnabled();
   await page.locator('#btn-start').click();

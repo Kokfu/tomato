@@ -290,6 +290,7 @@ const browser = await chromium.launch({ channel: 'msedge', args: ['--use-angle=d
 try {
   const ctx = await browser.newContext(MOBILE ? { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 3 } : { viewport: { width: 1920, height: 1080 } });
   await ctx.addInitScript((q) => { try { localStorage.setItem('k3d.quality', q); } catch { /* ignore */ } }, QUALITY);
+  await ctx.addInitScript(() => { try { if (!localStorage.getItem('k3d.character')) localStorage.setItem('k3d.character', 'man'); } catch { /* ignore */ } }); // N1-M1: skip the first-launch character picker
   const page = await ctx.newPage();
   if (CPU > 1) { const cdp = await ctx.newCDPSession(page); await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU }); }
   page.on('console', (m) => { if (m.type() === 'error' || m.text().startsWith('bench')) console.log('[page]', m.text()); });
