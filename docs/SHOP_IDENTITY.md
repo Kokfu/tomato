@@ -18,6 +18,10 @@ metres off and businesses may have closed. They are therefore kept only when the
 at least 0.75, dropped when OpenStreetMap already has the same business nearby (normalised name
 match within 80 m), and never produce signage. An owner can promote one by saving it in the editor.
 
+Main Bazaar district pins (`PINS` in `src/world/district/mainBazaar.ts`) only relocate a place to
+its house-numbered lot; they do not grant a sign. Pinned OSM and owner-verified places get one,
+pinned Overture places stay inspectable without one until promoted.
+
 Current build (see `public/data/kuching/places/index.json` for the live numbers): 1,400 OSM places,
 2,529 Overture places kept (4,624 dropped for low confidence, 548 as duplicates of OSM),
 743 facade signs city-wide.

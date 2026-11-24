@@ -24,6 +24,7 @@ import STREET_VIEWS from '../tools/dev/street-views.json';
 import type { V5Controller, RenderMode } from './v5/controller.ts';
 import { Driving } from './vehicle/Driving.ts';
 import { ControlsHelp } from './ui/ControlsHelp.ts';
+import { QuickGuide, enterCarToast, ux1Enabled } from './ui/QuickGuide.ts';
 import type { ControlsContext } from './ui/ControlsHelp.ts';
 
 /** Rendering at start: V7 Jalan China (its detailed section, the normal geographic rendering elsewhere). The legacy
@@ -260,7 +261,7 @@ async function boot(): Promise<void> {
       carTrip = null;
       syncDriveButton();
       menu.resume();
-      menu.toast('Press E to enter car.', 4);
+      menu.toast(guide ? enterCarToast(isTouchDevice()) : 'Press E to enter car.', 4);
       return;
     }
     const w = driving.whereabouts;
@@ -268,6 +269,15 @@ async function boot(): Promise<void> {
     else if (carTrip.t > 45) endCarTrip('The area around the car could not be loaded');
   };
   const controls = new ControlsHelp();
+  // UX1 prototype: only with ?ux1=1 (default off = V8.6 exactly). See ui/QuickGuide.ts.
+  const guide = ux1Enabled(location.search) ? new QuickGuide({
+    touch: isTouchDevice(),
+    toast: (t, s) => menu.toast(t, s),
+    state: () => (!started || paused || placeOpen ? 'off' : fly.active ? 'fly' : mapOpen ? 'map' : driving.active ? 'drive' : 'foot'),
+    car: () => { const w = driving.whereabouts; return driving.placed ? { dx: w.x - player.position.x, dz: w.z - player.position.z } : null; },
+    admin: () => placePanel.admin,
+  }) : null;
+  guide?.mount();
 
   const toggleView = () => {
     // The driving camera is third-person only: at the wheel V steps the chase distance (near, standard, far).
@@ -352,7 +362,10 @@ async function boot(): Promise<void> {
     if (!started || paused || mapOpen) return;
     // E gets in and out of the car; everywhere else (and in OP mode) it inspects the nearest place as before.
     if (!placeOpen && !fly.active && spawnReady && (driving.active || driving.canEnter(player))) toggleCar();
-    else if (!driving.active) placePanel.toggle();
+    else if (!driving.active) {
+      if (!placePanel.nearShop) guide?.hint('noCar');
+      placePanel.toggle();
+    }
   });
   input.on('reset', () => {
     if (input.enabled && !fly.active) driving.resetToRoad();

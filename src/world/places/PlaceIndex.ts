@@ -14,12 +14,17 @@ import { geoToWorld } from '../GeoProjection.ts';
 import { heritageFascia } from '../arch/HeritageRow.ts';
 import { isDistrictRow, pinPosition, PIN_DUPLICATES } from '../district/mainBazaar.ts';
 
-/** Attach district pins: a pinned business moves to its house-numbered lot and always gets a sign. */
-function applyPin(p: Place): Place {
-  if (PIN_DUPLICATES.has(p.id)) return { ...p, sign: false };
+/**
+ * Attach district pins: a pinned business moves to its house-numbered lot (and stays inspectable).
+ * It gets a facade sign only when its source is verified (OSM v = 1, owner override v = 2);
+ * unverified Overture places (v = 0) never do (docs/SHOP_IDENTITY.md).
+ * The `pin.sign` display alias is for source names only: an owner-verified record (v = 2) shows its own name.
+ */
+export function applyPin(p: Place): Place {
+  if (PIN_DUPLICATES.has(p.id) && p.v < 2) return { ...p, sign: false };
   const a = pinPosition(p.id);
   if (!a) return p;
-  return { ...p, b: a.b, e: a.e, t: a.t, how: p.how ?? 'adjacent', sign: true, pin: { no: a.no, span: a.span, evidence: a.pin.evidence, sign: a.pin.sign } };
+  return { ...p, b: a.b, e: a.e, t: a.t, how: p.how ?? 'adjacent', sign: p.v >= 1, pin: { no: a.no, span: a.span, evidence: a.pin.evidence, sign: p.v >= 2 ? undefined : a.pin.sign } };
 }
 
 const EDIT_KEY = 'k3d.placeEdits';
