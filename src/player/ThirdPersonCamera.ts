@@ -58,10 +58,24 @@ export class ThirdPersonCamera {
   private idleLook = 0;
   private fov = CAMERA.fov;
   private side = 1;
+  /** Look-at pivot and first-person eye above the feet: per character (setProfile), the adult-man values by default. */
+  private pivotH = CAMERA.pivot;
+  private eyeH = CAMERA.eye;
 
   constructor(camera: THREE.PerspectiveCamera, world: CollisionWorld) {
     this.camera = camera;
     this.world = world;
+  }
+
+  /** Camera heights of the current character (metres above the feet). The pivot eases to its new height. */
+  setProfile(p: { pivotHeight: number; eyeHeight: number }): void {
+    this.pivotH = p.pivotHeight;
+    this.eyeH = p.eyeHeight;
+  }
+
+  /** Current pivot and eye heights (tests, diagnostics). */
+  get heights(): { pivot: number; eye: number } {
+    return { pivot: this.pivotH, eye: this.eyeH };
   }
 
   /** Jump to the target without easing (after a teleport). */
@@ -100,8 +114,8 @@ export class ThirdPersonCamera {
     const rx = Math.cos(this.yaw), rz = -Math.sin(this.yaw);
 
     if (this.firstPerson) {
-      this.camera.position.set(target.x, target.y + CAMERA.eye, target.z);
-      this.camera.lookAt(target.x - dx, target.y + CAMERA.eye - dy, target.z - dz);
+      this.camera.position.set(target.x, target.y + this.eyeH, target.z);
+      this.camera.lookAt(target.x - dx, target.y + this.eyeH - dy, target.z - dz);
       this.initialised = false;
       return;
     }
@@ -110,7 +124,7 @@ export class ThirdPersonCamera {
     const k = damp(4, dt);
     this.lead.x += (t.velocity.x * 0.12 - this.lead.x) * k;
     this.lead.y += (t.velocity.z * 0.12 - this.lead.y) * k;
-    const wx = target.x + this.lead.x, wy = target.y + CAMERA.pivot, wz = target.z + this.lead.y;
+    const wx = target.x + this.lead.x, wy = target.y + this.pivotH, wz = target.z + this.lead.y;
     if (!this.initialised || Math.hypot(wx - this.pivot.x, wz - this.pivot.z) > 12) {
       this.pivot.set(wx, wy, wz);
       this.current = this.distance;

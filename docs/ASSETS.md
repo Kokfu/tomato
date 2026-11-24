@@ -47,6 +47,71 @@ At run time (`src/player/GlbCharacter.ts`) the model is scaled to 1.72 m, its ma
 
 Screenshots of the character in the app are in `docs/screenshots/character/` (regenerate with `node tests/tools/character-shots.ts docs/screenshots/character` against a dev server on port 5183).
 
+### Character profiles (CHAR-P2a)
+
+The player character is chosen from a registry (`src/player/character/CharacterProfile.ts`): the Quaternius model above is profile `default` and stays the shipped, default character. Other profiles load only with `?char=<id>` (the id is then remembered as `k3d.character`); without the flag only the default GLB is fetched. Per-profile settings (standing height, camera pivot and eye, clip names, foot bones, licence id) live in that file; physics (collision radius 0.35 m, speeds, jump) does not depend on the character.
+
+| Profile | File | Licence |
+|---|---|---|
+| `default` | `casual-character.glb` (Quaternius, above) | CC0 1.0 |
+| `adult-man` | `adult-man.glb` (Microsoft Rocketbox Male_Adult_09, converted) | MIT |
+| `adult-woman` | `adult-woman.glb` (Microsoft Rocketbox Female_Adult_08, converted, colour-edited) | MIT |
+| `man`, `woman`, `teen-boy`, `teen-girl`, `young-boy`, `young-girl` | `man.glb` … `young-girl.glb` (MakeHuman/MPFB, CHAR-P4, below) | CC0 1.0 + MIT (Rocketbox clips) |
+| `test-short` | the default GLB at 1.30 m | developer test profile (no new art) |
+
+### Rocketbox adults: `public/models/characters/adult-man.glb`, `adult-woman.glb` (CHAR-P2a prototype)
+
+Converted by Studio, 2026-11-21 (pipeline, source files and checks are kept in the team evidence folder `C:\Kuching3D-evidence\char-p2a\assets\`, see its `PROVENANCE.md`; what is needed to audit the files is summarised below, so nothing here depends on that local path). Shipped with the licence notice `public/models/characters/LICENSE-rocketbox.txt` (verbatim upstream `LICENSE.md`).
+
+| | `adult-man.glb` | `adult-woman.glb` |
+|---|---|---|
+| Source avatar | `Male_Adult_09` | `Female_Adult_08` |
+| Size / triangles / vertices / joints | 600,548 B / 7,426 / 4,572 / 52 | 644,140 B / 8,276 / 5,388 / 52 |
+| sha256 | `ce0e717717bc5dd20f7aaa62bf6e7b89ba27e3468947b407487863c2d86f6c17` | `e3cb772428a6dbb0c347f157bcf20ecfb08489f8fa402c53eb44052ac472cf2a` |
+| Rest height (mesh bounds, unscaled) | 1.822 m | 1.735 m |
+| Standing height in the game | 1.70 m (normalised at run time) | 1.58 m (normalised at run time) |
+| Textures | JPEG 1024² skin/clothes atlas (146 KB) + PNG-8 RGBA 512² hair cut-out (14 KB) | JPEG 1024² (128 KB) + PNG-8 RGBA 1024² (48 KB) |
+| Materials | `RB_AdultMan_Skin` opaque; `RB_AdultMan_Hair` alpha cut-out 0.5, double-sided | `RB_AdultWoman_Skin` / `_Hair`, same |
+| Clips (all in place) | `Idle`, `Walk`, `Run`, `TurnLeft`, `TurnRight` | same |
+
+| Item | Value |
+|---|---|
+| Upstream | https://github.com/microsoft/Microsoft-Rocketbox, pinned commit `0943055db6ec570bcef9f2c8b41c9e5467c808f9` (2022-10-02); the repository is archived |
+| Licence | MIT, "Copyright (c) 2020 Microsoft" (`LICENSE.md` at the pinned commit, https://github.com/microsoft/Microsoft-Rocketbox/blob/0943055db6ec570bcef9f2c8b41c9e5467c808f9/LICENSE.md , sha256 `17474e386e0b9e1a700cc3d06b2b0882a2c376d9c6b49c7f8274409b8f8d2352`). Repository-wide: it covers the meshes, textures, skeletons and animations used here. Condition: the copyright and permission notice must be included in all copies, which `LICENSE-rocketbox.txt` does. The game's credits/licences page must carry the same notice (not built yet). |
+| Source files | `Assets/Avatars/Adults/Male_Adult_09/Export/Male_Adult_09.fbx` and `.../Textures/m017_{body,head,opacity}_color.tga`; `Assets/Avatars/Adults/Female_Adult_08/Export/Female_Adult_08.fbx` and `.../Textures/f008_{body,head,opacity}_color.tga`; animations `Assets/Animations/all_animations_max_motextr_{static,xy,xyz}/{m,f}_{idle_neutral_01,walk_neutral_01,run_neutral_01,turn_left_90,turn_right_90}.max.fbx` (hashes in `PROVENANCE.md` §3) |
+| Format | glTF 2.0 binary, `KHR_mesh_quantization` only (no Draco, meshopt or KTX2): the plain `GLTFLoader` loads it. Khronos glTF-Validator: 0 errors, 1 warning (`NODE_SKINNED_MESH_NON_ROOT`, the normal Blender layout) |
+
+Modifications (all scripted, Blender 5.2.4 + gltf-transform 4.5.1): (1) 28 facial bones removed and their weights merged into the head (80 to 52 joints; the face does not animate); (2) the three 2048² TGA colour maps re-baked into one opaque skin/clothes atlas (JPEG q85) and one hard-thresholded cut-out hair atlas (PNG-8); normal and specular maps dropped; (3) **woman only**: hair recoloured near-black, skin warmed to a tan (RGB x 0.90, 0.80, 0.68), irises recoloured dark brown; the man's textures are unedited; (4) animations retargeted onto the avatar skeleton by copying bone orientations, baked to 30 fps (idle 15 fps), made in place; the turn clips have their +-90 degree body rotation removed (the game's own turning supplies it); (5) web optimisation: resample, dedup, prune, quantize.
+
+Runtime notes: Rocketbox has no jump clip, so the airborne pose is the flight phase of the run cycle. The foot bones are named in the profile (`Bip01_L_Foot`, `Bip01_R_Foot`: three.js turns the spaces of `Bip01 L Foot` into underscores and the automatic foot finder does not match them). The hair material is kept as an alpha test (cut-off 0.5, double-sided), not blended. Limitations: no facial animation or blinking; the woman's face is an approximation of a Malaysian look (colour edits only); both wear jeans (and she heeled ankle boots); the models are not lit with normal maps.
+
+### MakeHuman / MPFB characters: `man.glb`, `woman.glb`, `teen-boy.glb`, `teen-girl.glb`, `young-boy.glb`, `young-girl.glb` (CHAR-P4)
+
+Six characters, all built by Studio in Blender 5.2.4 with MPFB 2.0.18 (MakeHuman for Blender), one shared MPFB GameEngine rig (53 joints) and one clip set. Delivered in `C:\Kuching3D-evidence\char-p4\assets\` (`SHA256SUMS.txt`); the full source-file list with sha256 is `LICENCE_EVIDENCE.md` there. The shipped files are byte-identical to the delivered `MPFB_*.glb` files, except that `woman.glb`, `teen-girl.glb` and `young-girl.glb` are the **v2** files delivered in `C:\Kuching3D-evidence\char-p4\assets-v2\` (`SHA256SUMS.txt`): Run clip leg rotations re-planted by Studio (CHAR-P4 F1, assets-v2); all else identical to v1 (same sizes, JSON chunk, mesh, textures, skeleton and the other clips). The v1 files remain in char-p4\assets\; the table below lists the shipped v2 hashes.
+
+| Profile / shipped file | Delivered as | Character | Triangles | Bytes | sha256 |
+|---|---|---|---|---|---|
+| `man` / `man.glb` | `MPFB_AdultMan.glb` | Adult Man, short04 hair, gingham shirt, khaki chinos | 11,542 | 765,784 | `41d1165f6c43200be98588c1c5be5ef007b0f8ae98698f5b9b43d2c76f32a7f3` |
+| `woman` / `woman.glb` | `MPFB_AdultWoman.glb` | Adult Woman, long01 hair, coral floral top | 11,715 | 733,392 | `268d67dd7a2891f08965389c3bd7d96b784d16d9de7c7b97696c46c365e802dc` |
+| `teen-boy` / `teen-boy.glb` | `MPFB_TeenBoy.glb` | Teen Boy (15), short04 hair, tee with a hibiscus graphic | 10,113 | 708,368 | `8f87d261235d6eda3fd798ce0dc55794f7a19e1ee74bbc3dede56fd67e637f3f` |
+| `teen-girl` / `teen-girl.glb` | `MPFB_TeenGirl.glb` | Teen Girl (15), braid01 hair, striped top | 12,447 | 753,100 | `7bd2b3eb64c315e84b7cd20675a4cf3683104e36d622622c2f05e79322cee02a` |
+| `young-boy` / `young-boy.glb` | `MPFB_YoungBoy.glb` | Young Boy (8), short02 hair, striped tee, shorts | 13,106 | 810,784 | `a087299816338fb0ca3b5c3711f379ae232abb565694e075691e6b291b4d4d5c` |
+| `young-girl` / `young-girl.glb` | `MPFB_YoungGirl.glb` | Young Girl (8), ponytail01 hair, polka-dot tee | 11,645 | 729,360 | `cc7fd54ed8fa100178814b002dcab1d357470e4e68dd9d1464d66cbed73feff8` |
+
+Every file: glTF 2.0 binary with `KHR_mesh_quantization` only, one skinned mesh, two materials (`*_Skin` opaque, `*_Hair` alpha cut-out 0.5, double-sided), two textures (JPEG 1024² skin/cloth atlas, PNG 1024² hair atlas), clips `Idle`, `Walk`, `Run`, `TurnLeft`, `TurnRight`, `Jump`, foot bones `foot_l` / `foot_r`. Budget (≤ 15k triangles, ≤ 2 textures, ≤ 1.5 MB) is met by all six. No `Idle`-pose or stance gate fails (`char-p4\qa\GATES.md`); the Walk and Run retarget gates on foot height miss, by the same margins as the earlier prototype (documented there).
+
+| Part | Source | Licence |
+|---|---|---|
+| Body mesh, skins, hair, eyes, brows, lashes, clothes and shoes | MakeHuman `makehuman_system` assets and MPFB core data (base mesh, GameEngine rig and weights, targets) | CC0 1.0; no attribution or notice required. The asset-pack table is saved from https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html and the licence text is https://static.makehumancommunity.org/about/license.html ("All core assets are shared under Creative Commons, CC0."). MPFB's own code is GPL, which does not cover the assets it exports. |
+| Skin tints, iris, hair and clothing recolours (the printed MakeHuman logo is removed) | Derived from the CC0 MakeHuman/MPFB textures by `scripts/prep_textures_mpfb.py`; not original artwork | CC0 1.0 (same status as the source textures) |
+| Shirt prints (gingham, floral, dots, stripes, hibiscus graphic) | Original work of this project, drawn procedurally by `scripts/prep_textures_mpfb.py` (no image source, no reference image copied) | Own work; shipped under the project's licence |
+| `Jump` clip | Quaternius Universal Animation Library v3.0 (UAL1 Standard) `Jump_Loop`, retargeted | CC0 1.0 (`License.txt` sha256 `6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061`), https://quaternius.com/packs/universalanimationlibrary.html , https://creativecommons.org/publicdomain/zero/1.0/ |
+| `Idle`, `Walk`, `Run`, `TurnLeft`, `TurnRight` clips | Microsoft Rocketbox animations (joint rotations only, retargeted; no Rocketbox mesh or texture is in these GLBs) | MIT, "Copyright (c) 2020 Microsoft", pinned commit `0943055db6ec570bcef9f2c8b41c9e5467c808f9`, https://github.com/microsoft/Microsoft-Rocketbox/blob/0943055db6ec570bcef9f2c8b41c9e5467c808f9/LICENSE.md (sha256 `17474e386e0b9e1a700cc3d06b2b0882a2c376d9c6b49c7f8274409b8f8d2352`). The notice ships as `public/models/characters/LICENSE-rocketbox.txt`; the credits/licences page must carry it too (not built yet). |
+
+Profile ids use the licence label `CC0-1.0+MIT-Rocketbox-clips`. The two Rocketbox prototype profiles `adult-man` and `adult-woman` above stay as a reference for the owner's decision; the Quaternius `default` and the no-flag path are unchanged.
+
+Runtime settings per profile (`CharacterProfile.ts`): the GLBs are authored in metres, so each is normalised to its own idle height with hair (1.707, 1.589, 1.666, 1.572, 1.294, 1.277 m, scale 1.0); the body without hair measures about 1.70 / 1.58 / 1.66 / 1.56 / 1.28 / 1.27 m in the game (measured by the e2e). The `Jump` clip is the airborne pose (a held mid-jump pose). Its shoes sit 5-7 cm below the root, so while the jump pose is blended in or out the model is lifted by the measured depth of its lowest sole vertex (`GlbCharacter`, only for a profile that names a jump clip), which keeps the soles on the ground when landing. Gameplay speeds and collision are identical for all characters.
+
 ## V7.2 real-asset proof of concept (Jalan China section)
 
 Downloaded 2026-11-17. Only the road texture set is shipped. The plaster set was tested on one facade and removed after the A/B test; the vehicle model was inspected and rejected. Neither is in the repository. The road set is used only in render mode `c` ("V7 Jalan China"); `?assets=off` (or `__k3d.v5.setRealAssets(false)`) restores the procedural road for A/B comparison.

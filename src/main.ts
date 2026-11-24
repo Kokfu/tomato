@@ -7,7 +7,13 @@ import { registerLandmarks } from './world/landmarks/index.ts';
 import { Input } from './player/Input.ts';
 import { PlayerController } from './player/PlayerController.ts';
 import { ProceduralHumanoid } from './player/CharacterAnimator.ts';
-import { loadCharacter } from './player/CharacterLoader.ts';
+import { CharacterRegistry, LOAD_STALL_MS } from './player/character/CharacterRegistry.ts';
+import { CharacterSwapper } from './player/character/swap.ts';
+import { bodyVisible } from './player/character/visibility.ts';
+import { CharacterTimings, yieldToMain } from './player/character/timings.ts';
+import { uploadTexturesStaged } from './player/character/stagedPrepare.ts';
+import { DEFAULT_CHARACTER_ID, getProfile, loadSavedCharacter, resolveStartCharacter, saveCharacter } from './player/character/CharacterProfile.ts';
+import type { CharacterPicker, PickerMode } from './ui/CharacterPicker.ts';
 import { ThirdPersonCamera } from './player/ThirdPersonCamera.ts';
 import { GameMenu } from './ui/GameMenu.ts';
 import { Minimap } from './ui/Minimap.ts';
@@ -66,9 +72,10 @@ async function boot(): Promise<void> {
   let started = false;
   let mapOpen = false;
   let placeOpen = false;
+  let pickerOpen = false; // CHAR-P5 G2 (only with ?char): the character picker is open
   const steps = new Footsteps();
   const syncInput = () => {
-    input.enabled = started && !paused && !mapOpen && !placeOpen;
+    input.enabled = started && !paused && !mapOpen && !placeOpen && !pickerOpen;
     if (!input.enabled) input.releasePointer();
   };
 
@@ -85,6 +92,8 @@ async function boot(): Promise<void> {
       onStart: () => {
         started = true;
         steps.unlock();
+        if (charStart.needsPick) void openPicker('first'); // CHAR-P5 G2: first launch: choose before entering the world
+        else if (charStart.flag && !charStart.persist) menu.toast(`Playing as ${getProfile(charStart.id)?.picker?.name ?? 'your character'}. Change character is in the pause menu.`, 3.5);
         syncInput();
         // The default rendering is built behind the start screen; its street ambience waits for this first click.
         if (v5) {
@@ -103,6 +112,7 @@ async function boot(): Promise<void> {
       onSound: (on) => { steps.enabled = on; v5?.ambience.setEnabled(on); if (on && v5 && v5.mode !== 'v4') v5.ambience.start(); },
       onResume: () => {
         endCarTrip(); // leaving the pause menu cancels a "Drive Car" that is still loading
+        if (charStart.flag) { cancelPickerWarm(); swapper.cancelPendingWarm(); } // CHAR-P5: no model building while the game runs
         paused = false;
         syncInput();
       },
@@ -110,9 +120,11 @@ async function boot(): Promise<void> {
         paused = true;
         syncInput();
         syncDriveButton();
+        syncCharacterButton(); // CHAR-P5 G2 (only with ?char): "Change character" is blocked in the car and in OP fly mode
       },
       onReset: () => { endCarTrip(); resetLocation(); },
       onDriveCar: () => driveCar(),
+      onChangeCharacter: () => { void openPicker('change'); },
       onQuality: (q) => {
         qualityName = q;
         quality = QUALITY[q];
@@ -178,6 +190,163 @@ async function boot(): Promise<void> {
   player.onFootstep = (speed, deck, impact) => steps.step(speed, deck ? 'deck' : 'paving', impact);
   world.scene.add(player.visual.root);
   const tpc = new ThirdPersonCamera(camera, world.collision);
+  // CHAR-P2a: character profiles. Without ?char nothing changes: the default model is loaded as before.
+  const charStart = resolveStartCharacter(location.search, new URLSearchParams(location.search).has('char') ? loadSavedCharacter() : null);
+  // CHAR-P5 G2 (D3): shader error checking is a named configuration. DIAGNOSTIC (checks on) is the default in the dev server and in
+  // `vite build --mode diagnostic`; BENCHMARK/RUNTIME (checks off, see below) is the default of a normal build. `?charcfg=diagnostic|benchmark`
+  // picks either in any build, so one build can measure both. `?charcache=<MB>` forces the parsed-model cache budget (the 32 MB phone
+  // budget on a desktop). Both only matter with ?char.
+  const charQ = new URLSearchParams(location.search);
+  const charCfg = charQ.get('charcfg') === 'diagnostic' ? 'diagnostic' : charQ.get('charcfg') === 'benchmark' ? 'benchmark' : (import.meta.env.DEV || import.meta.env.MODE === 'diagnostic') ? 'diagnostic' : 'benchmark';
+  const cacheMB = Number(charQ.get('charcache'));
+  // CHAR-P5 G2 (N1): with ?char a GLB load that makes no progress for LOAD_STALL_MS ends in the picker's error state (Try again).
+  // `?charstall=<ms>` (tests) shortens it. Without ?char nothing changes: no timeout.
+  const stallQ = Number(charQ.get('charstall'));
+  const charRegistry = charStart.flag
+    ? new CharacterRegistry({}, { ...(cacheMB > 0 ? { budgetBytes: cacheMB * 1024 * 1024 } : {}), stallMs: stallQ >= 200 ? stallQ : LOAD_STALL_MS })
+    : new CharacterRegistry();
+  /** The single rule for showing the player's body (src/player/character/visibility.ts). */
+  const syncBody = () => { player.visual.root.visible = bodyVisible({ firstPerson: tpc.firstPerson, driving: driving.active, flying: fly.active }); };
+  /** CHAR-P5 (only with ?char): stage timings of the swaps, `__k3d.character.timings`. */
+  const charTimings = charStart.flag ? new CharacterTimings() : null;
+  // CHAR-P5 (profiling, G1c): with the check on, a program's first draw calls getProgramInfoLog/getShaderInfoLog, which wait for the GPU process
+  // to drain its queue (the first draws of the model just uploaded): 44-52 ms in ONE frame on the desktop, for the second material of every
+  // hair/eyelash mesh (alphaTest). Off, that stall is gone (g1c/runs/probe5 vs probe4); a link error still shows as the browser's GL error.
+  if (charStart.flag) renderer.debug.checkShaderErrors = charCfg === 'diagnostic';
+  /** CHAR-P5: draw a prepared model once, hidden far below the world, so its geometry, bone texture and shadow program are
+   *  uploaded before it is installed. ONE MESH PER FRAME (the others are invisible until their turn): the first draw of a whole
+   *  character is one long frame on a phone (about 95% of the worst switching frames), of a single mesh a short one. */
+  const predrawHidden = (root: THREE.Object3D) => new Promise<void>((resolve) => {
+    const meshes: THREE.Mesh[] = [];
+    root.traverse((o) => { if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh); });
+    const was = meshes.map((m) => m.visible);
+    for (const m of meshes) m.visible = false;
+    root.position.set(player.position.x, -2000, player.position.z);
+    root.visible = true;
+    world.scene.add(root);
+    let next = 0, tail = 0, done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      world.scene.remove(root);
+      meshes.forEach((m, k) => { m.visible = was[k]; });
+      resolve();
+    };
+    const step = () => {
+      if (done) return;
+      if (next < meshes.length) meshes[next++].visible = true; // drawn by the next render, together with the earlier ones (cheap now)
+      else if (++tail >= 2) return finish();
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+    window.setTimeout(finish, 1500); // a hidden tab draws no frames
+  });
+  const swapper = new CharacterSwapper({
+    registry: charRegistry,
+    install: (next) => player.setVisual(next, { disposeOld: false }),
+    prepare: async (root, mark) => {
+      if (!charStart.flag) return whenCompiled(renderer, prepareObject(root));
+      let t = performance.now();
+      await uploadTexturesStaged(renderer, root, yieldToMain);
+      mark?.('prepare.textures', performance.now() - t);
+      t = performance.now();
+      const programs = prepareObject(root);
+      mark?.('prepare.compile', performance.now() - t);
+      t = performance.now();
+      await whenCompiled(renderer, programs);
+      mark?.('prepare.wait', performance.now() - t);
+    },
+    yieldToMain: charStart.flag ? yieldToMain : undefined,
+    begin: charTimings ? (id) => charTimings.begin(id) : undefined,
+    mark: charTimings ? charTimings.mark : undefined,
+    predraw: charStart.flag ? predrawHidden : undefined,
+    applyCamera: (p) => tpc.setProfile(p),
+    syncBody,
+    warn: (m, e) => (e === undefined ? console.warn(m) : console.warn(m, e)),
+    persist: (id) => saveCharacter(id),
+  });
+  /**
+   * Why "Change character" is not possible right now, or null. Flying and driving: the OP camera and the car own the body. "Finding the
+   * car" (Drive Car, still loading): the player is about to be moved to the car, so a swap or an open picker must not be in the middle of it.
+   * "(P)" is a keyboard hint: it is left out on touch (PAUSE_SPEC).
+   */
+  const changeCharacterBlock = (): string | null => {
+    if (fly.active) return isTouchDevice() ? 'Turn off fly mode to change character.' : 'Turn off fly mode (P) to change character.';
+    if (driving.active) return 'Get out of the car to change character.';
+    if (carTrip) return 'Wait until the car is found.';
+    return null;
+  };
+  /** "Change character" row of the pause menu: blocked with the reason above (aria-disabled, stays focusable). */
+  const syncCharacterButton = () => menu.setCharacterButton(!charStart.flag ? null : { blocked: changeCharacterBlock() });
+  // ---- CHAR-P5 G2: the character picker (only with ?char; the module is a separate chunk, requested only then) ----
+  const pickerModule = charStart.flag ? import('./ui/CharacterPicker.ts') : null;
+  let picker: CharacterPicker | null = null;
+  /**
+   * Selecting a card prepares that model (hidden, in steps) once the screen has been still for PICKER_WARM_SETTLE_FRAMES frames and no
+   * swap is loading, so the confirm that follows is just the install. A newer selection, Confirm, Cancel and resuming cancel it; a
+   * Confirm that comes first loads the model itself, or waits for a warm-up already under way.
+   */
+  const PICKER_WARM_SETTLE_FRAMES = 24;
+  let pickerWarmToken = 0;
+  const cancelPickerWarm = () => { ++pickerWarmToken; };
+  const warmFor = (id: string) => {
+    const token = ++pickerWarmToken;
+    let still = 0;
+    const tick = () => {
+      if (token !== pickerWarmToken || !pickerOpen) return;
+      if (swapper.loading) still = 0; else still++;
+      if (still < PICKER_WARM_SETTLE_FRAMES) { requestAnimationFrame(tick); return; }
+      void swapper.warm(id);
+    };
+    requestAnimationFrame(tick);
+  };
+  let pickerMode: PickerMode = 'first';
+  const openPicker = async (mode: PickerMode) => {
+    if (!charStart.flag || pickerOpen) return;
+    if (mode === 'change' && changeCharacterBlock()) return; // blocked (driving, flying, finding the car): the pause menu says why
+    pickerOpen = true;
+    pickerMode = mode;
+    document.body.classList.add('picker-open'); // no flash of the HUD while the module is fetched
+    syncInput();
+    menu.setPickerOpen(true, false);
+    try {
+      const mod = await pickerModule!;
+      picker ??= new mod.CharacterPicker({
+        baseUrl: import.meta.env.BASE_URL,
+        onSelect: (id) => warmFor(id),
+        onConfirm: async (id) => {
+          cancelPickerWarm(); // a warm-up not yet started is not needed: this swap loads it (or takes the one under way)
+          const ok = await swapper.swap(id, { persist: true, strict: true });
+          if (ok) {
+            pickerOpen = false;
+            menu.setPickerOpen(false, false);
+            if (pickerMode === 'change') menu.resume(); // back into the game, same place, same camera
+            else syncInput();
+            menu.toast(`Playing as ${getProfile(id)?.picker?.name ?? id}`, 2.5);
+            syncCharacterButton();
+            return 'ok';
+          }
+          return swapper.lastError ? 'error' : 'superseded';
+        },
+        onCancel: () => {
+          cancelPickerWarm();
+          swapper.abort(); // a choice still loading is dropped
+          swapper.dropWarm();
+          pickerOpen = false;
+          syncInput();
+          menu.setPickerOpen(false, true); // the pause menu comes back
+        },
+      });
+      picker.open(mode, swapper.usingFallback ? null : swapper.currentId);
+    } catch (e) {
+      console.warn('Character picker unavailable:', e);
+      pickerOpen = false;
+      document.body.classList.remove('picker-open');
+      menu.setPickerOpen(false, true);
+      syncInput();
+      if (mode === 'first') void swapper.swap(DEFAULT_CHARACTER_ID, { persist: false });
+    }
+  };
   const spawn = world.manifest.spawn;
   player.position.set(spawn.x, world.height.sample(spawn.x, spawn.z), spawn.z);
   // Face the river (north) at spawn; the camera sits behind, to the south.
@@ -193,19 +362,20 @@ async function boot(): Promise<void> {
   const leaveCar = () => {
     if (!driving.active) return;
     driving.exit(player, true);
-    player.visual.root.visible = !tpc.firstPerson;
+    syncBody();
     minimap.setDriving(false);
   };
   const toggleCar = () => {
     if (driving.active) {
       if (driving.exit(player)) {
-        player.visual.root.visible = !tpc.firstPerson;
+        syncBody();
         tpc.yaw = driving.camera.yaw;
         tpc.snap();
         minimap.setDriving(false);
       }
     } else if (driving.enter(player)) {
       if (tpc.firstPerson) tpc.firstPerson = false;
+      syncBody();
       minimap.setDriving(true);
     }
   };
@@ -233,7 +403,10 @@ async function boot(): Promise<void> {
   let carTrip: { t: number } | null = null;
   const tripFocus = new THREE.Vector3();
   const noVelocity = new THREE.Vector3();
-  const syncDriveButton = () => menu.setDriveCar(carTrip ? 'Finding the car…' : 'Drive Car', !carTrip && !driving.active, driving.active ? 'You are already driving' : '');
+  const syncDriveButton = () => {
+    menu.setDriveCar(carTrip ? 'Finding the car…' : 'Drive Car', !carTrip && !driving.active, driving.active ? 'You are already driving' : '');
+    syncCharacterButton(); // CHAR-P5 G2 (only with ?char): "Change character" waits while the car is being found
+  };
   const endCarTrip = (message?: string) => {
     if (!carTrip) return;
     carTrip = null;
@@ -260,7 +433,7 @@ async function boot(): Promise<void> {
       tpc.snap();
       carTrip = null;
       syncDriveButton();
-      menu.resume();
+      if (!pickerOpen) menu.resume(); // CHAR-P5 G2: never resume the game behind an open character picker
       menu.toast(guide ? enterCarToast(isTouchDevice()) : 'Press E to enter car.', 4);
       return;
     }
@@ -283,7 +456,7 @@ async function boot(): Promise<void> {
     // The driving camera is third-person only: at the wheel V steps the chase distance (near, standard, far).
     if (driving.active) { driving.camera.cycleDistance(); return; }
     tpc.firstPerson = !tpc.firstPerson;
-    player.visual.root.visible = !tpc.firstPerson;
+    syncBody();
   };
 
   const minimap = new Minimap({
@@ -322,11 +495,11 @@ async function boot(): Promise<void> {
         fly.yaw = tpc.yaw;
         fly.pitch = -tpc.pitch;
         player.velocity.set(0, 0, 0);
-        player.visual.root.visible = !driving.active;
+        syncBody();
         driving.hidePrompt();
       } else {
         // The character never moved: walking resumes from its last safe position, with collision and gravity.
-        player.visual.root.visible = !tpc.firstPerson && !driving.active;
+        syncBody();
         tpc.snap();
         driving.camera.snap();
         // The comparison panel belongs to the inspection mode only.
@@ -378,6 +551,7 @@ async function boot(): Promise<void> {
   }
 
   input.on('pause', () => {
+    if (pickerOpen) return;
     if (placeOpen) placePanel.close();
     else if (mapOpen) minimap.toggleFullMap();
     else if (started) menu.togglePause();
@@ -400,18 +574,18 @@ async function boot(): Promise<void> {
   window.addEventListener('resize', applyResolution);
   new ResizeObserver(applyResolution).observe(document.documentElement);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && started && !paused) menu.pause();
+    if (document.hidden && started && !paused && !pickerOpen) menu.pause();
   });
 
-  // Swap in the GLB character when one is available; the procedural humanoid is the fallback.
-  loadCharacter()
-    .then((visual) => {
-      if (visual) {
-        player.setVisual(visual);
-        visual.root.visible = !tpc.firstPerson;
-      }
-    })
-    .catch((e) => console.warn('Character model unavailable, using procedural humanoid:', e));
+  // Swap in the GLB character when one is available; the procedural humanoid is the fallback. Without ?char this is
+  // the default model exactly as before (no compile step, no clone, the same requests in the same order); with ?char=<id> the chosen profile
+  // loads, compiles in the background and then replaces the humanoid. A model that finishes loading while driving
+  // stays hidden (swapper -> syncBody).
+  if (charStart.invalid) console.warn(`Unknown character "${charStart.invalid}" in ?char, using "${charStart.id}"`);
+  // CHAR-P5 G2: on first launch (no valid saved choice) nothing is loaded until the player picks one.
+  if (!charStart.needsPick) void swapper.swap(charStart.id, { persist: charStart.persist, compile: charStart.flag, direct: !charStart.flag }).then(syncCharacterButton);
+  syncCharacterButton();
+  if (charStart.flag) document.body.classList.add('char-ui');
 
   // Blob shadow for the low preset (no shadow maps).
   const blob = new THREE.Mesh(
@@ -426,6 +600,7 @@ async function boot(): Promise<void> {
   let fpsAcc = 0, fpsFrames = 0, fps = 0;
   let spawnReady = false;
   let simulatedDt = 0; // test hook: fixed timestep when > 0
+  let wasAway = false; // CHAR-P5 N9: driving or flying on the previous frame
   let stepsPerFrame = 1; // test hook: run the simulation faster than real time
 
   function frame(): void {
@@ -456,6 +631,11 @@ async function boot(): Promise<void> {
 
     input.poll();
     if (spawnReady) driving.tryPlace();
+    // CHAR-P5 N9 (only with ?char): player.update (the only visual.update) is skipped in the car and in OP fly mode, so a jump entered
+    // mid-air left the air pose in the hidden body until ~30 frames after leaving. Settle it once on entry.
+    const away = flying || driving.active;
+    if (charStart.flag && away && !wasAway) player.visual.update(0, { speed: 0, grounded: true, vy: 0 });
+    wasAway = away;
     if (flying) {
       if (!paused) {
         fly.update(dt, input);
@@ -587,6 +767,32 @@ async function boot(): Promise<void> {
     get fps() { return fps; },
     get ready() { return spawnReady && renderReady; },
     controls,
+    /** CHAR debug hook: current profile id, loaded files, swap(id). Only with ?char: without the flag there is no hook. */
+    character: !charStart.flag ? undefined : {
+      get id() { return swapper.currentId; },
+      get loading() { return swapper.loading; },
+      get fallback() { return swapper.usingFallback; },
+      get loadedUrls() { return [...charRegistry.fetched]; },
+      get live() { return charRegistry.liveCount; },
+      get heights() { return tpc.heights; },
+      get flag() { return charStart.flag; },
+      swap: (id: string) => swapper.swap(id, { persist: charStart.flag }).then((r) => { syncCharacterButton(); return r; }),
+      /** G2: a swap without the fallback to the default (the picker's), and the picker itself. */
+      swapStrict: (id: string) => swapper.swap(id, { persist: true, strict: true }).then((r) => { syncCharacterButton(); return r; }),
+      get lastError() { return swapper.lastError?.message ?? null; },
+      openPicker: (mode: PickerMode) => openPicker(mode),
+      get pickerOpen() { return pickerOpen; },
+      get needsPick() { return charStart.needsPick; },
+      get config() { return { shaderChecks: renderer.debug.checkShaderErrors, cfg: charCfg, cacheBudgetBytes: charRegistry.budgetBytes, mode: import.meta.env.MODE, dev: !!import.meta.env.DEV }; },
+      warm: (id: string) => swapper.warm(id),
+      get airWeight() { return (player.visual as unknown as { air?: number }).air ?? null; }, // N9 test hook
+      hasWarm: (id: string) => swapper.hasWarm(id),
+      get timings() { return charTimings; },
+      get fetchCount() { return charRegistry.fetchCount; },
+      get cachedBytes() { return charRegistry.cachedBytes; },
+      get cachedCount() { return charRegistry.cachedCount; },
+      bodyVisible: () => bodyVisible({ firstPerson: tpc.firstPerson, driving: driving.active, flying: fly.active }),
+    },
     driveCar,
     setSimulatedDt: (v: number) => (simulatedDt = v),
     setStepsPerFrame: (n: number) => (stepsPerFrame = Math.max(1, n | 0)),
