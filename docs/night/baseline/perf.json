@@ -1,0 +1,253 @@
+{
+ "commit": "1e16c25 (v5-rendering-experiment)",
+ "build": "C:/Kuching3D-night-builds/baseline",
+ "phoneCmd": "drive-bench --mobile --quality=low --cpu=4 --scenarios=A,B,C --runs=2 (two invocations)",
+ "runs": [
+  [
+   {
+    "s": "A stationary cold",
+    "avgFps": 34.1,
+    "medianMs": 21.9,
+    "p95Ms": 67.8,
+    "p99Ms": 79.2,
+    "worstMs": 101.9,
+    "over200": 0,
+    "lateCompiles": 0,
+    "lateCompileMs": [],
+    "peakHeapMB": 100.4,
+    "avgCalls": 113,
+    "maxTrisK": 318
+   },
+   {
+    "s": "B Jalan China lane cold",
+    "avgFps": 31.5,
+    "medianMs": 24.6,
+    "p95Ms": 71.5,
+    "p99Ms": 95.5,
+    "worstMs": 122.7,
+    "over200": 0,
+    "lateCompiles": 0,
+    "lateCompileMs": [],
+    "peakHeapMB": 91.4,
+    "avgCalls": 97,
+    "maxTrisK": 322
+   },
+   {
+    "s": "C block loop cold",
+    "avgFps": 29.1,
+    "medianMs": 31,
+    "p95Ms": 73,
+    "p99Ms": 94.2,
+    "worstMs": 164.4,
+    "over200": 0,
+    "lateCompiles": 1,
+    "lateCompileMs": [
+     38.6
+    ],
+    "peakHeapMB": 92.4,
+    "avgCalls": 102,
+    "maxTrisK": 349
+   },
+   {
+    "s": "A stationary warm1",
+    "avgFps": 18.2,
+    "medianMs": 59.1,
+    "p95Ms": 96.3,
+    "p99Ms": 111.3,
+    "worstMs": 115.3,
+    "over200": 0,
+    "lateCompiles": 0,
+    "lateCompileMs": [],
+    "peakHeapMB": 91.5,
+    "avgCalls": 130,
+    "maxTrisK": 323
+   },
+   {
+    "s": "B Jalan China lane warm1",
+    "avgFps": 30.4,
+    "medianMs": 26.5,
+    "p95Ms": 73.8,
+    "p99Ms": 93.8,
+    "worstMs": 115.7,
+    "over200": 0,
+    "lateCompiles": 0,
+    "lateCompileMs": [],
+    "peakHeapMB": 94.2,
+    "avgCalls": 109,
+    "maxTrisK": 326
+   },
+   {
+    "s": "C block loop warm1",
+    "avgFps": 31.2,
+    "medianMs": 29.1,
+    "p95Ms": 65,
+    "p99Ms": 84.7,
+    "worstMs": 131.8,
+    "over200": 0,
+    "lateCompiles": 1,
+    "lateCompileMs": [
+     69.8
+    ],
+    "peakHeapMB": 92.5,
+    "avgCalls": 106,
+    "maxTrisK": 353
+   }
+  ],
+  [
+   {
+    "s": "A stationary cold",
+    "avgFps": 26.9,
+    "medianMs": 34.2,
+    "p95Ms": 74,
+    "p99Ms": 88.5,
+    "worstMs": 121.7,
+    "over200": 0,
+    "lateCompiles": 0,
+    "lateCompileMs": [],
+    "peakHeapMB": 109.4,
+    "avgCalls": 113,
+    "maxTrisK": 318
+   },
+   {
+    "s": "B Jalan China lane cold",
+    "avgFps": 27.3,
+    "medianMs": 35.2,
+    "p95Ms": 71.7,
+    "p99Ms": 94.9,
+    "worstMs": 199.7,
+    "over200": 0,
+    "lateCompiles": 0,
+    "lateCompileMs": [],
+    "peakHeapMB": 91.5,
+    "avgCalls": 98,
+    "maxTrisK": 322
+   },
+   {
+    "s": "C block loop cold",
+    "avgFps": 25.5,
+    "medianMs": 37.8,
+    "p95Ms": 75.4,
+    "p99Ms": 109.1,
+    "worstMs": 208.7,
+    "over200": 1,
+    "lateCompiles": 1,
+    "lateCompileMs": [
+     101.9
+    ],
+    "peakHeapMB": 95.7,
+    "avgCalls": 100,
+    "maxTrisK": 349
+   },
+   {
+    "s": "A stationary warm1",
+    "avgFps": 19.6,
+    "medianMs": 53.4,
+    "p95Ms": 88.4,
+    "p99Ms": 100.6,
+    "worstMs": 115.5,
+    "over200": 0,
+    "lateCompiles": 0,
+    "lateCompileMs": [],
+    "peakHeapMB": 92.9,
+    "avgCalls": 130,
+    "maxTrisK": 323
+   },
+   {
+    "s": "B Jalan China lane warm1",
+    "avgFps": 21.2,
+    "medianMs": 49,
+    "p95Ms": 77.9,
+    "p99Ms": 94.9,
+    "worstMs": 104.6,
+    "over200": 0,
+    "lateCompiles": 0,
+    "lateCompileMs": [],
+    "peakHeapMB": 95.7,
+    "avgCalls": 110,
+    "maxTrisK": 326
+   },
+   {
+    "s": "C block loop warm1",
+    "avgFps": 26.4,
+    "medianMs": 36.5,
+    "p95Ms": 70.4,
+    "p99Ms": 105.6,
+    "worstMs": 138.6,
+    "over200": 0,
+    "lateCompiles": 1,
+    "lateCompileMs": [
+     86.1
+    ],
+    "peakHeapMB": 97.3,
+    "avgCalls": 104,
+    "maxTrisK": 353
+   }
+  ]
+ ],
+ "loadProbe": [
+  {
+   "dist": "baseline",
+   "run": 1,
+   "loadMs": 4963,
+   "progsReady": 100,
+   "pan": {
+    "worst": 451,
+    "over50": 3,
+    "over200": 1,
+    "slowMs": 733,
+    "progs": 100
+   }
+  },
+  {
+   "dist": "baseline",
+   "run": 2,
+   "loadMs": 5020,
+   "progsReady": 100,
+   "pan": {
+    "worst": 502,
+    "over50": 3,
+    "over200": 1,
+    "slowMs": 773,
+    "progs": 100
+   }
+  },
+  {
+   "dist": "baseline",
+   "run": 3,
+   "loadMs": 5033,
+   "progsReady": 100,
+   "pan": {
+    "worst": 494,
+    "over50": 3,
+    "over200": 1,
+    "slowMs": 775,
+    "progs": 100
+   }
+  }
+ ],
+ "median": {
+  "A": {
+   "p95Ms": 88.4,
+   "medianMs": 53.4,
+   "avgFps": 26.9,
+   "calls": 130,
+   "maxTrisK": 323
+  },
+  "B": {
+   "p95Ms": 73.8,
+   "medianMs": 35.2,
+   "avgFps": 30.4,
+   "calls": 109,
+   "maxTrisK": 326
+  },
+  "C": {
+   "p95Ms": 73,
+   "medianMs": 36.5,
+   "avgFps": 29.1,
+   "calls": 104,
+   "maxTrisK": 353
+  }
+ },
+ "over200Total": 1,
+ "loadMsMedian": 5020
+}

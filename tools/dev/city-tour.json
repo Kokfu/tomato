@@ -1,0 +1,128 @@
+[
+ {
+  "name": "01-waterfront",
+  "x": -188.9,
+  "z": -202,
+  "yaw": -1.162,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ },
+ {
+  "name": "02-main-bazaar",
+  "x": 285.5,
+  "z": -8.9,
+  "yaw": 2.784,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ },
+ {
+  "name": "03-carpenter-street",
+  "x": 166.4,
+  "z": 28.4,
+  "yaw": -2.094,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ },
+ {
+  "name": "04-india-street",
+  "x": -134.1,
+  "z": -110.1,
+  "yaw": -0.219,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ },
+ {
+  "name": "05-jalan-gambier",
+  "x": -45.8,
+  "z": -222.4,
+  "yaw": -3.032,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ },
+ {
+  "name": "06-plaza-merdeka",
+  "x": -91.4,
+  "z": 40.5,
+  "yaw": -0.824,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ },
+ {
+  "name": "07-padungan-cat-statue",
+  "x": 1074.8,
+  "z": 239.2,
+  "yaw": -1.722,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ },
+ {
+  "name": "08-kuching-mosque",
+  "x": -406.2,
+  "z": 26.2,
+  "yaw": 0.46,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ },
+ {
+  "name": "09-satok",
+  "x": -2533.1,
+  "z": 492.1,
+  "yaw": 0.568,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ },
+ {
+  "name": "10-the-spring",
+  "x": 1622.9,
+  "z": 2536.8,
+  "yaw": 1.489,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ },
+ {
+  "name": "11-residential-overture",
+  "x": -1610,
+  "z": 1003,
+  "yaw": 1.571,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ },
+ {
+  "name": "12-trunk-road-openg",
+  "x": -321,
+  "z": 1290,
+  "yaw": 3.05,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ },
+ {
+  "name": "13-river-to-dun",
+  "x": 274.4,
+  "z": -38.7,
+  "yaw": -0.31,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ },
+ {
+  "name": "14-jalan-china-control",
+  "x": 156.6,
+  "z": 17.2,
+  "yaw": -0.588,
+  "pitch": 0.05,
+  "fp": true,
+  "wait": 3000
+ }
+]

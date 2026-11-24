@@ -50,7 +50,7 @@ An orchestrator session starts **one worker session per milestone** (M5 and M6 a
 
 | # | Milestone | Status | Commit | Notes |
 |---|---|---|---|---|
-| M0 | Baseline and city tour gate | TODO | | |
+| M0 | Baseline and city tour gate | DONE | (this commit; hash goes in M1's commit) | 87 tests, load 5.0 s, phone p95 A/B/C 88/74/73 ms; mean realism 2.3/5 |
 | M1 | Integrate finished experiments | TODO | | |
 | M2 | Citywide atmosphere, light and ground | TODO | | |
 | M3 | Buildings everywhere | TODO | | |
@@ -188,3 +188,5 @@ Each place needs:
 
 ## Decision log
 (one line each: date-time, milestone, decision, reason)
+- 2026-11-25 M0: tour cameras are first-person, snapped to the nearest mapped road (generator kept in `tools/dev/city-tour-gen.mts`), then frozen; reason: reproducible, never inside water or a wall.
+- 2026-11-25 M0: desktop FPS is vsync-capped at 60 in all views, so desktop budget is checked as min fps >= 50 plus calls/triangles; reason: no uncapped baseline signal.
