@@ -19,6 +19,10 @@ for (let r = 0; r < repeat; r++) for (const [i, dist] of dists.entries()) {
     await page.goto(`http://localhost:${port}/`);
     await page.waitForFunction(() => (window as any).__k3d?.ready, null, { timeout: 120_000 });
     const loadMs = Date.now() - t0;
+    // N1-M3b: `ready` used to be set just before a frame that waited seconds for shader programs; the time until two
+    // frames have been drawn after it is what the player actually waits for.
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const interactiveMs = Date.now() - t0;
     const progsReady = await page.evaluate(() => (window as any).__k3d.renderer.info.programs.length);
     await page.click('#btn-start');
     const pan = await page.evaluate(() => new Promise<any>((resolve) => {
@@ -35,7 +39,7 @@ for (let r = 0; r < repeat; r++) for (const [i, dist] of dists.entries()) {
       };
       requestAnimationFrame(tick);
     }));
-    console.log(JSON.stringify({ dist: dist.split(/[\\/]/).pop(), run: r + 1, loadMs, progsReady, pan }));
+    console.log(JSON.stringify({ dist: dist.split(/[\\/]/).pop(), run: r + 1, loadMs, interactiveMs, progsReady, pan }));
   } finally {
     await browser.close();
     spawn('taskkill', ['/pid', String(server.pid), '/T', '/F']);

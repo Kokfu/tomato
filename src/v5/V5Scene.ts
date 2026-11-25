@@ -199,6 +199,23 @@ export function wrapReturnFloors(s: LotSpec, at: (x: number, z: number) => numbe
   return floors;
 }
 
+/**
+ * N1-M3b: the exported models carry RGBA vertex colours with alpha 1 throughout, where the kit's own geometry has RGB.
+ * three.js compiles a second variant of a material's program for RGBA (USE_COLOR_ALPHA): 15 extra programs of the
+ * street section's 40, each a 75 kB fragment shader, which the start screen waited for. Opaque alpha is dropped here.
+ */
+function rgbColours(g: THREE.BufferGeometry): void {
+  const c = g.getAttribute('color');
+  if (!c || c.itemSize !== 4) return;
+  for (let i = 0; i < c.count; i++) if (c.getW(i) < 0.999) return;
+  const src = c.array as Float32Array, Ctor = src.constructor as Float32ArrayConstructor;
+  const out = new Ctor(c.count * 3);
+  const inter = (c as THREE.InterleavedBufferAttribute).isInterleavedBufferAttribute ? (c as THREE.InterleavedBufferAttribute) : null;
+  const stride = inter ? inter.data.stride : 4, off = inter ? inter.offset : 0;
+  for (let i = 0; i < c.count; i++) for (let k = 0; k < 3; k++) out[i * 3 + k] = src[i * stride + off + k];
+  g.setAttribute('color', new THREE.BufferAttribute(out, 3, c.normalized));
+}
+
 export class V5Scene {
   readonly group = new THREE.Group();
   readonly materials: KuchingMaterials;
@@ -485,6 +502,7 @@ export class V5Scene {
           mesh.material = this.materials.byName[name] ?? this.materials.byName.paint;
           mesh.castShadow = !NO_SHADOW.has(name); mesh.receiveShadow = !NO_RECEIVE.has(name);
           mesh.renderOrder = name === 'poly' ? 5 : 0;
+          rgbColours(mesh.geometry);
         });
         // Same tag as the registry's models (LandmarkModels): the site this object draws, so the one-copy-per-landmark
         // rule can be checked across both renderers.

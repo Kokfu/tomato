@@ -19,6 +19,13 @@ export type RenderMode = 'v4' | V5Mode;
 const LABEL: Record<RenderMode, string> = { v4: 'V4 Existing', a: 'V5 Procedural', b: 'V5 Hybrid', c: 'V7 Jalan China' };
 const MODES: RenderMode[] = ['v4', 'a', 'b', 'c'];
 const CHUNKS = ['0_0', '0_-1'];
+/**
+ * Light balance per mode: the Jalan China section is tuned separately (softer shadow edge, more sky fill). N1-M2: the
+ * whole city shares one humid haze, so the DUN at the end of the street is seen through about 350 m of it.
+ */
+const lookOf = (m: RenderMode) => (m === 'c'
+  ? { sun: 6.6, hemi: 1.3, fog: 1, shadowRadius: 2.0, env: 1.0, exposure: 1.05 }
+  : { sun: 6.6, hemi: 1.05, fog: 1, shadowRadius: 2.2, env: 0.85, exposure: 0.9 });
 
 /** The six fixed viewpoints of the visual quality gate (same poses for every mode). */
 export const GATE_VIEWS = [
@@ -71,6 +78,8 @@ export class V5Controller {
   private time = 0;
   private frameMs: number[] = [];
   onModeChanged: (() => void) | null = null;
+  /** Mode whose lighting `primeMode` has already set up (start-up), if any. */
+  private primed: RenderMode | null = null;
   /** False while another mode owns the number keys (OP fly mode uses 1-3 for speed). */
   keysEnabled: () => boolean = () => true;
 
@@ -132,6 +141,18 @@ export class V5Controller {
     for (const b of this.bar.querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === this.mode);
   }
 
+  /**
+   * N1-M3b, start-up only: put the lighting and render state of mode `m` in place before its street section is built
+   * (`setMode` must follow). Chunks built in the meantime can then compile their shader programs for the rendering
+   * the player will see, in the background, instead of for the geographic one first.
+   */
+  primeMode(m: RenderMode): void {
+    if (m === 'v4' || this.mode !== 'v4' || this.pipeline.active) return;
+    this.pipeline.look = lookOf(m);
+    this.pipeline.enable();
+    this.primed = m;
+  }
+
   /** Switch rendering mode. The player, camera and time of day are not touched. */
   async setMode(m: RenderMode): Promise<void> {
     if (m === this.mode || this.busy) return;
@@ -154,11 +175,12 @@ export class V5Controller {
         v5Exclusion.setChina(m === 'c');
         for (const id of V5_LANDMARK_IDS) lm.hidden.add(id);
         this.world.scene.add(this.scene.group);
-        // Light balance: the Jalan China section is tuned separately (softer shadow edge, more sky fill). N1-M2: the
-        // whole city shares one humid haze, so the DUN at the end of the street is seen through about 350 m of it.
-        this.pipeline.look = m === 'c' ? { sun: 6.6, hemi: 1.3, fog: 1, shadowRadius: 2.0, env: 1.0, exposure: 1.05 } : { sun: 6.6, hemi: 1.05, fog: 1, shadowRadius: 2.2, env: 0.85, exposure: 0.9 };
-        this.pipeline.disable();
-        this.pipeline.enable();
+        if (this.primed !== m) {
+          this.pipeline.look = lookOf(m);
+          this.pipeline.disable();
+          this.pipeline.enable();
+        }
+        this.primed = null;
         this.ambience.start();
         if (m === 'c' && this.pedsEnabled) void this.startPeds(); else this.stopPeds();
       }

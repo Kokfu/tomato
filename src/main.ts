@@ -391,11 +391,30 @@ async function boot(): Promise<void> {
   const qMode = new URLSearchParams(location.search).get('render');
   const initialMode: RenderMode = qMode === 'v4' || qMode === 'a' || qMode === 'b' || qMode === 'c' ? qMode : DEFAULT_RENDER_MODE;
   let renderReady = false;
+  // N1-M3b start-up. Shader programs are the slowest part of loading (about 100 of them, compiled by the GPU process),
+  // and the default rendering needs other variants of them than the geographic one. So the default rendering is set
+  // up at once, alongside the chunk downloads, and nothing is drawn behind the loading screen until it is ready:
+  // drawing would compile every world program twice (the first time for a rendering that is never shown) and would
+  // wait on the main thread for each. Instead each finished chunk hands its programs to the GPU process, which
+  // compiles them in the background while the next chunks are built; `ready` then waits for the last of them, so
+  // the first frame the player sees does not freeze.
+  let startHold = initialMode !== 'v4';
+  const modeSet = startHold
+    ? v5Ready.then((c) => { c.primeMode(initialMode); return c.setMode(initialMode); }).catch((e) => console.warn('Default rendering unavailable, using the geographic rendering:', e))
+    : Promise.resolve();
+  world.chunks.holdWarm = startHold;
+  world.chunks.onBuilt = (o) => { if (startHold && v5?.usesPipeline) prepareObject(o); };
   const applyInitialMode = () => {
-    const done = () => { renderReady = true; menu.setLoading(1, 'Ready', true); };
+    const done = () => { startHold = false; world.chunks.holdWarm = false; world.chunks.onBuilt = null; renderReady = true; menu.setLoading(1, 'Ready', true); };
     if (initialMode === 'v4') return done();
     menu.setLoading(0.97, 'Preparing the Jalan China street section…', false);
-    v5Ready.then((c) => c.setMode(initialMode)).catch((e) => console.warn('Default rendering unavailable, using the geographic rendering:', e)).finally(done);
+    void modeSet.then(async () => {
+      await Promise.race([whenCompiled(renderer, prepareObject(world.scene)), new Promise((r) => window.setTimeout(r, 15000))]);
+      // The first frames upload every chunk's buffers and compile the few shadow-pass programs: still behind the screen.
+      startHold = false;
+      world.chunks.holdWarm = false;
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    }).finally(done);
   };
 
   // Pause menu "Drive Car": stream the car's surroundings, then stand the character beside it, facing it. The
@@ -698,7 +717,7 @@ async function boot(): Promise<void> {
 
     renderer.info.reset();
     // After a preset change the previous frame stays on screen until the new program variants have compiled.
-    if (holdDraw) { /* compiling */ } else if (v5?.usesPipeline) v5.pipeline.render();
+    if (holdDraw || startHold) { /* compiling */ } else if (v5?.usesPipeline) v5.pipeline.render();
     else renderer.render(world.scene, camera);
     if (wantShot && !holdDraw) {
       // Same task as the render, so the drawing buffer is still valid.

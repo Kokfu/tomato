@@ -100,6 +100,13 @@ export class ChunkManager {
   jobLog: JobRecord[] | null = null;
   /** Set by the game while the loading screen or start menu is up: frame smoothness does not matter then, load time does. */
   loadingBoost = false;
+  /**
+   * N1-M3b: set while the game draws nothing (behind the loading screen). Built chunks then keep waiting for the
+   * frame that uploads their buffers, instead of being marked as drawn.
+   */
+  holdWarm = false;
+  /** N1-M3b: called with each finished chunk mesh and each batch of decorations (shader preparation while loading). */
+  onBuilt: ((o: THREE.Object3D) => void) | null = null;
 
   constructor(manifest: Manifest, height: HeightMap, collision: CollisionWorld, mats: Materials, landmarks: LandmarkManager, places: PlaceIndex, quality: Quality) {
     this.manifest = manifest;
@@ -193,6 +200,7 @@ export class ChunkManager {
   update(x: number, z: number, vx = 0, vz = 0): void {
     // Meshes built earlier have now been drawn once (buffers uploaded): restore frustum culling.
     this.frame++;
+    if (this.holdWarm) for (const w of this.warming) w.frame = this.frame;
     while (this.warming.length && this.warming[0].frame < this.frame - 1) {
       this.warming.shift()!.group.traverse((o) => {
         o.frustumCulled = true;
@@ -428,6 +436,7 @@ export class ChunkManager {
     c.decor = detail === 'high';
     this.group.add(g);
     this.stats.built++;
+    this.onBuilt?.(g);
   }
 
   /** After a high-detail build: trees, street furniture and signs, added together once all are made. */
@@ -452,6 +461,7 @@ export class ChunkManager {
       mesh.frustumCulled = false;
       const map = (mesh.material as THREE.MeshLambertMaterial).map;
       if (map && mesh.userData.ownMaterial) this.renderer?.initTexture(map);
+      this.onBuilt?.(o);
     }
     this.warming.push({ group: g, frame: this.frame });
   }
