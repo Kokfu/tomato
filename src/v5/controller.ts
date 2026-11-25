@@ -12,13 +12,15 @@ import { V5Scene } from './V5Scene.ts';
 import type { V5Mode } from './V5Scene.ts';
 import { V5Pipeline } from './pipeline.ts';
 import { v5Exclusion, V5_LANDMARK_IDS, STREET } from './geo.ts';
+import { m5Enabled } from '../world/district/m5.ts';
 import { Ambience } from './ambience.ts';
 import type { Pedestrians, PedestrianHost } from './pedestrians.ts';
 
 export type RenderMode = 'v4' | V5Mode;
 const LABEL: Record<RenderMode, string> = { v4: 'V4 Existing', a: 'V5 Procedural', b: 'V5 Hybrid', c: 'V7 Jalan China' };
 const MODES: RenderMode[] = ['v4', 'a', 'b', 'c'];
-const CHUNKS = ['0_0', '0_-1'];
+/** Chunks rebuilt on a mode switch. N1-M5: the section now ends at x = 262.4, 6 m into chunk 1_0. */
+const CHUNKS = m5Enabled() ? ['0_0', '0_-1', '1_0'] : ['0_0', '0_-1'];
 /**
  * Light balance per mode: the Jalan China section is tuned separately (softer shadow edge, more sky fill). N1-M2: the
  * whole city shares one humid haze, so the DUN at the end of the street is seen through about 350 m of it.

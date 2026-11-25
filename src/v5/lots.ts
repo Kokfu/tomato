@@ -9,6 +9,7 @@
 import { hex } from './kit.ts';
 import type { LotSpec } from './shophouse.ts';
 import { c1Enabled } from './c1flag.ts';
+import { m5Enabled } from '../world/district/m5.ts';
 import { ROWS, rowFrame } from './geo.ts';
 
 type O = Partial<LotSpec>;
@@ -93,4 +94,88 @@ if (c1Enabled()) {
     { ...plain, wall: hex(W.blue), joinery: hex(J.teal), win: 'louvre', shop: 'folding', roof: 'tile', hoods: false },
     { ...plain, wall: hex(W.stained), joinery: hex(J.grey), win: 'arched', shop: 'open', roof: 'tile', hoods: true },
   ];
+}
+
+// N1-M5 (?m5=0 turns it off): the rest of Carpenter Street, Jalan China to Jalan Bishopgate. No licensed photograph shows
+// these rows (docs/night/refs/PLACES.md section 2), so every lot is a 'typical' Carpenter Street form in the same muted
+// palette: Approximate. What the Commons gate photograph does verify for the street as a whole (two-storey shophouses on
+// both sides, red lanterns strung across) is the "Verified form" part; see docs/night/m5-carpenter-street.md for the table.
+// Generic boards carry a trade word only (the street's known trades: goldsmiths, tinsmiths, carpenters, coffee shops);
+// a mapped shop name, where one exists, replaces the board.
+export const M5_GENERIC_SIGNS: Record<string, ({ text: string; fg: string; bg: string } | null)[]> = {};
+/** Corner lots whose return rise is measured from the terrain when the row is built: "row:lot" -> [neighbour row, lot]. */
+export const M5_WRAP_NEIGHBOUR: Record<string, [string, number]> = {};
+if (m5Enabled()) {
+  const row = (id: string) => ROWS.find((r) => r.id === id)!;
+  const m5 = 'typical (M5): plausible form for Carpenter Street, not surveyed';
+  const o = (wall: number, joinery: number, win: LotSpec['win'], shop: LotSpec['shop'], roof: LotSpec['roof'], more: O = {}): O => ({ wall: hex(wall), joinery: hex(joinery), win, shop, roof, hoods: false, plants: 0, basis: m5, ...more });
+  // North side, lot 0 at the Jalan China end, lot 15 against the Bishopgate corner return.
+  // Lots 0 and 1 are shallow: the party line with the Jalan China block runs back from the street corner at 20 degrees
+  // to their side walls, so a full-depth lot would stand inside that block's rear (as N3 is cut to 5.5 m beside Jalan China).
+  LOT_OVERRIDES.CN = [
+    o(W.white, J.teal, 'louvre', 'roller', 'tile', { hoods: true, depth: 5.5 }),
+    o(W.cream, J.brown, 'casement', 'folding', 'tile', { blinds: true, depth: 13 }),
+    o(W.warm, J.green, 'louvre', 'open', 'tile', { awning: hex(0x2f6a45), plants: 1 }),
+    o(W.grey, J.slate, 'slider', 'roller', 'zinc', { ac: 1, parapet: true, blinds: false }),
+    o(0xd9c08a, J.brown, 'arched', 'grille', 'tile', { hoods: true }),
+    o(W.white, J.blue, 'louvre', 'open', 'tile', { blinds: true }),
+    o(W.pink, J.grey, 'casement', 'folding', 'zinc', { storeys: 3, ac: 1 }),
+    o(W.stained, J.teal, 'louvre', 'grille', 'tile'),
+    o(W.green, J.green, 'louvre', 'open', 'tile', { hoods: true, awning: hex(0x8a2a22) }),
+    o(W.white, J.brown, 'arched', 'roller', 'tile'),
+    o(W.blue, J.slate, 'louvre', 'folding', 'zinc', { blinds: true, plants: 1 }),
+    o(W.cream, J.green, 'casement', 'open', 'tile', { hoods: true }),
+    o(W.warm, J.grey, 'slider', 'glass', 'zinc', { ac: 1, parapet: true, blinds: false }),
+    o(W.white, J.teal, 'louvre', 'grille', 'tile', { hoods: true }),
+    o(0xa9c4cf, J.blue, 'louvre', 'open', 'tile', { blinds: true }),
+    o(W.cream, J.brown, 'louvre', 'roller', 'tile', { sideArch: true }),
+  ];
+  const skew = (rowId: string, sideRowId: string): number => {
+    const fr = rowFrame(row(rowId)), sr = row(sideRowId), l = Math.hypot(sr.b[0] - sr.a[0], sr.b[1] - sr.a[1]);
+    const ex = (sr.b[0] - sr.a[0]) / l, ez = (sr.b[1] - sr.a[1]) / l;
+    return Math.atan2(-(ex * fr.dx + ez * fr.dz), -(ex * fr.nx + ez * fr.nz));
+  };
+  // Jalan Bishopgate face: lot 0 is the Carpenter Street corner, its five-foot way turns the corner (rise set at build time).
+  LOT_OVERRIDES.CB = [
+    o(W.white, J.green, 'louvre', 'open', 'tile', { hoods: true, sideArch: true, wrap: { side: 'L', len: 12, skew: skew('CB', 'CN'), rise: NaN } }),
+    o(W.warm, J.brown, 'casement', 'roller', 'tile'),
+    o(W.grey, J.slate, 'louvre', 'folding', 'zinc', { blinds: true }),
+    o(W.cream, J.teal, 'arched', 'grille', 'tile', { hoods: true }),
+  ];
+  M5_WRAP_NEIGHBOUR['CB:0'] = ['CN', 15];
+  // Kuching Hainan Association (mapped building 1388134056): two bays painted as one building. Its real facade is not
+  // photographed in the reference set; only the name on the board is from the map.
+  const hainan = 'mapped: Kuching Hainan Association (OSM way 1388134056); form typical, not surveyed';
+  LOT_OVERRIDES.CH = [
+    o(W.cream, J.brown, 'casement', 'folding', 'tile', { storeys: 3, parapet: true, windows: 2, basis: hainan }),
+    o(W.cream, J.brown, 'casement', 'folding', 'tile', { storeys: 3, parapet: true, windows: 2, basis: hainan }),
+  ];
+  // South side, lot 0 at the Bishopgate end (left as seen from the street), lot 14 beside the Hainan Association.
+  LOT_OVERRIDES.CS = [
+    o(W.white, J.brown, 'louvre', 'roller', 'tile', { hoods: true }),
+    o(W.blue, J.blue, 'casement', 'open', 'tile', { blinds: true, plants: 1 }),
+    o(W.cream, J.green, 'louvre', 'folding', 'tile'),
+    o(W.grey, J.grey, 'slider', 'roller', 'zinc', { ac: 1, blinds: false }),
+    o(W.warm, J.teal, 'arched', 'open', 'tile', { hoods: true, awning: hex(0x2f6a8a) }),
+    o(W.white, J.slate, 'louvre', 'grille', 'tile'),
+    o(0xd8b98a, J.brown, 'louvre', 'open', 'tile', { blinds: true }),
+    o(W.green, J.green, 'casement', 'folding', 'zinc', { hoods: true }),
+    o(W.orange, J.grey, 'slider', 'roller', 'zinc', { storeys: 3, ac: 1, blinds: false }),
+    o(W.white, J.teal, 'louvre', 'open', 'tile', { hoods: true, plants: 1 }),
+    o(W.stained, J.brown, 'arched', 'grille', 'tile'),
+    o(W.cream, J.blue, 'louvre', 'folding', 'tile', { blinds: true }),
+    o(W.warm, J.green, 'casement', 'open', 'tile', { awning: hex(0x8a2a22) }),
+    o(W.white, J.slate, 'louvre', 'roller', 'tile', { hoods: true }),
+    o(W.pink, J.brown, 'louvre', 'grille', 'tile'),
+  ];
+  LOT_OVERRIDES.CR = [
+    o(W.white, J.grey, 'louvre', 'roller', 'tile'), o(W.cream, J.brown, 'casement', 'roller', 'tile'),
+    o(W.grey, J.slate, 'louvre', 'folding', 'zinc'), o(W.warm, J.green, 'louvre', 'roller', 'tile'),
+  ];
+  const S = (text: string, fg: string, bg: string) => ({ text, fg, bg });
+  const gold = S('KEDAI EMAS', '#f6e2a0', '#8c1c15'), kopi = S('KEDAI KOPI', '#ffffff', '#1f6a45'), tin = S('KEDAI TIMAH', '#f6efe0', '#3a2a1e');
+  const wood = S('KEDAI PERABOT', '#f6e7b0', '#3a2a1e'), runcit = S('KEDAI RUNCIT', '#f3d98a', '#1f3f6a'), jahit = S('KEDAI JAHIT', '#f4efe2', '#b3261e');
+  M5_GENERIC_SIGNS.CN = [null, tin, kopi, null, gold, null, wood, null, kopi, null, runcit, null, null, gold, jahit, null];
+  M5_GENERIC_SIGNS.CS = [null, kopi, null, null, wood, gold, null, runcit, null, kopi, tin, null, jahit, null, gold];
+  M5_GENERIC_SIGNS.CB = [kopi, null, runcit, null];
 }

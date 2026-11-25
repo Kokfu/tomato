@@ -97,7 +97,7 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   a minor street meets a junction, a crossing sign at mapped crossings, "BAS" at bus stops. No sign names a place.
 - On the Low preset: no sign plates, no slab joints, no edge lines, no kerbs on service roads.
 
-## Hero places (N1-M5)
+## Hero places (N1-M5, places 1 and 2)
 
 - **Kuching Waterfront promenade.** Real: the bank line the railing follows and the Square Tower outline. Seen in
   licensed photographs (form only): a paved riverside walk, a dark cast-iron railing whose panels carry rings, lamp posts
@@ -108,6 +108,15 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   corner lamps and benches are generic; the tower's own form is unchanged (hero place 4).
 - **Main Bazaar.** All 71 lots stay Approximate: no licensed photograph shows the frontage lot by lot. The kapcai
   motorbikes in empty kerb bays are typical of the street, not counted or surveyed.
+- **Carpenter Street east of Jalan China.** All 41 lots are Approximate (typical Carpenter Street forms). Twelve boards
+  carry a shop name from an OpenStreetMap node, placed on the lot the node falls in front of; thirteen carry a trade
+  word only ("KEDAI EMAS", "KEDAI KOPI", ...); no name or number is invented. Lot lines are not mapped: each frontage is
+  divided evenly. The mapped outlines leave only 5 m between the Jalan China corner block and the block opposite, where
+  the real street is about as wide as elsewhere; the corner block's side elevation (doors, a barred window, a tiled pent
+  roof) is a typical form, not that building's. Lots step by a few centimetres with the ground, which falls 0.9 m along
+  the street and up to 0.7 m across it in the terrain model; the real street is closer to level.
+- The mapped centre line of Carpenter Street runs 0.6 m from that corner block's wall, so the wall blocks a walker only
+  from 0.3 m behind its face: a walker can press a shoulder into it, and a car on the mapped line is not stopped.
 
 ## Gameplay
 

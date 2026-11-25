@@ -4,6 +4,7 @@
 // generated chunk data (public/data/kuching/chunks/0_0.json and 0_-1.json, i.e. OpenStreetMap after
 // the V4 landmark-site and road-alignment steps). World metres: +x east, +z south.
 import { c1Enabled } from './c1flag.ts';
+import { m5Enabled } from '../world/district/m5.ts';
 
 /** V4 building records that the V5 scene replaces (whole blocks facing the section, and the three landmark sites). */
 export const V5_BUILDING_IDS = [236495089, 8000000000000001, 233690735, 8000000000000004, 233690739, 8000000000000002, 8000000000000003, 8000000000000005];
@@ -65,6 +66,53 @@ if (c1Enabled()) {
   V5_BUILDING_IDS.push(236495235);
 }
 
+// ---------------------------------------------------------------------------------------------
+// N1-M5 (?m5=0 turns it off): the rest of Carpenter Street, from the Jalan China junction east to Jalan Bishopgate.
+// Frontages are mapped block edges: the north row is the closing edge of way 236495388, the south row edges 7 and 8 of
+// way 236495302 (edge 7 lies under the separately mapped Kuching Hainan Association, way 1388134056). Measured between
+// those edges the street is 8.9 m wide at its west end and 7.7 m at Bishopgate; the mapped centre line runs 3.6 m
+// from the north frontage, so the carriageway is laid on the middle line below instead.
+// Between the Jalan China corner block (236495396) and block 236495235 the mapped outlines leave only 5 m.
+// ---------------------------------------------------------------------------------------------
+/** Middle line between the mapped frontages (world metres), west to east, and the half width of the carriageway slab at each point. */
+export const CARP_E: [number, number][] = [[157.8, 25.3], [170.5, 33.1], [181.3, 37.9], [261.05, 56.35]];
+export const CARP_E_HALF = [2.75, 2.75, 4.7, 4.1];
+/** Carpenter Street face of the Jalan China corner block (edge 1 of way 236495396): the corner lot's side elevation. */
+export const CARP_FLANK: { a: [number, number]; b: [number, number] } = { a: [158.7, 22.9], b: [171.8, 31] };
+/** Rows of the extension, in the order they are built. */
+export const CARP_E_ROWS = ['CN', 'CB', 'CH', 'CS', 'CR'];
+if (m5Enabled()) {
+  ROWS.push(
+    // north side, lot 0 at the west end; the first 12 m from the Bishopgate corner are the corner lot's return
+    { id: 'CN', building: 236495388, a: [261.9, 52.6], b: [171.8, 31], lots: 16, depth: 17, lod: 0, skip: 12, face: [-0.233, 0.972] },
+    // Jalan Bishopgate face of the same block, lot 0 is the Carpenter Street corner and wraps into it
+    { id: 'CB', building: 236495388, a: [261.9, 52.6], b: [269.7, 31.8], lots: 4, depth: 12, lod: 0, face: [0.937, 0.351] },
+    // south side: the Hainan Association's two bays (edge 7 of the block; the mapped place record carries the block's id),
+    // then the long row to the lane at the Bishopgate end
+    { id: 'CH', building: 236495302, a: [180.2, 42.3], b: [188.3, 44.1], lots: 2, depth: 18, lod: 0, face: [0.217, -0.976] },
+    { id: 'CS', building: 236495302, a: [188.3, 44.1], b: [260.2, 60.1], lots: 15, depth: 18, lod: 0, face: [0.217, -0.976] },
+    // the same block's short mapped frontage on its south side (toward Jalan Wawasan): simplified geometry
+    { id: 'CR', building: 236495302, a: [200.2, 83], b: [182.1, 80.4], lots: 4, depth: 10, lod: 1, face: [-0.142, 0.99] },
+  );
+  BLOCKS.push(
+    [171.8, 31, 182.6, 14.8, 187.6, 16.5, 190.6, 12.2, 194.2, 8.9, 208.5, 13.8, 208.5, 17.1, 222.9, 23.4, 223.8, 19.6, 235.1, 24.5, 240.8, 9.1, 245.2, 12, 242.8, 15.9, 251.8, 20.3, 250.9, 23.4, 269.7, 31.8, 261.9, 52.6],
+    [260.2, 60.1, 255.4, 82.3, 204.3, 76.4, 200.2, 83, 182.1, 80.4, 183.5, 71.7, 175.7, 70.5, 180.2, 42.3, 188.3, 44.1],
+  );
+  V5_BUILDING_IDS.push(236495388, 236495302, 1388134056);
+}
+
+/** Distance from (x, z) to a polyline. */
+export function distToLine(x: number, z: number, line: [number, number][]): number {
+  let best = Infinity;
+  for (let i = 1; i < line.length; i++) {
+    const [ax, az] = line[i - 1], [bx, bz] = line[i];
+    const vx = bx - ax, vz = bz - az, l2 = vx * vx + vz * vz;
+    const t = Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / l2));
+    best = Math.min(best, Math.hypot(ax + vx * t - x, az + vz * t - z));
+  }
+  return best;
+}
+
 /** Distance from (x, z) to the street centre line. */
 export function distToStreet(x: number, z: number): number {
   let best = Infinity;
@@ -79,7 +127,8 @@ export function distToStreet(x: number, z: number): number {
 
 /** OSM way of Jalan Carpenter; its V4 ribbon, kerbs and markings are cut out of the section while V5 is shown. */
 export const V5_ROAD_ID = 196054157;
-const CLIP_X0 = 84.3, CLIP_X1 = 158.4;
+/** N1-M5: the section, and with it the cut, now reaches the Bishopgate junction. */
+const CLIP_X0 = 84.3, CLIP_X1 = m5Enabled() ? 262.4 : 158.4;
 
 /** Part of a road polyline (flat world metres) that lies outside the section, or null if nothing is left. */
 export function clipRoadOutsideSection(p: number[]): number[] | null {
@@ -148,7 +197,7 @@ export const v5Exclusion = {
   ids: new Set<number>(V5_BUILDING_IDS),
   setChina(on: boolean): void { this.china = on; for (const id of CHINA_BUILDING_IDS) { if (on) this.ids.add(id); else this.ids.delete(id); } },
   /** True for street furniture / props that stand in a section's street corridor. */
-  inCorridor(x: number, z: number): boolean { return (distToStreet(x, z) < 9.5 && x > 84 && x < 158) || (this.china && inChina(x, z, 2)); },
+  inCorridor(x: number, z: number): boolean { return (distToStreet(x, z) < 9.5 && x > 84 && x < 158) || (this.china && inChina(x, z, 2)) || (m5Enabled() && x > 157 && x < 263.5 && distToLine(x, z, CARP_E) < 8.5); },
   /** A road polyline (world metres) with the parts drawn by a V5 section removed: undefined = untouched, null = nothing left. */
   clipRoad(id: number, world: number[]): number[] | null | undefined {
     if (id === V5_ROAD_ID) return clipRoadOutsideSection(world);

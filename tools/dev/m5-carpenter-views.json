@@ -1,0 +1,10 @@
+[
+  {"name":"cp-01-tour-03-flank","x":166.4,"z":28.4,"eye":1.7,"yaw":-2.094,"pitch":0.05,"fov":70},
+  {"name":"cp-02-from-china-junction","x":159.5,"z":25.6,"eye":1.7,"yaw":-2.05,"pitch":0.03,"fov":70},
+  {"name":"cp-03-mid-looking-east","x":205,"z":43.6,"eye":1.7,"yaw":-1.805,"pitch":0.04,"fov":70},
+  {"name":"cp-04-from-bishopgate","x":257,"z":55.4,"eye":1.7,"yaw":1.337,"pitch":0.04,"fov":70},
+  {"name":"cp-05-north-five-foot-way","x":199.0,"z":36.29,"eye":1.7,"yaw":-1.805,"pitch":0.0,"fov":66},
+  {"name":"cp-06-south-row-oblique","x":222,"z":44.5,"eye":1.7,"yaw":-2.6,"pitch":0.12,"fov":72},
+  {"name":"cp-07-bishopgate-corner","x":271,"z":59,"eye":1.7,"yaw":0.983,"pitch":0.1,"fov":72},
+  {"name":"cp-08-aerial","x":215,"z":100,"eye":60,"yaw":0,"pitch":-0.9,"fov":70}
+]

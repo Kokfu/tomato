@@ -66,6 +66,15 @@
       "source": "https://commons.wikimedia.org/wiki/File:Kuching_Waterfront_(15811151426).jpg",
       "note": "Elevated view, about 25 m up, looking north-north-east: compare the tree cover and the bank, not the walk itself.",
       "approx": true
+    },
+    {
+      "file": "carpenter-street-gate.jpg",
+      "title": "[M5-2] Carpenter Street: the gate at its west end (lantern strings, two-storey shophouses, cars at the kerb)",
+      "author": "Travelust from Southeast Asia",
+      "license": "CC BY 2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Chinese-style_Gate.jpg",
+      "note": "Taken inside the street looking out through the gate. The rows east of Jalan China are not in any licensed photograph found.",
+      "approx": true
     }
   ],
   "consulted": [
@@ -92,6 +101,13 @@
       "date": "2014-06-26",
       "source": "https://commons.wikimedia.org/wiki/File:Kuching_Waterfront_-_Flickr_-_Dustin_Iskandar.jpg",
       "used_for": "N1-M5 place 1: festoon lights along the walk (as read by the V3 review)"
+    },
+    {
+      "title": "Chinese Temple on Carpenter Street, Kuching",
+      "author": "chipmunk_1",
+      "license": "CC BY-SA 2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Chinese_Temple_on_Carpenter_Street,_Kuching.jpg",
+      "used_for": "N1-M5 place 2: street character only (the temple itself stands on Jalan Ewe Hai, outside this place)"
     }
   ]
 }

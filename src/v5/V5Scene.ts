@@ -14,13 +14,15 @@ import { Kit, hex, rnd } from './kit.ts';
 import type { Buf } from './kit.ts';
 import { createMaterials } from './materials.ts';
 import type { KuchingMaterials, MaterialName } from './materials.ts';
-import { autoLot, buildLot, eaveY, ARCADE, KERB } from './shophouse.ts';
+import { autoLot, buildLot, eaveY, ARCADE, KERB, PIER, F1, UP } from './shophouse.ts';
 import type { LotSpec, SignSource } from './shophouse.ts';
-import { ROWS, BLOCKS, rowFrame, V5_LANDMARK_IDS, CHINA_WEST, CHINA_EAST, CHINA_BLOCK } from './geo.ts';
+import { ROWS, BLOCKS, rowFrame, V5_LANDMARK_IDS, CHINA_WEST, CHINA_EAST, CHINA_BLOCK, CARP_E_ROWS } from './geo.ts';
 import { buildChinaStreet } from './china.ts';
 import type { RowDef } from './geo.ts';
-import { LOT_OVERRIDES } from './lots.ts';
-import { c1Enabled, c1FullNameSign } from './c1flag.ts';
+import { LOT_OVERRIDES, M5_GENERIC_SIGNS, M5_WRAP_NEIGHBOUR } from './lots.ts';
+import { m5Enabled } from '../world/district/m5.ts';
+import { buildCarpenterEast } from './carpenterEast.ts';
+import { c1FullNameSign } from './c1flag.ts';
 import { buildRoad, buildApron, lampPost, cables, pushcart, streetLanterns } from './street.ts';
 import { vehicle, plateFor } from './vehicles.ts';
 import { buildTemple, buildGenericTemple } from './landmarks/temple.ts';
@@ -307,7 +309,8 @@ export class V5Scene {
 
   private lotSpecs(row: RowDef, mode: V5Mode, places: PlaceLike[], len: number, fr: ReturnType<typeof rowFrame>): LotSpec[] {
     const w = len / row.lots, specs: LotSpec[] = [];
-    const openEnds: Record<string, [boolean, boolean]> = { N2: [true, false], N3: [false, true] };
+    // N1-M5: CN ends against the Bishopgate corner return, CH and CS stand side by side
+    const openEnds: Record<string, [boolean, boolean]> = { N2: [true, false], N3: [false, true], CN: [true, false], CH: [false, true], CS: [true, false] };
     const [eL, eR] = openEnds[row.id] ?? [true, true];
     for (let i = 0; i < row.lots; i++) {
       let s = autoLot(Math.floor(rnd(row.building % 100000, i, row.id.charCodeAt(1)) * 1e6), w, row.depth);
@@ -335,6 +338,8 @@ export class V5Scene {
       else if (p.cat === 'jewelry' || p.cat === 'watches') s.shop = 'grille';
       else if (p.cat === 'restaurant' || p.cat === 'cafe') s.shop = 'open';
     }
+    // N1-M5: a generic trade board on some lots that carry no mapped shop name
+    M5_GENERIC_SIGNS[row.id]?.forEach((g, i) => { if (g && specs[i] && !specs[i].sign) specs[i].sign = g; });
     return specs;
   }
 
@@ -357,34 +362,73 @@ export class V5Scene {
     if (token !== this.token) return;
     const rowDefs = china ? ROWS.filter((r) => r.id !== 'JC').map((r) => (r.id === 'N3' ? { ...r, depth: 5.5 } : r)) : ROWS;
     let walls: { ring: number[]; top: number }[] = [];
-    for (const def of rowDefs) {
-      // apply the corner skip, then frame the frontage
+    const stepWalls: { ring: number[]; top: number }[] = [];
+    // a row's frame after its corner skip, and the floor datum of each of its lots
+    const frame = (def: RowDef) => {
       let row = def;
       if (def.skip) { const l = Math.hypot(def.b[0] - def.a[0], def.b[1] - def.a[1]); row = { ...def, a: [def.a[0] + ((def.b[0] - def.a[0]) * def.skip) / l, def.a[1] + ((def.b[1] - def.a[1]) * def.skip) / l] }; }
-      const fr = rowFrame(row);
-      const specs = this.lotSpecs(row, mode, places, fr.len, fr);
-      const w = fr.len / row.lots;
-      kit.lod = row.lod;
+      const fr = rowFrame(row), w = fr.len / row.lots;
       const mid = h(fr.ox + fr.dx * fr.len / 2 + fr.nx * 2, fr.oz + fr.dz * fr.len / 2 + fr.nz * 2);
+      // N1-M5: the long rows east of Jalan China stand on ground that falls 0.9 m along the street and up to 0.7 m
+      // across it. There each lot takes its own level (a few centimetres' step from its neighbour) and is never lower
+      // than the terrain under its own five-foot way, as in the Jalan China section.
+      const stepped = CARP_E_ROWS.includes(def.id);
+      const baseOf = (i: number) => {
+        const x = fr.ox + fr.dx * i * w, z = fr.oz + fr.dz * i * w, front = h(x + fr.dx * w / 2 + fr.nx * 1.5, z + fr.dz * w / 2 + fr.nz * 1.5);
+        if (!stepped) return Math.max(mid - 0.1, Math.min(mid + 0.1, front)) + 0.03;
+        let top = -Infinity;
+        for (const u of [0, w / 2, w]) for (const v of [0.24, -ARCADE]) top = Math.max(top, h(x + fr.dx * u + fr.nx * v, z + fr.dz * u + fr.nz * v));
+        return Math.max(front + 0.03, top - 0.11);
+      };
+      return { row, fr, w, mid, baseOf, stepped };
+    };
+    for (const def of rowDefs) {
+      const { row, fr, w, mid, baseOf, stepped } = frame(def);
+      const specs = this.lotSpecs(row, mode, places, fr.len, fr);
+      // N1-M5: on the low preset the new rows drop the fine timber (ceiling joists, rafter tails) and loose dressing
+      kit.lod = stepped && this.host.low ? 1 : row.lod;
       specs.forEach((s, i) => {
         const x = fr.ox + fr.dx * i * w, z = fr.oz + fr.dz * i * w;
-        const base = Math.max(mid - 0.1, Math.min(mid + 0.1, h(x + fr.dx * w / 2 + fr.nx * 1.5, z + fr.dz * w / 2 + fr.nz * 1.5))) + 0.03;
-        kit.at({ x, y: base, z, ry: fr.ry }, () => { buildLot(kit, s, row.lod === 0 ? this.signs : null); if (row.lod === 0) buildApron(kit, s.w, s.seed); });
+        const base = baseOf(i);
+        // N1-M5: a corner return whose rise is not tabulated ramps to the neighbouring row's floor, read from the terrain
+        const nb = M5_WRAP_NEIGHBOUR[`${row.id}:${i}`], nbDef = nb && rowDefs.find((r) => r.id === nb[0]);
+        if (s.wrap && Number.isNaN(s.wrap.rise)) s.wrap = { ...s.wrap, rise: nbDef ? frame(nbDef).baseOf(nb[1]) - base : 0 };
+        kit.at({ x, y: base, z, ry: fr.ry }, () => {
+          buildLot(kit, s, row.lod === 0 ? this.signs : null);
+          if (row.lod === 0) buildApron(kit, s.w, s.seed);
+          // footing under the kerb and drain where the lot stands above the falling road
+          if (stepped) { kit.use('concrete'); kit.box(0, s.w, -0.8, 0, -0.3, 0.78, hex(0x8a8880, 0.85), 'y+y-z-', 0.75); }
+        });
         // walkable five-foot way
         const c = (u: number, v: number) => [x + fr.dx * u + fr.nx * v, z + fr.dz * u + fr.nz * v];
         floors.push({ ring: [...c(0, 0.24), ...c(w, 0.24), ...c(w, -ARCADE), ...c(0, -ARCADE)], h: base + 0.14 });
         // C1a (?c1=1 only): the corner wrap's return five-foot way (Auditor S1)
-        if (s.wrap && c1Enabled()) floors.push(...wrapReturnFloors(s, c, base));
+        if (s.wrap) floors.push(...wrapReturnFloors(s, c, base));
+        // N1-M5 rows: the shopfront line and the piers block, as in the Jalan China section (the chunk's own collision
+        // keeps a strip about 0.7 m deeper than the drawn five-foot way open)
+        if (stepped && row.lod === 0) {
+          stepWalls.push({ ring: [...c(s.wrap ? ARCADE : 0, -ARCADE), ...c(w, -ARCADE), ...c(w, -ARCADE - 0.5), ...c(s.wrap ? ARCADE : 0, -ARCADE - 0.5)], top: base + 3 });
+          for (const u of i === 0 && !s.wrap ? [0, w] : [w]) stepWalls.push({ ring: [...c(u - PIER / 2, 0), ...c(u + PIER / 2, 0), ...c(u + PIER / 2, -PIER), ...c(u - PIER / 2, -PIER)], top: base + 3 });
+        }
         lots++;
       });
       kit.lod = 0;
-      if (row.lod === 0) {
+      if (row.lod === 0 && stepped && this.host.low) {
+        // no cables on the low preset
+      } else if (row.lod === 0 && stepped) {
+        // utility cables under the eave, lot by lot: these lots step with the ground
+        specs.forEach((s, i) => {
+          const y = baseOf(i) + Math.min(eaveY(s), F1 + UP) - 0.8, q = (u: number): [number, number, number] => [fr.ox + fr.dx * u + fr.nx * 0.16, y, fr.oz + fr.dz * u + fr.nz * 0.16];
+          cables(kit, q(i * w), q((i + 1) * w), 3, row.lots * 7 + i);
+        });
+      } else if (row.lod === 0) {
         // utility cables along the facade under the eave
         const y = mid + Math.min(...specs.map(eaveY)) - 0.9;
         cables(kit, [fr.ox + fr.nx * 0.16, y, fr.oz + fr.nz * 0.16], [fr.ox + fr.dx * fr.len + fr.nx * 0.16, y, fr.oz + fr.dz * fr.len + fr.nz * 0.16], 3, row.lots);
       }
     }
     if (china) { const r = buildChinaStreet(kit, h, this.signs, photo); floors.push(...r.floors); walls = r.walls; lots += r.lots; }
+    if (m5Enabled()) { const r = buildCarpenterEast(kit, h, this.signs, china); floors.push(...r.floors); walls.push(...r.walls, ...stepWalls); }
     this.yards(kit, h, china ? [...BLOCKS, CHINA_BLOCK] : BLOCKS, china ? [...rowDefs, CHINA_WEST, CHINA_EAST] : ROWS);
 
     // street lamps on the south side at lot boundaries

@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-(globalThis as any).location = { search: '?c1=1' };
+(globalThis as any).location = { search: '?c1=1&m5=0' }; // N1-M5 rows are tested in m5-places.test.ts
 const drawn: string[] = [];
 const ctx2d: any = new Proxy({}, {
   get: (t: any, k) => (k in t ? t[k] : k === 'measureText' ? (s: string) => ({ width: 10 * String(s).length, actualBoundingBoxAscent: 8, actualBoundingBoxDescent: 2 }) : k === 'fillText' ? (s: string) => { drawn.push(String(s)); } : () => ctx2d),

@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-(globalThis as any).location = { search: '?c1=1' };
+(globalThis as any).location = { search: '?c1=1&m5=0' }; // N1-M5 rows are tested in m5-places.test.ts
 const geo = await import('../../src/v5/geo.ts');
 const { CHUNK_SIZE, QUANT } = await import('../../src/world/config.ts');
 
