@@ -1,0 +1,345 @@
+{
+ "note": "Phone emulation (390x844, Low, 4x CPU), drive-bench A,B,C, cold + warm run each. One alternating pair: baseline (M0 build) then the M5a build, with this session's dev and preview servers stopped. The machine also ran the owner's other applications, so absolute numbers are about twice those of the M4 pair; only the in-pair comparison counts. The M5a build of this pair predates one small change to the corner block's side wall (a dado strip and a moved window, a few dozen triangles).",
+ "bench": [
+  {
+   "name": "A stationary cold",
+   "baseline": {
+    "p95Ms": 70.1,
+    "medianMs": 49.7,
+    "avgFps": 20.7,
+    "worstMs": 86.5,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 113,
+    "maxTrisK": 318,
+    "programs": [
+     99,
+     99
+    ],
+    "buildMsMax": 0
+   },
+   "m5a": {
+    "p95Ms": 70.5,
+    "medianMs": 44.5,
+    "avgFps": 22.7,
+    "worstMs": 120.7,
+    "over100": 2,
+    "over200": 0,
+    "maxCalls": 115,
+    "maxTrisK": 423,
+    "programs": [
+     59,
+     59
+    ],
+    "buildMsMax": 0
+   },
+   "p95DeltaPct": 0.6
+  },
+  {
+   "name": "B Jalan China lane cold",
+   "baseline": {
+    "p95Ms": 74.8,
+    "medianMs": 41.2,
+    "avgFps": 23.5,
+    "worstMs": 156.6,
+    "over100": 5,
+    "over200": 0,
+    "maxCalls": 129,
+    "maxTrisK": 322,
+    "programs": [
+     99,
+     99
+    ],
+    "buildMsMax": 32.7
+   },
+   "m5a": {
+    "p95Ms": 65.5,
+    "medianMs": 41.6,
+    "avgFps": 25.1,
+    "worstMs": 133.9,
+    "over100": 4,
+    "over200": 0,
+    "maxCalls": 131,
+    "maxTrisK": 429,
+    "programs": [
+     59,
+     59
+    ],
+    "buildMsMax": 26.4
+   },
+   "p95DeltaPct": -12.4
+  },
+  {
+   "name": "C block loop cold",
+   "baseline": {
+    "p95Ms": 73.8,
+    "medianMs": 35.4,
+    "avgFps": 26.4,
+    "worstMs": 197.2,
+    "over100": 25,
+    "over200": 0,
+    "maxCalls": 150,
+    "maxTrisK": 349,
+    "programs": [
+     99,
+     99
+    ],
+    "buildMsMax": 28.7
+   },
+   "m5a": {
+    "p95Ms": 71.7,
+    "medianMs": 41.2,
+    "avgFps": 24.7,
+    "worstMs": 118.8,
+    "over100": 11,
+    "over200": 0,
+    "maxCalls": 155,
+    "maxTrisK": 469,
+    "programs": [
+     59,
+     59
+    ],
+    "buildMsMax": 41
+   },
+   "p95DeltaPct": -2.8
+  },
+  {
+   "name": "A stationary warm1",
+   "baseline": {
+    "p95Ms": 90.9,
+    "medianMs": 54.5,
+    "avgFps": 18.1,
+    "worstMs": 157.9,
+    "over100": 2,
+    "over200": 0,
+    "maxCalls": 130,
+    "maxTrisK": 323,
+    "programs": [
+     99,
+     99
+    ],
+    "buildMsMax": 0
+   },
+   "m5a": {
+    "p95Ms": 76.2,
+    "medianMs": 45.8,
+    "avgFps": 22.6,
+    "worstMs": 96.7,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 135,
+    "maxTrisK": 433,
+    "programs": [
+     59,
+     59
+    ],
+    "buildMsMax": 0
+   },
+   "p95DeltaPct": -16.2
+  },
+  {
+   "name": "B Jalan China lane warm1",
+   "baseline": {
+    "p95Ms": 81.2,
+    "medianMs": 48.9,
+    "avgFps": 20.3,
+    "worstMs": 133.5,
+    "over100": 9,
+    "over200": 0,
+    "maxCalls": 141,
+    "maxTrisK": 326,
+    "programs": [
+     99,
+     99
+    ],
+    "buildMsMax": 42.7
+   },
+   "m5a": {
+    "p95Ms": 69.8,
+    "medianMs": 46.2,
+    "avgFps": 21.4,
+    "worstMs": 130.8,
+    "over100": 2,
+    "over200": 0,
+    "maxCalls": 146,
+    "maxTrisK": 437,
+    "programs": [
+     59,
+     59
+    ],
+    "buildMsMax": 33.3
+   },
+   "p95DeltaPct": -14.0
+  },
+  {
+   "name": "C block loop warm1",
+   "baseline": {
+    "p95Ms": 69.1,
+    "medianMs": 38,
+    "avgFps": 24.9,
+    "worstMs": 133.4,
+    "over100": 9,
+    "over200": 0,
+    "maxCalls": 150,
+    "maxTrisK": 353,
+    "programs": [
+     99,
+     99
+    ],
+    "buildMsMax": 35.3
+   },
+   "m5a": {
+    "p95Ms": 72.6,
+    "medianMs": 37.9,
+    "avgFps": 26.4,
+    "worstMs": 160.1,
+    "over100": 18,
+    "over200": 0,
+    "maxCalls": 156,
+    "maxTrisK": 481,
+    "programs": [
+     59,
+     59
+    ],
+    "buildMsMax": 33.7
+   },
+   "p95DeltaPct": 5.1
+  }
+ ],
+ "lateCompiles": {
+  "baseline": [
+   69,
+   24.1
+  ],
+  "m5a": [
+   118.5,
+   122.5
+  ],
+  "note": "ms; one lambert program at (236, -58) on Main Bazaar in both builds, cold and warm; none over 200 ms"
+ },
+ "startup": {
+  "note": "load-probe, 3 alternating runs; first set taken with a preview server of this session still running (very noisy), second set with it stopped",
+  "set1": {
+   "baseline": {
+    "loadMs": [
+     4581,
+     11444,
+     7496
+    ],
+    "interactiveMs": [
+     5917,
+     15204,
+     14149
+    ]
+   },
+   "m5a": {
+    "loadMs": [
+     7292,
+     10408,
+     9394
+    ],
+    "interactiveMs": [
+     7583,
+     10620,
+     10229
+    ]
+   }
+  },
+  "set2": {
+   "baseline": {
+    "loadMs": [
+     7642,
+     7044,
+     6903
+    ],
+    "interactiveMs": [
+     14400,
+     8222,
+     8162
+    ]
+   },
+   "m5a": {
+    "loadMs": [
+     6598,
+     5212,
+     5890
+    ],
+    "interactiveMs": [
+     6634,
+     5410,
+     5924
+    ]
+   }
+  },
+  "programsAtReady": 66
+ },
+ "chunks": {
+  "note": "triangles / meshes read in the running production build at the default preset, ?m5=0 then default",
+  "0_-1": [
+   82175,
+   27,
+   91579,
+   27
+  ],
+  "1_-1": [
+   24409,
+   19,
+   30287,
+   19
+  ],
+  "1_0": [
+   96894,
+   27,
+   102485,
+   27
+  ],
+  "0_0": [
+   36919,
+   22,
+   21561,
+   21
+  ],
+  "section": {
+   "triangles": [
+    229250,
+    314962
+   ],
+   "drawCalls": [
+    56,
+    56
+   ],
+   "lots": [
+    65,
+    106
+   ],
+   "lowPresetTriangles": [
+    229250,
+    300806
+   ]
+  }
+ },
+ "tour": {
+  "desktop": {
+   "fpsMedian": 60,
+   "fpsMin": 54,
+   "triangles14": 6349274,
+   "drawCalls14": 2738,
+   "m4": [
+    4470000,
+    2565
+   ]
+  },
+  "phone": {
+   "triangles14": 2575262,
+   "drawCalls14": 965,
+   "m4": [
+    1930000,
+    944
+   ]
+  }
+ },
+ "tests": {
+  "unit": "254 / 254",
+  "e2e": "district, landmarks, gameplay, shader-prep, driving: 30 passed (before the review fixes); m5-carpenter, m5-waterfront, shader-prep, district, landmarks: passed after them"
+ }
+}
