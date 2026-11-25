@@ -9,6 +9,7 @@ import { streetEdges, laneMarkings, stopLine } from './StreetEdges.ts';
 import { m5Enabled } from './district/m5.ts';
 import { stationOfChunk } from './district/props.ts';
 import { buildPromenadePaving, ringRailing, ringRailingAt } from './district/PromenadeMesh.ts';
+import { buildIndiaStreet } from './district/IndiaStreetMesh.ts';
 
 const UP = [0, 1, 0] as const;
 const tmpColor = new THREE.Color();
@@ -272,6 +273,8 @@ export function* buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBu
   }
   // N1-M5: the paved riverside walk of the Kuching Waterfront and the Square Tower apron (district/PromenadeMesh.ts).
   if (high && m5Enabled() && stationOfChunk(data)) buildPromenadePaving(data, ctx, bufs[1]);
+  // N1-M5 place 3: India Street's paving, canopy, stalls and flags, and Jalan Gambier's parked cars (district/IndiaStreetMesh.ts).
+  if (high) buildIndiaStreet(data, ctx, bufs[1], marks, structure);
   // Polygon decks (piers mapped as areas)
   for (const d of data.pdecks) {
     const y = d.h / QUANT;

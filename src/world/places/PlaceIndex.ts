@@ -12,6 +12,7 @@ import { fasciaAt, rowFrame, SHOP } from '../arch/Shophouse.ts';
 import { edgeOutward, hash3, ringArea2, unitsAlong } from '../arch/frontage.ts';
 import { geoToWorld } from '../GeoProjection.ts';
 import { heritageFascia } from '../arch/HeritageRow.ts';
+import { indiaSign } from '../district/indiaStreet.ts';
 import { isDistrictRow, pinPosition, PIN_DUPLICATES } from '../district/mainBazaar.ts';
 
 /**
@@ -169,7 +170,10 @@ export function buildChunkLabels(data: ChunkData, ctx: BuildContext): THREE.Obje
   const used = new Map<string, number>();
   // Pinned (house-numbered) businesses claim their lot first.
   const list = ctx.places.inChunk(chunkKey(data.cx, data.cz), data).sort((a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0));
-  for (const p of list) {
+  for (let p of list) {
+    // N1-M5: a mapped shop in an India Street block hangs its board on the nearest lot of the street frontage.
+    const india = indiaSign(data, p);
+    if (india) p = { ...p, ...india, sign: true };
     if (!p.sign || p.b === undefined || p.e === undefined) continue;
     if (v5Exclusion.active && v5Exclusion.ids.has(p.b)) continue;
     const b = data.buildings.find((q) => q.id === p.b);

@@ -6,6 +6,7 @@ import type { GeoBuf } from '../Materials.ts';
 import type { BuildContext } from '../ChunkManager.ts';
 import { ARCADE_DEPTH, edgeOutward, hash3, insetEdges, pointInRingFlat, ringArea2, unitsAlong } from './frontage.ts';
 import { TILE, tileUV, WHITE_UV } from './FacadeAtlas.ts';
+import { heroLotStyle } from '../district/indiaStreet.ts';
 
 // Kuching old-town shophouse rows, generated on the mapped building outline.
 //
@@ -87,14 +88,16 @@ export function unitStyle(id: number, edge: number, unit: number): { wall: numbe
   while (u > 0 && hash3(id, edge * 131 + 7, u) % 100 < 35) u--;
   const h = hash3(id, edge, unit), hc = hash3(id, edge, u);
   const g = (h >>> 8) % 100;
+  // N1-M5 hero frontages (India Street, Jalan Gambier) choose their own paint, blinds and air-conditioners.
+  const hero = heroLotStyle(id, edge, unit);
   return {
-    wall: WALL_COLOURS[hc % WALL_COLOURS.length],
+    wall: hero?.wall ?? WALL_COLOURS[hc % WALL_COLOURS.length],
     upper: UPPER_TILES[(hc >>> 6) % UPPER_TILES.length],
     ground: g < 55 ? TILE.groundShutter : g < 80 ? TILE.groundTimber : TILE.groundOpen,
     floor: FLOOR_COLOURS[(h >>> 12) % FLOOR_COLOURS.length],
     parapet: ((hc >>> 16) % 4) * 0.18,
-    blind: (h >>> 20) % 5 === 0 ? BLIND_COLOURS[(h >>> 23) % BLIND_COLOURS.length] : -1,
-    ac: (h >>> 26) % 3 === 0,
+    blind: hero ? hero.blind : (h >>> 20) % 5 === 0 ? BLIND_COLOURS[(h >>> 23) % BLIND_COLOURS.length] : -1,
+    ac: hero ? hero.ac : (h >>> 26) % 3 === 0,
     h,
   };
 }

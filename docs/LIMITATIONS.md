@@ -118,6 +118,24 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - The mapped centre line of Carpenter Street runs 0.6 m from that corner block's wall, so the wall blocks a walker only
   from 0.3 m behind its face: a walker can press a shoulder into it, and a car on the mapped line is not stopped.
 
+## Hero places (N1-M5, place 3: India Street and Jalan Gambier)
+- **India Street's rows are rebuilt at run time from the mapped blocks.** The north block (one mapped outline) is cut
+  into seven two-storey pieces, 14 m deep, each at its own floor level, because the street climbs 3 m; the rest of the
+  block is drawn two storeys high behind them. Its mapped height (12 m) was a default; two storeys come from the
+  photographs. Lot lines, lot widths, paint, shopfronts and five-foot ways are inferred. `?m5=0` shows the mapped data
+  unchanged.
+- **No lot is verified.** Two photographs show the street's form (canopy, paving, stalls, bright two-storey shops, flags,
+  air-conditioners); neither can be tied to a lot.
+- **Boards carry mapped business names only** (17). Which lot of its block a business occupies is decided by the nearest
+  frontage point: it can be off by a lot or two. No house number is shown.
+- **The canopy is a stand-in:** a plain fabric vault on fourteen columns, every dimension estimated. It is unlit cloth
+  and throws no shadow. The real canopy's ornament and banners are not built.
+- **Stalls, awnings, flags, parked cars, kapcai and the cars in the riverside car park are placed by rule.** Jalan
+  Gambier has no licensed photograph at all.
+- **Parked cars on Jalan Gambier stand on the outer 1.9 m of the carriageway** (no parking bay is mapped) and block a
+  car or a walker; the mapped centre line stays clear by 1.5 m.
+- Details and the lot table: `docs/night/m5-india-street-gambier.md`.
+
 ## Gameplay
 
 - Collision uses building footprints as infinitely tall walls up to the roof line; interiors are

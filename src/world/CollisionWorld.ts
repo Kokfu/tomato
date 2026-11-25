@@ -8,6 +8,7 @@ import { isDistrictRow } from './district/mainBazaar.ts';
 import { v5Exclusion } from '../v5/geo.ts';
 import { frontFloors, frontObstacles } from './district/frontLayout.ts';
 import { districtFloors, propObstacles } from './district/props.ts';
+import { heroObstacles } from './district/indiaStreet.ts';
 import type { LandmarkSite } from './landmarks/LandmarkModels.ts';
 
 interface Wall {
@@ -142,6 +143,11 @@ export class CollisionWorld {
     }
     // District street dressing (parked cars, tree trunks, planters, lamp posts, benches).
     for (const o of propObstacles(data)) {
+      const ring = Float32Array.from(o.ring);
+      walls.push({ ...bbox(ring), rings: [ring], top: this.height.sample(ring[0], ring[1]) + o.h });
+    }
+    // N1-M5 place 3: canopy columns and stalls of India Street, parked cars of Jalan Gambier.
+    for (const o of heroObstacles(data)) {
       const ring = Float32Array.from(o.ring);
       walls.push({ ...bbox(ring), rings: [ring], top: this.height.sample(ring[0], ring[1]) + o.h });
     }

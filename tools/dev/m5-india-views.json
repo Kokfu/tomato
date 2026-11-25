@@ -1,0 +1,11 @@
+[
+  {"name":"in-01-mall-east","x":-176.5,"z":-145.8,"eye":1.7,"yaw":-1.897,"pitch":0.06,"fov":70},
+  {"name":"in-02-mall-west","x":-47.7,"z":-101.9,"eye":1.7,"yaw":1.263,"pitch":0.06,"fov":70},
+  {"name":"in-03-from-kai-joo","x":-134.1,"z":-110.1,"eye":1.7,"yaw":-0.219,"pitch":0.05,"fov":70},
+  {"name":"in-04-stalls","x":-99.3,"z":-121,"eye":1.6,"yaw":-2.214,"pitch":0.0,"fov":70},
+  {"name":"in-05-aerial","x":-150,"z":-190,"eye":55,"yaw":-2.6,"pitch":-0.72,"fov":70},
+  {"name":"gb-01-row-from-car-park","x":-45.8,"z":-222.4,"eye":1.7,"yaw":-3.032,"pitch":0.05,"fov":70},
+  {"name":"gb-02-along-gambier","x":-188.9,"z":-202,"eye":1.7,"yaw":-1.162,"pitch":0.05,"fov":70},
+  {"name":"gb-03-kerb-west","x":-40,"z":-213.6,"eye":1.7,"yaw":1.62,"pitch":0.02,"fov":70},
+  {"name":"gb-04-car-park","x":-122,"z":-225,"eye":1.7,"yaw":-1.5,"pitch":0.0,"fov":70}
+]
