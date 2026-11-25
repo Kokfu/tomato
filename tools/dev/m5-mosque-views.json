@@ -1,0 +1,10 @@
+[
+  {"name":"cm-01-city-mosque-tour-08","x":-406.2,"z":26.2,"eye":1.7,"yaw":0.46,"pitch":0.05,"fov":70},
+  {"name":"cm-02-across-the-cemetery","x":-398,"z":10,"eye":1.7,"yaw":0.76,"pitch":0.2,"fov":70},
+  {"name":"cm-03-entrance","x":-456,"z":14,"eye":1.7,"yaw":-0.49,"pitch":0.3,"fov":70},
+  {"name":"cm-04-east-side","x":-385,"z":-62,"eye":1.7,"yaw":1.05,"pitch":0.28,"fov":70},
+  {"name":"cm-05-aerial","x":-400,"z":40,"eye":50,"yaw":0.5,"pitch":-0.55,"fov":70},
+  {"name":"fm-01-floating-mosque-from-the-walk","x":-175,"z":-250,"eye":1.7,"yaw":-1.14,"pitch":0.15,"fov":70},
+  {"name":"fm-02-floating-mosque-from-the-east","x":-40,"z":-262,"eye":1.7,"yaw":1.25,"pitch":0.2,"fov":70},
+  {"name":"fm-03-floating-mosque-aerial","x":-110,"z":-200,"eye":40,"yaw":0,"pitch":-0.5,"fov":70}
+]

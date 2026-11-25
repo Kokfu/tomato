@@ -9,6 +9,7 @@ import { buildSquareTower, SQUARE_TOWER_BUILDING } from './squareTower.ts';
 import { buildOldCourthouse, OLD_COURTHOUSE_BUILDING } from './oldCourthouse.ts';
 import { buildFloatingMosque, FLOATING_MOSQUE_BUILDING } from './floatingMosque.ts';
 import { buildCatColumn, buildPaifang } from './padungan.ts';
+import { buildCityMosque, CITY_MOSQUE_BUILDING } from './cityMosque.ts';
 import { CAT_COLUMN, PAIFANG_ID } from '../district/padungan.ts';
 import { m5Enabled } from '../district/m5.ts';
 
@@ -32,5 +33,6 @@ export function registerLandmarks(manager: LandmarkManager): void {
   if (m5Enabled()) {
     manager.register({ buildingIds: [], chunks: [CAT_COLUMN.key], landmarkId: 'cat-statue', build: buildCatColumn });
     manager.register({ buildingIds: [PAIFANG_ID], build: buildPaifang });
+    manager.register({ buildingIds: [CITY_MOSQUE_BUILDING], landmarkId: 'kuching-mosque', build: buildCityMosque });
   }
 }

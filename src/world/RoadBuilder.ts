@@ -12,6 +12,7 @@ import { buildPromenadePaving, ringRailing, ringRailingAt } from './district/Pro
 import { buildIndiaStreet } from './district/IndiaStreetMesh.ts';
 import { buildPlazaEntrance } from './district/PlazaMesh.ts';
 import { buildPadungan } from './district/PadunganMesh.ts';
+import { buildGraves } from './district/GravesMesh.ts';
 
 const UP = [0, 1, 0] as const;
 const tmpColor = new THREE.Color();
@@ -281,6 +282,8 @@ export function* buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBu
   if (high) buildPlazaEntrance(data, ctx, bufs[1], structure);
   // N1-M5 place 5: fascia boards, awnings and kapcai of the Jalan Padungan rows (district/PadunganMesh.ts).
   if (high) buildPadungan(data, ctx, structure);
+  // N1-M5 place 6: the graves of the cemetery beside the Kuching City Mosque (district/GravesMesh.ts).
+  if (high) buildGraves(data, ctx, structure);
   // Polygon decks (piers mapped as areas)
   for (const d of data.pdecks) {
     const y = d.h / QUANT;
