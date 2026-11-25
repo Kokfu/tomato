@@ -1,0 +1,388 @@
+{
+ "note": "Phone emulation (390x844, Low, 4x CPU), drive-bench A,B,C, cold + warm run each. One alternating pair: baseline (M0 build) then the M5b build (commit ede7761), with this session's dev server stopped. The scenarios drive round Jalan China: none passes through India Street (pedestrian) or along Jalan Gambier, so the pair shows that the rest of the game did not get slower, not the cost of standing in the new places (see chunks and tour).",
+ "bench": [
+  {
+   "name": "A stationary cold",
+   "baseline": {
+    "name": "A stationary cold",
+    "p95Ms": 69.8,
+    "medianMs": 40.6,
+    "avgFps": 23.6,
+    "worstMs": 125,
+    "over100": 1,
+    "over200": 0,
+    "maxCalls": 113,
+    "maxTrisK": 318,
+    "programs": [
+     99,
+     99
+    ],
+    "lateCompiles": []
+   },
+   "m5b": {
+    "name": "A stationary cold",
+    "p95Ms": 60.7,
+    "medianMs": 32.8,
+    "avgFps": 28.6,
+    "worstMs": 94.8,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 115,
+    "maxTrisK": 423,
+    "programs": [
+     59,
+     59
+    ],
+    "lateCompiles": []
+   },
+   "p95DeltaPct": -13
+  },
+  {
+   "name": "B Jalan China lane cold",
+   "baseline": {
+    "name": "B Jalan China lane cold",
+    "p95Ms": 71.6,
+    "medianMs": 34.5,
+    "avgFps": 26.7,
+    "worstMs": 203.9,
+    "over100": 3,
+    "over200": 1,
+    "maxCalls": 129,
+    "maxTrisK": 322,
+    "programs": [
+     99,
+     99
+    ],
+    "lateCompiles": []
+   },
+   "m5b": {
+    "name": "B Jalan China lane cold",
+    "p95Ms": 68.4,
+    "medianMs": 34.9,
+    "avgFps": 26.2,
+    "worstMs": 176.8,
+    "over100": 4,
+    "over200": 0,
+    "maxCalls": 131,
+    "maxTrisK": 429,
+    "programs": [
+     59,
+     59
+    ],
+    "lateCompiles": []
+   },
+   "p95DeltaPct": -4.5
+  },
+  {
+   "name": "C block loop cold",
+   "baseline": {
+    "name": "C block loop cold",
+    "p95Ms": 59.6,
+    "medianMs": 29.1,
+    "avgFps": 31.1,
+    "worstMs": 148.1,
+    "over100": 6,
+    "over200": 0,
+    "maxCalls": 150,
+    "maxTrisK": 349,
+    "programs": [
+     99,
+     99
+    ],
+    "lateCompiles": [
+     {
+      "dt": 63.4,
+      "t": 136561,
+      "at": [
+       237,
+       -58
+      ],
+      "programs": "lambert/highp/srgb",
+      "who": [],
+      "keys": [
+       "lambert,highp,srgb,false,,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,0,true,false,0,,1,0,0,0,1,0,0,0,0,0,0,2,6,0,0,0,1,131075,srgb,onBeforeCompile(){}"
+      ]
+     }
+    ]
+   },
+   "m5b": {
+    "name": "C block loop cold",
+    "p95Ms": 64.1,
+    "medianMs": 31.6,
+    "avgFps": 29,
+    "worstMs": 128.8,
+    "over100": 5,
+    "over200": 0,
+    "maxCalls": 155,
+    "maxTrisK": 476,
+    "programs": [
+     59,
+     59
+    ],
+    "lateCompiles": [
+     {
+      "dt": 57.2,
+      "t": 135857,
+      "at": [
+       236,
+       -58
+      ],
+      "programs": "lambert/highp/srgb",
+      "who": [],
+      "keys": [
+       "lambert,highp,srgb,false,,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,0,,false,0,,1,0,0,0,1,0,0,0,0,0,0,2,6,0,0,0,1,131075,srgb,onBeforeCompile(){}"
+      ]
+     }
+    ]
+   },
+   "p95DeltaPct": 7.6
+  },
+  {
+   "name": "A stationary warm1",
+   "baseline": {
+    "name": "A stationary warm1",
+    "p95Ms": 71.2,
+    "medianMs": 40.3,
+    "avgFps": 23.2,
+    "worstMs": 92.1,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 130,
+    "maxTrisK": 323,
+    "programs": [
+     99,
+     99
+    ],
+    "lateCompiles": []
+   },
+   "m5b": {
+    "name": "A stationary warm1",
+    "p95Ms": 58.5,
+    "medianMs": 34,
+    "avgFps": 28,
+    "worstMs": 88.5,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 135,
+    "maxTrisK": 433,
+    "programs": [
+     59,
+     59
+    ],
+    "lateCompiles": []
+   },
+   "p95DeltaPct": -17.8
+  },
+  {
+   "name": "B Jalan China lane warm1",
+   "baseline": {
+    "name": "B Jalan China lane warm1",
+    "p95Ms": 62.6,
+    "medianMs": 33.8,
+    "avgFps": 28.3,
+    "worstMs": 107.2,
+    "over100": 2,
+    "over200": 0,
+    "maxCalls": 141,
+    "maxTrisK": 326,
+    "programs": [
+     99,
+     99
+    ],
+    "lateCompiles": []
+   },
+   "m5b": {
+    "name": "B Jalan China lane warm1",
+    "p95Ms": 66.5,
+    "medianMs": 33.6,
+    "avgFps": 27.2,
+    "worstMs": 108.1,
+    "over100": 3,
+    "over200": 0,
+    "maxCalls": 146,
+    "maxTrisK": 437,
+    "programs": [
+     59,
+     59
+    ],
+    "lateCompiles": []
+   },
+   "p95DeltaPct": 6.2
+  },
+  {
+   "name": "C block loop warm1",
+   "baseline": {
+    "name": "C block loop warm1",
+    "p95Ms": 59.7,
+    "medianMs": 28.9,
+    "avgFps": 31.3,
+    "worstMs": 113.8,
+    "over100": 2,
+    "over200": 0,
+    "maxCalls": 150,
+    "maxTrisK": 353,
+    "programs": [
+     99,
+     99
+    ],
+    "lateCompiles": [
+     {
+      "dt": 51.2,
+      "t": 266765,
+      "at": [
+       236,
+       -58
+      ],
+      "programs": "lambert/highp/srgb",
+      "who": [],
+      "keys": [
+       "lambert,highp,srgb,false,,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,0,true,false,0,,1,0,0,0,1,0,0,0,0,0,0,2,6,0,0,0,1,131075,srgb,onBeforeCompile(){}"
+      ]
+     }
+    ]
+   },
+   "m5b": {
+    "name": "C block loop warm1",
+    "p95Ms": 62.4,
+    "medianMs": 36,
+    "avgFps": 26.4,
+    "worstMs": 110.2,
+    "over100": 5,
+    "over200": 0,
+    "maxCalls": 156,
+    "maxTrisK": 485,
+    "programs": [
+     59,
+     59
+    ],
+    "lateCompiles": [
+     {
+      "dt": 58.4,
+      "t": 265998,
+      "at": [
+       236,
+       -58
+      ],
+      "programs": "lambert/highp/srgb",
+      "who": [],
+      "keys": [
+       "lambert,highp,srgb,false,,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,0,,false,0,,1,0,0,0,1,0,0,0,0,0,0,2,6,0,0,0,1,131075,srgb,onBeforeCompile(){}"
+      ]
+     }
+    ]
+   },
+   "p95DeltaPct": 4.5
+  }
+ ],
+ "lateCompiles": {
+  "baseline": [
+   63.4,
+   51.2
+  ],
+  "m5b": [
+   57.2,
+   58.4
+  ],
+  "note": "ms; the one lambert program at (236, -58) on Main Bazaar that both builds compile late, cold and warm; none over 200 ms"
+ },
+ "startup": {
+  "note": "load-probe, desktop, 3 alternating runs, dev server stopped. interactiveMs = ready + two drawn frames.",
+  "baseline": {
+   "loadMs": [
+    5916,
+    6127,
+    5661
+   ],
+   "interactiveMs": [
+    7111,
+    7488,
+    7164
+   ],
+   "programs": 100
+  },
+  "m5b": {
+   "loadMs": [
+    4500,
+    4530,
+    4632
+   ],
+   "interactiveMs": [
+    5180,
+    5160,
+    4797
+   ],
+   "programs": 66
+  },
+  "readyMedianVsBaseline": "-23 %",
+  "interactiveMedianVsBaseline": "-28 %"
+ },
+ "chunks": {
+  "note": "triangles / meshes read in the running dev build at Medium: before (?m5=0), after place 2 (M5a), after place 3, after place 4",
+  "-1_-1": {
+   "m4": [
+    27480,
+    21
+   ],
+   "place3": [
+    46420,
+    21
+   ],
+   "place4": [
+    46646,
+    21
+   ]
+  },
+  "0_-1": {
+   "m4": [
+    82175,
+    27
+   ],
+   "m5a": [
+    91579,
+    27
+   ],
+   "place4": [
+    94366,
+    27
+   ]
+  },
+  "squareTowerModel": [
+   530,
+   744
+  ],
+  "oldCourthouseModel": [
+   508,
+   3081
+  ]
+ },
+ "tour": {
+  "desktop": {
+   "fpsMedian": 60,
+   "fpsMin": 58,
+   "triangles14": 6271383,
+   "drawCalls14": 2754,
+   "m5a": [
+    6349274,
+    2738
+   ]
+  },
+  "phone": {
+   "triangles14": 2640480,
+   "drawCalls14": 965,
+   "m5a": [
+    2575262,
+    965
+   ]
+  }
+ },
+ "placeViews": {
+  "note": "desktop fps in the 17 fixed place cameras (Medium, 1280x720), before and after",
+  "min": 59.5,
+  "median": 60
+ },
+ "tests": {
+  "unit": "264 / 264 (10 new)",
+  "e2eDesktop1920": "m5-plaza, m5-india, m5-waterfront, landmarks, district, gameplay, shader-prep: 24 passed (10.1 min), at the commit of place 4",
+  "notRun": "driving, gps, touch-drive (not in the brief for this part)"
+ }
+}
