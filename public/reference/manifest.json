@@ -1,5 +1,5 @@
 {
-  "note": "Reference photographs for the OP-mode comparison panel. Each file is redistributed under its own licence with attribution; 1280 px copies, otherwise unmodified. Loaded only when the panel is opened.",
+  "note": "Reference photographs for the OP-mode comparison panel. Each file is redistributed under its own licence with attribution; downscaled copies (1280 px for Jalan China, 960 px for the N1-M5 places), otherwise unmodified. Loaded only when the panel is opened. `consulted` lists photographs that informed a place and are not shipped.",
   "images": [
     {
       "file": "jalan-china-a-17155538163.jpg",
@@ -9,7 +9,18 @@
       "source": "https://commons.wikimedia.org/wiki/File:Kuching_City_(17155538163).jpg",
       "note": "Standpoint and lens estimated, not surveyed.",
       "approx": true,
-      "view": { "name": "01-along-street", "x": 156.57, "y": 9.55, "z": 17.22, "lat": 0, "lon": 0, "yaw": -0.588, "pitch": 0.15, "fov": 55, "mode": "c" }
+      "view": {
+        "name": "01-along-street",
+        "x": 156.57,
+        "y": 9.55,
+        "z": 17.22,
+        "lat": 0,
+        "lon": 0,
+        "yaw": -0.588,
+        "pitch": 0.15,
+        "fov": 55,
+        "mode": "c"
+      }
     },
     {
       "file": "jalan-china-b-17776339811.jpg",
@@ -28,6 +39,59 @@
       "source": "https://commons.wikimedia.org/wiki/File:Kuching_City_(17588324240).jpg",
       "note": "Corner buildings; outside the rebuilt rows.",
       "approx": true
+    },
+    {
+      "file": "main-bazaar-five-foot-way.jpg",
+      "title": "[M5-1] Main Bazaar: a five-foot way (painted round arches, tiled floor, chick blind)",
+      "author": "chipmunk_1",
+      "license": "CC BY-SA 2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:A_five_foot_way_in_Kuching,_Sarawak.jpg",
+      "note": "Which lot it shows is not known: used for the form of the arcade only. Standpoint estimated.",
+      "approx": true
+    },
+    {
+      "file": "main-bazaar-arcade.jpg",
+      "title": "[M5-1] Main Bazaar: looking along the arcade (plastered arches, carved timber fascia, stalls)",
+      "author": "Matthias Bethke",
+      "license": "CC BY-SA 4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:010984_Kuching_(Borneo).jpg",
+      "note": "Which lot it shows is not known: used for the form of the arcade only.",
+      "approx": true
+    },
+    {
+      "file": "waterfront-east-end.jpg",
+      "title": "[M5-1] Kuching Waterfront from a hotel at its east end (palms, rain trees, a riverside pavilion, the far bank)",
+      "author": "Bernard DUPONT",
+      "license": "CC BY-SA 2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Kuching_Waterfront_(15811151426).jpg",
+      "note": "Elevated view, about 25 m up, looking north-north-east: compare the tree cover and the bank, not the walk itself.",
+      "approx": true
+    }
+  ],
+  "consulted": [
+    {
+      "title": "The Waterfront, Kuching, Sarawak",
+      "author": "Fabio Achilli from Milano, Italy",
+      "license": "CC BY 2.0",
+      "date": "2018-08-12",
+      "source": "https://commons.wikimedia.org/wiki/File:The_Waterfront,_Kuching,_Sarawak.jpg",
+      "used_for": "N1-M5 place 1: promenade paving, railing with ring panels, lamp posts (as read by the V3 review)"
+    },
+    {
+      "title": "Kuching Waterfront (17586892988)",
+      "author": "Marufish from Alor Setar, Malaysia",
+      "license": "CC BY-SA 2.0",
+      "date": "2015-05-13",
+      "source": "https://commons.wikimedia.org/wiki/File:Kuching_Waterfront_(17586892988).jpg",
+      "used_for": "N1-M5 place 1: promenade, benches, trees (as read by the V3 review)"
+    },
+    {
+      "title": "Kuching Waterfront - Flickr - Dustin Iskandar",
+      "author": "Dustin Iskandar from Kuching, Malaysia",
+      "license": "CC BY 2.0",
+      "date": "2014-06-26",
+      "source": "https://commons.wikimedia.org/wiki/File:Kuching_Waterfront_-_Flickr_-_Dustin_Iskandar.jpg",
+      "used_for": "N1-M5 place 1: festoon lights along the walk (as read by the V3 review)"
     }
   ]
 }

@@ -97,6 +97,18 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   a minor street meets a junction, a crossing sign at mapped crossings, "BAS" at bus stops. No sign names a place.
 - On the Low preset: no sign plates, no slab joints, no edge lines, no kerbs on service roads.
 
+## Hero places (N1-M5)
+
+- **Kuching Waterfront promenade.** Real: the bank line the railing follows and the Square Tower outline. Seen in
+  licensed photographs (form only): a paved riverside walk, a dark cast-iron railing whose panels carry rings, lamp posts
+  with festoon lights between them, benches, palms and rain trees. **Inferred:** the 9 m width of the paved walk, its
+  colours and bay spacing, the ring medallions that stand in for the real swirl mosaics, every railing dimension, and the
+  position of every lamp, bench, palm, bin and festoon. The tensile canopies and food kiosks of the real walk are not
+  built: small mapped and machine-detected footprints there are still generic kiosks. The Square Tower's paved apron,
+  corner lamps and benches are generic; the tower's own form is unchanged (hero place 4).
+- **Main Bazaar.** All 71 lots stay Approximate: no licensed photograph shows the frontage lot by lot. The kapcai
+  motorbikes in empty kerb bays are typical of the street, not counted or surveyed.
+
 ## Gameplay
 
 - Collision uses building footprints as infinitely tall walls up to the roof line; interiors are

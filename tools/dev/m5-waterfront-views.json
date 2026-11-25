@@ -1,0 +1,10 @@
+[
+  {"name":"wf-01-promenade-west","x":214,"z":-121,"eye":1.7,"yaw":0.85,"pitch":0.0,"fov":70},
+  {"name":"wf-02-promenade-east","x":124,"z":-233,"eye":1.7,"yaw":-2.399,"pitch":0.02,"fov":70},
+  {"name":"wf-03-railing-close","x":196,"z":-166,"eye":1.6,"yaw":-0.2,"pitch":-0.12,"fov":65},
+  {"name":"wf-04-square-tower","x":119,"z":-221,"eye":1.7,"yaw":2.937,"pitch":0.1,"fov":70},
+  {"name":"wf-05-main-bazaar-kerb","x":262,"z":-40.5,"eye":1.7,"yaw":0.95,"pitch":0.02,"fov":70},
+  {"name":"wf-06-frontage-from-walk","x":200,"z":-105,"eye":1.7,"yaw":2.534,"pitch":0.03,"fov":75},
+  {"name":"wf-07-east-promenade","x":440,"z":25,"eye":1.7,"yaw":1.02,"pitch":0.02,"fov":70},
+  {"name":"wf-08-aerial","x":230,"z":-40,"eye":80,"yaw":0.608,"pitch":-0.7,"fov":70}
+]

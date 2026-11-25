@@ -11,10 +11,13 @@ import { CHUNK_SIZE, QUANT } from '../config.ts';
 import type { ChunkData } from '../types.ts';
 import { ROAD_TYPES } from '../types.ts';
 import { MB_CARRIAGEWAY, MB_LINE, MB_NORTH, lineLength, pointAt, stationOf } from './mainBazaar.ts';
+import { m5Enabled } from './m5.ts';
+import { TOWER_APRON, offsetRing, squareTowerRing } from './promenade.ts';
 
 const HALF = MB_CARRIAGEWAY / 2;
 
-export const PROP = { car: 0, rainTree: 1, planter: 2, medianLamp: 3, globeLamp: 4, bench: 5, boat: 6, bollard: 7 } as const;
+/** N1-M5 adds festoon (a string of lights from this lamp to the next: tx, tz hold the whole span), palm, bin and kapcai. */
+export const PROP = { car: 0, rainTree: 1, planter: 2, medianLamp: 3, globeLamp: 4, bench: 5, boat: 6, bollard: 7, festoon: 8, palm: 9, bin: 10, kapcai: 11 } as const;
 
 export interface Prop {
   kind: number;
@@ -36,6 +39,9 @@ export function propSize(p: Prop): { ha: number; hb: number; h: number } | null 
     case PROP.globeLamp: return { ha: 0.14, hb: 0.14, h: 4 };
     case PROP.bench: return { ha: 0.85, hb: 0.3, h: 0.9 };
     case PROP.bollard: return { ha: 0.14, hb: 0.14, h: 0.9 };
+    case PROP.palm: return { ha: 0.2, hb: 0.2, h: 5 };
+    case PROP.bin: return { ha: 0.28, hb: 0.28, h: 1 };
+    case PROP.kapcai: return { ha: 0.92, hb: 0.3, h: 1.1 };
     default: return null;
   }
 }
@@ -72,10 +78,11 @@ export function medianRuns(): MedianNode[][] {
   return (medianCache = runs);
 }
 
-let cache: Prop[] | null = null;
+const cache = new Map<boolean, Prop[]>();
 /** District-wide props that do not depend on chunk data. */
 function staticProps(): Prop[] {
-  if (cache) return cache;
+  const m5 = m5Enabled(), hit = cache.get(m5);
+  if (hit) return hit;
   const out: Prop[] = [];
   const L = lineLength(MB_LINE);
   // Kerbside parking in front of the shophouses.
@@ -86,6 +93,13 @@ function staticProps(): Prop[] {
       const p = pointAt(MB_LINE, s);
       const dir = 1; // one-way, traffic runs west to east on the shophouse side (decorative assumption)
       out.push({ kind: PROP.car, x: p.x - p.tz * (HALF - 1.02), z: p.z + p.tx * (HALF - 1.02), tx: p.tx * dir, tz: p.tz * dir, v: h });
+    } else if (m5 && !nearJunction(s, 11)) {
+      // N1-M5: an empty bay holds a row of kapcai motorbikes, nose to the kerb (typical of the street; none is surveyed)
+      const p = pointAt(MB_LINE, s);
+      for (let k = 0, n = 2 + (h >>> 12) % 3; k < n; k++) {
+        const a = -1.3 + k * 0.85, lean = (((h >>> (16 + k)) & 3) - 1.5) * 0.06;
+        out.push({ kind: PROP.kapcai, x: p.x + p.tx * a - p.tz * (HALF - 0.95), z: p.z + p.tz * a + p.tx * (HALF - 0.95), tx: -p.tz + p.tx * lean, tz: p.tx + p.tz * lean, v: hash(i, 60 + k) });
+      }
     }
     s += len + 1.3 + (h >>> 8) % 3 * 0.5;
   }
@@ -103,7 +117,8 @@ function staticProps(): Prop[] {
     const off = HALF + 5.4 + (hash(i, 9) % 3) * 0.6;
     out.push({ kind: PROP.rainTree, x: p.x + p.tz * off, z: p.z - p.tx * off, tx: p.tx, tz: p.tz, v: hash(i, 21) });
   }
-  return (cache = out);
+  cache.set(m5, out);
+  return out;
 }
 
 function pointInRing(x: number, z: number, r: ArrayLike<number>): boolean {
@@ -128,7 +143,7 @@ function distToRing(x: number, z: number, r: ArrayLike<number>): number {
 const propCache = new Map<string, Prop[]>();
 /** Props standing in one chunk (world coordinates), with anything on a building, road or water removed. */
 export function chunkProps(data: ChunkData): Prop[] {
-  const key = `${data.cx}_${data.cz}`;
+  const m5 = m5Enabled(), key = `${data.cx}_${data.cz}${m5 ? '+' : ''}`;
   const hit = propCache.get(key);
   if (hit) return hit;
   const ox = data.cx * CHUNK_SIZE, oz = data.cz * CHUNK_SIZE;
@@ -158,6 +173,7 @@ export function chunkProps(data: ChunkData): Prop[] {
   let n = 0;
   for (const rail of data.rail ?? []) {
     let carry = 5;
+    let lastLamp: { x: number; z: number; n: number } | null = null;
     for (let i = 2; i < rail.length; i += 2) {
       const ax = ox + rail[i - 2] / QUANT, az = oz + rail[i - 1] / QUANT, bx = ox + rail[i] / QUANT, bz = oz + rail[i + 1] / QUANT;
       const len = Math.hypot(bx - ax, bz - az);
@@ -170,16 +186,36 @@ export function chunkProps(data: ChunkData): Prop[] {
       for (let s = carry; s < len; s += 5.5, n++) {
         const px = ax + tx * s, pz = az + tz * s;
         if (stationOf(px, pz).d > 120) continue;
-        const place = (kind: number, off: number, pad: number, fx = nx, fz = nz) => {
+        const place = (kind: number, off: number, pad: number, fx = nx, fz = nz): boolean => {
           const x = px + nx * off, z = pz + nz * off;
-          if (!inChunk(x, z) || inWater(x, z) || nearBuilding(x, z, pad) || onRoad(x, z, 0.8)) return;
+          if (!inChunk(x, z) || inWater(x, z) || nearBuilding(x, z, pad) || onRoad(x, z, 0.8)) return false;
           out.push({ kind, x, z, tx: fx, tz: fz, v: hash(n, kind) });
+          return true;
         };
-        if (n % 2 === 0) place(PROP.globeLamp, 1.0, 0.6);
+        if (n % 2 === 0 && place(PROP.globeLamp, 1.0, 0.6) && m5) {
+          // N1-M5: festoon lights from the previous lamp of this line to this one (span kept in tx, tz)
+          const x = px + nx, z = pz + nz;
+          if (lastLamp && lastLamp.n === n - 2 && Math.hypot(x - lastLamp.x, z - lastLamp.z) < 13) out.push({ kind: PROP.festoon, x: lastLamp.x, z: lastLamp.z, tx: x - lastLamp.x, tz: z - lastLamp.z, v: hash(n, 77) });
+          lastLamp = { x, z, n };
+        }
+        // palms stand in pairs clear of the rain trees, which then come every sixth step instead of every third
+        if (m5 && (n % 6 === 2 || n % 6 === 3)) place(PROP.palm, 4.4, 1.5);
+        if (m5 && n % 8 === 5) place(PROP.bin, 1.5, 0.6);
         if (n % 4 === 1) place(PROP.bench, 2.4, 1.2, tx, tz);
-        if (n % 3 === 2) place(PROP.rainTree, 8.5 + (hash(n, 3) % 4), 3);
+        if (n % 3 === 2 && !(m5 && n % 6 === 2)) place(PROP.rainTree, 8.5 + (hash(n, 3) % 4), 3);
       }
       carry = (carry + Math.ceil(Math.max(0, len - carry) / 5.5) * 5.5) - len;
+    }
+  }
+  // N1-M5 Square Tower forecourt: globe lamps at the corners of the paved apron and a bench on each long side (generic).
+  const tower = m5 ? squareTowerRing(data) : null;
+  if (tower) {
+    const ring = offsetRing(tower, TOWER_APRON + 0.7), m = ring.length / 2;
+    for (let i = 0; i < m; i++) {
+      const j = (i + 1) % m, ax = ring[i * 2], az = ring[i * 2 + 1], bx = ring[j * 2], bz = ring[j * 2 + 1], l = Math.hypot(bx - ax, bz - az) || 1;
+      if (!inWater(ax, az) && !onRoad(ax, az, 0.8)) out.push({ kind: PROP.globeLamp, x: ax, z: az, tx: (bx - ax) / l, tz: (bz - az) / l, v: hash(i, 91) });
+      const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+      if (l > 9 && !inWater(mx, mz) && !onRoad(mx, mz, 0.8)) out.push({ kind: PROP.bench, x: mx, z: mz, tx: (bx - ax) / l, tz: (bz - az) / l, v: hash(i, 92) });
     }
   }
   // Tambang boats moored at the mapped jetties.

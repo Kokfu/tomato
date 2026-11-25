@@ -19,6 +19,7 @@ mkdirSync(outDir, { recursive: true });
 
 const browser = await chromium.launch({ channel: 'msedge', args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: mobile, isMobile: mobile, deviceScaleFactor: mobile ? 2 : 1 });
+await ctx.addInitScript(() => { try { if (!localStorage.getItem('k3d.character')) localStorage.setItem('k3d.character', 'man'); } catch { /* ignore */ } }); // N1-M1: skip the first-launch character picker
 const page = await ctx.newPage();
 const errors: string[] = [];
 let bytes = 0;
@@ -60,7 +61,7 @@ for (const v of views) {
   await page.waitForTimeout(2500);
   await page.evaluate(() => (window as any).__k3d.camera.updateProjectionMatrix());
   await page.waitForTimeout(300);
-  await page.screenshot({ path: `${outDir}/${prefix}${v.name}.png` });
+  await page.screenshot(rest.includes('--jpeg') ? { path: `${outDir}/${prefix}${v.name}.jpg`, type: 'jpeg', quality: 85 } : { path: `${outDir}/${prefix}${v.name}.png` });
   const info = await page.evaluate(() => {
     const k = (window as any).__k3d, r = k.renderer.info;
     return { fps: +k.fps.toFixed(1), calls: r.render.calls, tris: r.render.triangles, geometries: r.memory.geometries, textures: r.memory.textures, chunks: k.world.chunks.loadedCount, heapMB: Math.round(((performance as any).memory?.usedJSHeapSize ?? 0) / 1048576), v5: k.v5?.mode !== 'v4' ? k.v5?.measure?.() : undefined };

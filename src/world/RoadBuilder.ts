@@ -6,6 +6,9 @@ import { ROAD_TYPES, ROAD_STYLE } from './types.ts';
 import { GeoBuf } from './Materials.ts';
 import type { BuildContext } from './ChunkManager.ts';
 import { streetEdges, laneMarkings, stopLine } from './StreetEdges.ts';
+import { m5Enabled } from './district/m5.ts';
+import { stationOfChunk } from './district/props.ts';
+import { buildPromenadePaving, ringRailing, ringRailingAt } from './district/PromenadeMesh.ts';
 
 const UP = [0, 1, 0] as const;
 const tmpColor = new THREE.Color();
@@ -267,6 +270,8 @@ export function* buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBu
       }
     }
   }
+  // N1-M5: the paved riverside walk of the Kuching Waterfront and the Square Tower apron (district/PromenadeMesh.ts).
+  if (high && m5Enabled() && stationOfChunk(data)) buildPromenadePaving(data, ctx, bufs[1]);
   // Polygon decks (piers mapped as areas)
   for (const d of data.pdecks) {
     const y = d.h / QUANT;
@@ -304,7 +309,20 @@ export function buildShore(data: ChunkData, ctx: BuildContext, structure: GeoBuf
   }
   if (ctx.detail !== 'high') return;
   // Promenade railing on the stretches of river bank flagged by the streetscape pass.
+  // N1-M5: within reach of Main Bazaar the bank carries the Waterfront's ring-panel railing instead.
+  const lines: number[][] = [];
   for (const line of data.rail ?? []) {
+    if (!(m5Enabled() && stationOfChunk(data))) { lines.push(line); continue; }
+    let run: number[] = [], kind = false;
+    for (let i = 2; i < line.length; i += 2) {
+      const ring = ringRailingAt(ox + (line[i - 2] + line[i]) / 2 / QUANT, oz + (line[i - 1] + line[i + 1]) / 2 / QUANT);
+      if (run.length && ring !== kind) { if (kind) ringRailing(structure, run, (x, z) => ctx.height.sample(ox + x, oz + z), ctx.quality.name !== 'low'); else lines.push(run); run = []; }
+      if (!run.length) run.push(line[i - 2], line[i - 1]);
+      run.push(line[i], line[i + 1]); kind = ring;
+    }
+    if (run.length) { if (kind) ringRailing(structure, run, (x, z) => ctx.height.sample(ox + x, oz + z), ctx.quality.name !== 'low'); else lines.push(run); }
+  }
+  for (const line of lines) {
     let acc = 0, next = 0;
     for (let i = 2; i < line.length; i += 2) {
       const ax = line[i - 2] / QUANT, az = line[i - 1] / QUANT, bx = line[i] / QUANT, bz = line[i + 1] / QUANT;

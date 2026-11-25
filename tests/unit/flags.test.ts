@@ -44,7 +44,7 @@ test('the result is frozen; getFlags reads location once; no location means all 
   const had = g.location;
   delete g.location;
   resetFlags();
-  assert.deepEqual({ ...getFlags() }, { v9: false, ux1: false, c1: false, char: false, lab: false });
+  assert.deepEqual({ ...getFlags() }, { v9: false, ux1: false, c1: false, char: false, m5: false, lab: false });
   g.location = { search: '' };
   assert.equal(getFlags().v9, false, 'cached until reset');
   resetFlags();

@@ -183,6 +183,46 @@ function boat(f: Fr, v: number): void {
   f.poly([[-2.2, W + 0.05, 1.5], [1.8, W + 0.05, 1.5], [1.8, 0, 1.78], [-2.2, 0, 1.78]], red);
 }
 
+const BIKE_PAINT = [0xb3261e, 0x1f4f9a, 0x1b1c1e, 0xe9e6dc, 0x1c7a4a, 0xd9a520];
+
+/** N1-M5 kapcai (underbone motorbike), long axis forward. Generic form. */
+function kapcai(f: Fr, v: number): void {
+  const paint = new THREE.Color(BIKE_PAINT[v % BIKE_PAINT.length]), dark = new THREE.Color(0x17181a), steel = new THREE.Color(0x8a8f93);
+  f.wheel(-0.62, -0.045, 0.045, 0.28, dark); f.wheel(0.62, -0.045, 0.045, 0.28, dark);
+  f.box(-0.55, 0.12, -0.13, 0.13, 0.4, 0.7, paint);                       // body under the seat
+  f.box(-0.52, 0.05, -0.12, 0.12, 0.7, 0.77, dark);                       // seat
+  f.box(-0.84, -0.5, -0.09, 0.09, 0.6, 0.68, paint);                      // tail
+  f.box(-0.9, -0.62, -0.14, 0.14, 0.68, 0.71, steel);                     // rack
+  f.box(0.12, 0.3, -0.07, 0.07, 0.3, 0.42, dark);                         // step-through floor and engine
+  f.poly([[0.28, -0.2, 0.34], [0.28, 0.2, 0.34], [0.44, 0.16, 0.9], [0.44, -0.16, 0.9]], paint); // leg shield
+  f.box(0.5, 0.56, -0.035, 0.035, 0.28, 0.92, steel);                     // fork
+  f.box(0.42, 0.54, -0.1, 0.1, 0.86, 1.0, paint);                         // headlamp cowl
+  f.box(0.4, 0.45, -0.31, 0.31, 1.0, 1.04, dark);                         // handlebar
+  f.poly([[0.545, -0.07, 0.89], [0.545, 0.07, 0.89], [0.545, 0.07, 0.98], [0.545, -0.07, 0.98]], c.setRGB(0.95, 0.93, 0.82));
+}
+
+/** N1-M5 palm on the river bank: ringed trunk and a crown of arching fronds (generic form). */
+function palm(f: Fr, v: number): void {
+  const H = 5.6 + (v % 5) * 0.4, lean = ((v >>> 4) % 5 - 2) * 0.09;
+  const bark = new THREE.Color(0x8a7a66);
+  // a gently curved trunk in four straight pieces that share their joints
+  const bend = (t: number) => lean * 5 * t * t, top = bend(1);
+  for (let k = 0; k < 4; k++) {
+    const t0 = k / 4, t1 = (k + 1) / 4, p0 = f.p(bend(t0), 0, H * t0 - (k ? 0 : 0.15)), p1 = f.p(bend(t1), 0, H * t1);
+    limb(f.buf, new THREE.Vector3(...p0), new THREE.Vector3(...p1), 0.17 - k * 0.018, 0.152 - k * 0.018, bark);
+  }
+  const N = 9;
+  for (let i = 0; i < N; i++) {
+    const u = (i / N) * Math.PI * 2 + (v % 7) * 0.4, cu = Math.cos(u), su = Math.sin(u), droop = 0.25 + (((v >>> (i + 3)) & 3) * 0.12);
+    const g = new THREE.Color().setHSL(0.27 + ((v >>> i) & 3) * 0.008, 0.5, 0.2 + ((v >>> (i + 1)) & 3) * 0.02);
+    const P = (r: number, l: number, h: number): [number, number, number] => [top + cu * r - su * l, su * r + cu * l, H + h];
+    f.poly([P(0.1, -0.2, 0), P(0.1, 0.2, 0), P(1.5, 0.42, 0.7), P(1.5, -0.42, 0.7)], g);
+    f.poly([P(1.5, -0.42, 0.7), P(1.5, 0.42, 0.7), P(2.7, 0.3, 0.35 - droop), P(2.7, -0.3, 0.35 - droop)], c.copy(g).multiplyScalar(0.9));
+    f.poly([P(2.7, -0.3, 0.35 - droop), P(2.7, 0.3, 0.35 - droop), P(3.5, 0, -0.5 - droop * 2)], c.copy(g).multiplyScalar(0.8));
+  }
+  f.cyl(top, 0, H - 0.35, H + 0.15, 0.2, 0.26, 6, c.setHSL(0.24, 0.45, 0.24));
+}
+
 /** Black-and-white striped kerb along a polyline of [x, z] points (chunk-local), facing side `sgn`. */
 function kerb(buf: GeoBuf, pts: [number, number][], h: (x: number, z: number) => number, top: number, phase: number): void {
   let acc = phase;
@@ -217,11 +257,29 @@ export function buildDressing(data: ChunkData, ctx: BuildContext): THREE.Object3
   }
   function drawProp(p: Prop): void {
     const lx = p.x - ox, lz = p.z - oz, y = p.kind === PROP.boat ? WATER_LEVEL + 0.05 : H(lx, lz);
+    if (p.kind === PROP.festoon) {
+      // N1-M5: a wire with small lamps slung from one promenade lamp post to the next (tx, tz = the span)
+      const L = Math.hypot(p.tx, p.tz), ux = p.tx / L, uz = p.tz / L, y1 = H(lx + p.tx, lz + p.tz), N = 12;
+      const w = new Fr(solid, lx, 0, lz, ux, uz), g = new Fr(glow, lx, 0, lz, ux, uz), wire = new THREE.Color(0x1b1c1e), bulb = new THREE.Color(1.5, 1.35, 0.95);
+      const at = (i: number): [number, number] => { const t = i / N; return [L * t, y + (y1 - y) * t + 3.52 - 0.45 * 4 * t * (1 - t)]; };
+      for (let i = 0; i < N; i++) {
+        const [a0, h0] = at(i), [a1, h1] = at(i + 1);
+        w.poly([[a0, 0, h0], [a1, 0, h1], [a1, 0, h1 + 0.016], [a0, 0, h0 + 0.016]], wire);
+        if (i > 0) { g.poly([[a0 - 0.035, 0, h0 - 0.09], [a0 + 0.035, 0, h0 - 0.09], [a0 + 0.035, 0, h0 - 0.005], [a0 - 0.035, 0, h0 - 0.005]], bulb); g.poly([[a0, -0.035, h0 - 0.09], [a0, 0.035, h0 - 0.09], [a0, 0.035, h0 - 0.005], [a0, -0.035, h0 - 0.005]], bulb); }
+      }
+      return;
+    }
     const f = new Fr(solid, lx, y, lz, p.tx, p.tz);
     switch (p.kind) {
       case PROP.car: car(f, p.v); break;
       case PROP.rainTree: rainTree(solid, leaf, lx, y, lz, p.v); break;
       case PROP.boat: boat(f, p.v); break;
+      case PROP.kapcai: kapcai(f, p.v); break;
+      case PROP.palm: palm(f, p.v); break;
+      case PROP.bin:
+        f.cyl(0, 0, 0, 0.82, 0.22, 0.26, 8, c.setRGB(0.07, 0.22, 0.13), false);
+        f.cyl(0, 0, 0.82, 0.9, 0.28, 0.24, 8, c.setRGB(0.05, 0.09, 0.07));
+        break;
       case PROP.planter:
         f.cyl(0, 0, 0.12, 0.55, 0.24, 0.32, 8, c.setRGB(0.1, 0.1, 0.1));
         blob(leaf, lx, y + 0.8, lz, 0.4, 0.34, 0.4, c.setHSL(0.3, 0.5, 0.24), p.v);
