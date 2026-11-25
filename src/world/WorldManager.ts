@@ -10,23 +10,31 @@ import type { Quality } from '../ui/GraphicsSettings.ts';
 import { PlaceIndex } from './places/PlaceIndex.ts';
 import { LandmarkModels } from './landmarks/LandmarkModels.ts';
 import type { LandmarkSite } from './landmarks/LandmarkModels.ts';
+import { Haze, KUCHING_LAT, solarDeclination, sunDirection } from './atmosphere.ts';
+import { loadGroundTextures } from './GroundTextures.ts';
+import type { GroundTextures } from './GroundTextures.ts';
 
 export type TimeOfDay = 'day' | 'evening';
+
+/** Humid air: exponential-squared haze density per metre, the same on every preset (docs/night/refs/STYLE_GUIDE.md, section 3). */
+const HAZE_DENSITY = 0.0012;
+/** The sun stands where it does over Kuching (1.56 N) on 15 April, when it passes just north of the zenith. */
+const SUN_DECLINATION = solarDeclination(105);
 
 /** Lighting presets. Sun directions point from the ground toward the sun (+X east, -Z north). */
 const TIMES: Record<TimeOfDay, {
   sunDir: [number, number, number]; sun: number; sunIntensity: number; skyLight: number; groundLight: number; hemiIntensity: number;
   horizon: number; zenith: number; fog: number; exposure: number; cloud: number; water: number; lampGlow: number;
 }> = {
-  // Mid-morning: the sun stands in the north-east, so the river-facing Main Bazaar fronts are lit.
+  // 09:40 solar time: the sun is 54 degrees up, a little north of east, so the river-facing Main Bazaar fronts catch it.
   day: {
-    sunDir: [0.52, 0.7, -0.49], sun: 0xfff1dc, sunIntensity: 2.45, skyLight: 0xcfe0f2, groundLight: 0x9a9078, hemiIntensity: 1.3,
-    horizon: 0xcfdde4, zenith: 0x3f82c8, fog: 0xc9d8e0, exposure: 1.0, cloud: 0xffffff, water: 0xa9c4d6, lampGlow: 0x9a9a96,
+    sunDir: sunDirection(KUCHING_LAT, SUN_DECLINATION, 9 + 40 / 60), sun: 0xfff1dc, sunIntensity: 2.45, skyLight: 0xcfe0f2, groundLight: 0x9a9078, hemiIntensity: 1.3,
+    horizon: 0xcfdde4, zenith: 0x4a8ace, fog: 0xcfdde4, exposure: 1.0, cloud: 0xffffff, water: 0xa9c4d6, lampGlow: 0x9a9a96,
   },
-  // Shortly before sunset: low warm sun in the west, long shadows, lamps lit.
+  // 17:15 solar time, 11 degrees above the western horizon: long shadows, lamps lit (dusk is short on the equator).
   evening: {
-    sunDir: [-0.86, 0.2, -0.24], sun: 0xffb070, sunIntensity: 2.2, skyLight: 0xb9b4d6, groundLight: 0x8a7462, hemiIntensity: 1.7,
-    horizon: 0xf2b98a, zenith: 0x33508f, fog: 0xd9b59a, exposure: 1.2, cloud: 0xffd2b0, water: 0xd9a988, lampGlow: 0xffe2a8,
+    sunDir: sunDirection(KUCHING_LAT, SUN_DECLINATION, 17.25), sun: 0xffb070, sunIntensity: 2.2, skyLight: 0xb9b4d6, groundLight: 0x8a7462, hemiIntensity: 1.7,
+    horizon: 0xe9b993, zenith: 0x33508f, fog: 0xe9b993, exposure: 1.2, cloud: 0xffd2b0, water: 0xd9a988, lampGlow: 0xffe2a8,
   },
 };
 
@@ -54,7 +62,9 @@ const SKY_FRAG = /* glsl */ `
   void main() {
     vec3 d = normalize(vDir);
     float h = max(d.y, 0.0);
-    vec3 col = mix(uHorizon, uZenith, 1.0 - exp(-h * 3.4));
+    // Equatorial humidity: the lowest part of the dome is pure haze, then the blue comes in slowly.
+    float up = 1.0 - exp(-h * 2.6);
+    vec3 col = mix(uHorizon, uZenith, up * up * (3.0 - 2.0 * up));
     float s = max(dot(d, uSunDir), 0.0);
     col += uSunCol * (pow(s, 6.0) * 0.16 * exp(-h * 2.0) + pow(s, 64.0) * 0.25 + pow(s, 1400.0) * 6.0);
     if (d.y > 0.01) {
@@ -63,7 +73,7 @@ const SKY_FRAG = /* glsl */ `
       float cover = smoothstep(0.5, 0.78, c);
       float lit = 0.72 + 0.28 * smoothstep(0.5, 0.9, c) + 0.25 * pow(s, 4.0);
       vec3 cc = mix(uHorizon, uCloud, 0.8) * lit;
-      col = mix(col, cc, cover * 0.85 * smoothstep(0.01, 0.16, d.y));
+      col = mix(col, cc, cover * 0.85 * smoothstep(0.03, 0.24, d.y));
     }
     col = mix(col, uHorizon, step(d.y, 0.0));
     gl_FragColor = vec4(col, 1.0);
@@ -106,16 +116,16 @@ export class WorldManager {
       fetch(`${base}landmark-sites.json`).then((r) => r.json() as Promise<{ sites: LandmarkSite[] }>).then((j) => j.sites).catch(() => [] as LandmarkSite[]),
     ]);
     const places = new PlaceIndex();
-    await places.load();
-    return new WorldManager(manifest, new Int16Array(hbuf), landmarks, quality, places, sites);
+    const [ground] = await Promise.all([loadGroundTextures(import.meta.env.BASE_URL), places.load()]);
+    return new WorldManager(manifest, new Int16Array(hbuf), landmarks, quality, places, sites, ground);
   }
 
-  constructor(manifest: Manifest, heights: Int16Array, landmarks: Landmark[], quality: Quality, places = new PlaceIndex(), sites: LandmarkSite[] = []) {
+  constructor(manifest: Manifest, heights: Int16Array, landmarks: Landmark[], quality: Quality, places = new PlaceIndex(), sites: LandmarkSite[] = [], ground?: GroundTextures) {
     this.manifest = manifest;
     this.quality = quality;
     this.height = new HeightMap(manifest.height, heights);
     this.collision = new CollisionWorld(this.height);
-    this.materials = new Materials(this.scene, this.sunDir, quality.name === 'low');
+    this.materials = new Materials(this.scene, this.sunDir, quality.name === 'low', ground);
     this.landmarks = new LandmarkManager();
     this.landmarks.setLandmarks(landmarks);
     this.collision.setLandmarkSites(sites);
@@ -126,9 +136,9 @@ export class WorldManager {
     this.chunks = new ChunkManager(manifest, this.height, this.collision, this.materials, this.landmarks, places, quality);
     this.scene.add(this.chunks.group);
 
-    // Exponential-squared haze: clear at street level, dissolving the far city into the sky colour.
+    // Humid haze: light at street level, closing completely at the edge of the streamed world (atmosphere.ts).
     this.scene.background = new THREE.Color();
-    this.scene.fog = new THREE.FogExp2(0xffffff, 0.002);
+    this.scene.fog = new Haze(0xffffff, HAZE_DENSITY, 900);
     this.hemi = new THREE.HemisphereLight(0xffffff, 0xffffff, 1);
     this.sun = new THREE.DirectionalLight(0xffffff, 2);
     this.sun.shadow.autoUpdate = false;
@@ -168,7 +178,7 @@ export class WorldManager {
     u.uZenith.value.setHex(p.zenith);
     u.uSunCol.value.setHex(p.sun);
     u.uCloud.value.setHex(p.cloud);
-    (this.scene.fog as THREE.FogExp2).color.setHex(p.fog);
+    (this.scene.fog as Haze).color.setHex(p.fog);
     (this.scene.background as THREE.Color).setHex(p.fog);
     const w = this.materials.water.uniforms;
     w.uSunDir.value.copy(this.sunDir);
@@ -180,9 +190,8 @@ export class WorldManager {
 
   applyQuality(q: Quality): void {
     this.quality = q;
-    // Density chosen so the haze reaches ~97 % at the edge of the streamed area.
-    const reach = (q.lowRadius + 0.5) * this.manifest.chunkSize;
-    (this.scene.fog as THREE.FogExp2).density = 1.9 / reach;
+    // The haze closes just beyond the nearest point of the edge of the streamed area (the player at the rim of the centre chunk).
+    (this.scene.fog as Haze).reach = (q.lowRadius + 0.15) * this.manifest.chunkSize;
     this.sun.castShadow = q.shadowMap > 0;
     if (q.shadowMap > 0) {
       const s = this.sun.shadow;

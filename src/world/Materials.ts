@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { facadeAtlas } from './arch/FacadeAtlas.ts';
 import { heritageAtlas } from './arch/HeritageAtlas.ts';
+import { flatGroundTextures, GROUND_MEAN } from './GroundTextures.ts';
+import type { GroundTextures } from './GroundTextures.ts';
 
 /** Growable buffers for building merged geometry. */
 export class GeoBuf {
@@ -85,11 +87,14 @@ function facadeTexture(): THREE.CanvasTexture {
 }
 
 const WATER_VERT = /* glsl */ `
+  attribute float bank;
   varying vec3 vWorld;
+  varying float vBank;
   #include <fog_pars_vertex>
   void main() {
     vec4 wp = modelMatrix * vec4(position, 1.0);
     vWorld = wp.xyz;
+    vBank = bank;
     vec4 mvPosition = viewMatrix * wp;
     gl_Position = projectionMatrix * mvPosition;
     #include <fog_vertex>
@@ -102,6 +107,7 @@ const WATER_FRAG = /* glsl */ `
   uniform vec3 uSunDir;
   uniform vec3 uSunCol;
   varying vec3 vWorld;
+  varying float vBank;
   #include <fog_pars_fragment>
   float h21(vec2 q) { q = fract(q * vec2(123.34, 456.21)); q += dot(q, q + 45.32); return fract(q.x * q.y); }
   float vnoise(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + 1.0), f.x), f.y); }
@@ -119,11 +125,19 @@ const WATER_FRAG = /* glsl */ `
     g += (vec2(vnoise(p * 0.07 + uTime * 0.03), vnoise(p.yx * 0.06 - uTime * 0.02)) - 0.5) * 0.05;
     vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
     vec3 v = normalize(cameraPosition - vWorld);
-    float fres = pow(1.0 - max(dot(n, v), 0.0), 3.0);
-    vec3 col = mix(uDeep, uSky, clamp(0.12 + fres * 0.85, 0.0, 1.0));
+    // The Sarawak River carries silt: opaque tea-brown water with slow olive streaks, a weak sky reflection and a
+    // broad, dull sun glint (docs/night/refs/STYLE_GUIDE.md, section 3).
+    float fres = pow(1.0 - max(dot(n, v), 0.0), 4.0);
+    vec3 silt = mix(uDeep, uDeep * vec3(0.76, 0.92, 0.8), smoothstep(0.35, 0.7, vnoise(p * vec2(0.011, 0.03) + uTime * 0.004)));
+    // Along the mapped bank (vBank: 1 at the shoreline, 0 three metres out): shallower, paler water and a lapping line.
+    silt = mix(silt, uDeep * 1.3 + 0.02, vBank * 0.6);
+    vec3 col = mix(silt, uSky, clamp(0.05 + fres * 0.6, 0.0, 1.0));
     vec3 h = normalize(v + uSunDir);
-    col += uSunCol * pow(max(dot(n, h), 0.0), 220.0) * 0.55;
+    col += uSunCol * pow(max(dot(n, h), 0.0), 90.0) * 0.22;
+    float lap = smoothstep(0.62, 0.98, vBank + 0.14 * sin(uTime * 0.8 + dot(p, vec2(0.23, 0.19))) + 0.3 * (vnoise(p * 0.8 + uTime * 0.12) - 0.5));
+    col = mix(col, mix(uDeep, uSky, 0.6) * 1.25 + 0.06, lap * 0.5);
     gl_FragColor = vec4(col, 1.0);
+    #include <tonemapping_fragment>
     #include <colorspace_fragment>
     #include <fog_fragment>
   }
@@ -134,7 +148,15 @@ const NOISE_GLSL = /* glsl */ `
   varying vec3 vWn;
   float k3h(vec2 q) { q = fract(q * vec2(123.34, 456.21)); q += dot(q, q + 45.32); return fract(q.x * q.y); }
   float k3n(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3.0 - 2.0 * f); return mix(mix(k3h(i), k3h(i + vec2(1, 0)), f.x), mix(k3h(i + vec2(0, 1)), k3h(i + 1.0), f.x), f.y); }
+  uniform sampler2D uGrass;
+  uniform sampler2D uEarth;
+  uniform sampler2D uConc;
+  uniform sampler2D uAsphalt;
+  // A ground photograph divided by its mean colour: 1.0 on average, so it gives a hue its texture without changing it.
+  vec3 k3p(sampler2D t, vec2 uv, vec3 mean) { return min(texture2D(t, uv).rgb / mean, vec3(2.6)); }
 `;
+const v3 = (m: readonly number[]) => `vec3(${m.map((v) => v.toFixed(4)).join(', ')})`;
+const GM = v3(GROUND_MEAN.grass), EM = v3(GROUND_MEAN.laterite), CM = v3(GROUND_MEAN.concrete), AM = v3(GROUND_MEAN.asphalt);
 
 /**
  * Procedural surface detail, evaluated in world space so it needs no UVs or texture downloads.
@@ -142,15 +164,17 @@ const NOISE_GLSL = /* glsl */ `
  * 0..1 `fade` that removes the fine detail in the distance, where it would only alias.
  */
 const DETAIL = {
+  // The same asphalt photograph, at the same 2.05 m lay, as the road of the Jalan China section (src/v5/materials.ts
+  // asphaltPhoto), so a road runs from the section into the rest of the city without a seam.
   asphalt: /* glsl */ `
-    float a = k3n(p.xz * 17.0) * 0.5 + k3n(p.xz * 4.0) * 0.3 + k3n(p.xz * 0.3) * 0.2;
-    col *= mix(1.0, 0.84 + 0.3 * a, fade) * (0.95 + 0.1 * k3n(p.xz * 0.3));`,
+    col *= k3p(uAsphalt, p.xz / 2.05, ${AM}) * mix(0.9, 1.08, smoothstep(0.3, 0.8, k3n(p.xz * 0.09)));
+    col *= 1.0 - 0.1 * smoothstep(0.55, 0.85, k3n(p.xz * 0.023 + 9.0));`,
   paving: /* glsl */ `
     vec2 q = p.xz / 0.6;
     vec2 f = fract(q);
     float joint = step(0.05, f.x) * step(0.05, f.y);
     col *= mix(1.0, (0.8 + 0.2 * joint) * (0.9 + 0.18 * k3h(floor(q))), fade);
-    col *= 0.92 + 0.14 * k3n(p.xz * 0.35);`,
+    col *= mix(vec3(1.0), k3p(uConc, p.xz / 3.0, ${CM}), 0.8) * (0.92 + 0.14 * k3n(p.xz * 0.35));`,
   plaster: /* glsl */ `
     float grime = k3n(vec2(dot(p.xz, vec2(0.71, 0.71)) * 1.4, p.y * 0.3));
     col *= 0.9 + 0.12 * grime;
@@ -170,16 +194,27 @@ const DETAIL = {
       col *= 0.82 + 0.24 * k3n(p.xz * 0.45);
       col *= mix(1.0, 0.94 + 0.12 * k3n(p.xz * 6.0), fade);
     }`,
+  // The chunk's land-use map gives the hue only. Three surfaces are told apart by that hue and each gets its own
+  // photograph: grass (green), bare earth and sand (warm), concrete and paving (grey). The map is a few texels per
+  // metre at best, so the boundary between two surfaces is pushed about by noise and by the grass photograph itself:
+  // grass creeps over the edge of a slab instead of ending on a ruled line.
   ground: /* glsl */ `
-    float green = smoothstep(0.02, 0.1, col.g - max(col.r, col.b));
-    float big = k3n(p.xz * 0.09);
-    vec2 q = p.xz / 1.2;
-    vec2 f = fract(q);
-    float joint = step(0.025, f.x) * step(0.025, f.y);
-    float paved = (0.88 + 0.12 * joint) * (0.93 + 0.12 * k3h(floor(q)));
-    float turf = 0.72 + 0.5 * (k3n(p.xz * 5.0) * 0.6 + big * 0.4);
-    col *= mix(1.0, mix(paved, turf, green), fade);
-    col *= 0.9 + 0.18 * big;`,
+    float big = k3n(p.xz * 0.043), mid = k3n(p.xz * 0.37 + 5.0);
+    vec3 gp = k3p(uGrass, p.xz / 2.9, ${GM}), ep = k3p(uEarth, p.xz / 3.3, ${EM}), cp = k3p(uConc, p.xz / 4.1, ${CM});
+    #ifndef K3_LOW
+      // a second, much larger lay of each photograph takes over with distance, so no tiling shows across a field
+      float far = 0.7 * smoothstep(14.0, 60.0, dist);
+      gp = mix(gp, k3p(uGrass, p.xz / 31.0, ${GM}), far);
+      ep = mix(ep, k3p(uEarth, p.xz / 27.0, ${EM}), far);
+      cp = mix(cp, k3p(uConc, p.xz / 37.0, ${CM}), far);
+    #endif
+    float gW = smoothstep(0.02, 0.085, col.g - max(col.r, col.b) + (mid - 0.5) * 0.06 + (dot(gp, vec3(0.3, 0.6, 0.1)) - 1.0) * 0.03);
+    float eW = (1.0 - gW) * smoothstep(0.1, 0.19, col.r - col.b + (mid - 0.5) * 0.06);
+    // worn patches where the red earth shows through the grass
+    float bare = smoothstep(0.6, 0.78, k3n(p.xz * 0.1 + 31.0) * 0.72 + mid * 0.28);
+    vec3 grass = mix(col * gp * (0.8 + 0.4 * big), vec3(0.2, 0.1, 0.052) * ep, bare * 0.55);
+    vec3 hard = col * cp * (0.88 + 0.2 * big) * (1.0 - 0.16 * smoothstep(0.5, 0.8, k3n(p.xz * 0.21 + 17.0)));
+    col = mix(mix(hard, col * ep, eW), grass, gW);`,
   foliage: /* glsl */ `
     float lf = k3n(p.xz * 1.7 + p.y * 2.3) * 0.6 + k3n(p.xz * 5.5 - p.y * 4.1) * 0.4;
     col *= 0.62 + 0.8 * lf;
@@ -188,17 +223,26 @@ const DETAIL = {
     col *= 0.88 + 0.2 * k3n(p.xz * 0.9 + p.y * 1.7);`,
 };
 
-/** Add world-space procedural detail to a Lambert material. */
-function withDetail<T extends THREE.Material>(mat: T, key: keyof typeof DETAIL): T {
+/** The ground photographs as shader uniforms (shared by every material that uses one). */
+type PhotoUniforms = Record<'uGrass' | 'uEarth' | 'uConc' | 'uAsphalt', { value: THREE.Texture }>;
+
+/** Add world-space surface detail to a Lambert material. `low`: the cheaper variant of the Low preset. */
+function detail<T extends THREE.Material>(mat: T, key: keyof typeof DETAIL, photos: PhotoUniforms, low = false): T {
   mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, photos);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vWp;\nvarying vec3 vWn;')
-      .replace('#include <project_vertex>', '#include <project_vertex>\nvWp = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWn = normalize(mat3(modelMatrix) * objectNormal);');
+      .replace('#include <project_vertex>', `#include <project_vertex>
+        { vec4 k3w = vec4(transformed, 1.0); vec3 k3d = objectNormal;
+        #ifdef USE_INSTANCING
+          k3w = instanceMatrix * k3w; k3d = mat3(instanceMatrix) * k3d;
+        #endif
+        vWp = (modelMatrix * k3w).xyz; vWn = normalize(mat3(modelMatrix) * k3d); }`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${NOISE_GLSL}`)
-      .replace('#include <color_fragment>', `#include <color_fragment>\n{ vec3 p = vWp; vec3 n = normalize(vWn); vec3 col = diffuseColor.rgb; float fade = clamp(1.0 - length(cameraPosition - p) / 140.0, 0.0, 1.0);\n${DETAIL[key]}\ndiffuseColor.rgb = col; }`);
+      .replace('#include <common>', `#include <common>\n${low ? '#define K3_LOW 1\n' : ''}${NOISE_GLSL}`)
+      .replace('#include <color_fragment>', `#include <color_fragment>\n{ vec3 p = vWp; vec3 n = normalize(vWn); vec3 col = diffuseColor.rgb; float dist = length(cameraPosition - p); float fade = clamp(1.0 - dist / 140.0, 0.0, 1.0);\n${DETAIL[key]}\ndiffuseColor.rgb = col; }`);
   };
-  mat.customProgramCacheKey = () => `k3d-${key}`;
+  mat.customProgramCacheKey = () => `k3d-${key}${low ? '-l' : ''}`;
   return mat;
 }
 
@@ -213,6 +257,9 @@ export class Materials {
   /** District (high-fidelity) facades: vertex colour x heritage atlas. Created on first use. */
   private heritageMat: THREE.MeshLambertMaterial | null = null;
   private smallTextures: boolean;
+  /** Ground photographs (CC0, docs/ASSETS.md) and the uniforms that hand them to the shaders. */
+  readonly ground: GroundTextures;
+  private photos: PhotoUniforms;
   readonly roofs: THREE.MeshLambertMaterial;
   readonly structure: THREE.MeshLambertMaterial;
   readonly trunk: THREE.MeshLambertMaterial;
@@ -227,8 +274,11 @@ export class Materials {
   /** Lamp heads: glow in the evening. */
   readonly lampGlow: THREE.MeshBasicMaterial;
 
-  constructor(scene: THREE.Scene, sunDir: THREE.Vector3, smallTextures = false) {
+  constructor(scene: THREE.Scene, sunDir: THREE.Vector3, smallTextures = false, ground: GroundTextures = flatGroundTextures()) {
     this.smallTextures = smallTextures;
+    this.ground = ground;
+    const photos = (this.photos = { uGrass: { value: ground.grass }, uEarth: { value: ground.laterite }, uConc: { value: ground.concrete }, uAsphalt: { value: ground.asphalt } });
+    const withDetail = <T extends THREE.Material>(mat: T, key: keyof typeof DETAIL) => detail(mat, key, photos);
     this.roads = [0, 1, 2, 3].map((g) =>
       withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -(g + 1), polygonOffsetUnits: -(g + 1) * 4 }), g === 1 ? 'paving' : g === 0 ? 'concrete' : 'asphalt'),
     );
@@ -239,9 +289,9 @@ export class Materials {
     this.roofs = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true }), 'roof');
     this.structure = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 'concrete');
     this.landmark = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
-    this.trunk = new THREE.MeshLambertMaterial({ color: 0x6b4f3a });
-    this.crown = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true });
-    this.frond = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true, side: THREE.DoubleSide });
+    this.trunk = new THREE.MeshLambertMaterial({ color: 0x9a8468 }); // multiplied by each tree's bark colour
+    this.crown = withDetail(new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true }), 'foliage');
+    this.frond = withDetail(new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true, side: THREE.DoubleSide }), 'foliage');
     this.foliage = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true }), 'foliage');
     this.furniture = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
     this.lampGlow = new THREE.MeshBasicMaterial({ color: 0x9a9a96, vertexColors: true, side: THREE.DoubleSide });
@@ -250,21 +300,22 @@ export class Materials {
       fragmentShader: WATER_FRAG,
       uniforms: THREE.UniformsUtils.merge([
         THREE.UniformsLib.fog,
-        { uTime: { value: 0 }, uDeep: { value: new THREE.Color(0x4e5d49) }, uSky: { value: new THREE.Color(0xa9c4d6) }, uSunDir: { value: sunDir.clone() }, uSunCol: { value: new THREE.Color(1, 0.93, 0.8) } },
+        { uTime: { value: 0 }, uDeep: { value: new THREE.Color(0x8f7650) }, uSky: { value: new THREE.Color(0xa9c4d6) }, uSunDir: { value: sunDir.clone() }, uSunCol: { value: new THREE.Color(1, 0.93, 0.8) } },
       ]),
       fog: true,
+      side: THREE.DoubleSide, // the bank ribbon (WaterBuilder.ts) is not wound consistently
     });
     void scene;
   }
 
   get heritage(): THREE.MeshLambertMaterial {
-    if (!this.heritageMat) this.heritageMat = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, map: heritageAtlas(this.smallTextures ? 256 : 512), side: THREE.DoubleSide }), 'plaster');
+    if (!this.heritageMat) this.heritageMat = detail(new THREE.MeshLambertMaterial({ vertexColors: true, map: heritageAtlas(this.smallTextures ? 256 : 512), side: THREE.DoubleSide }), 'plaster', this.photos);
     return this.heritageMat;
   }
 
   /** Terrain material (one per chunk because each chunk owns its land-use texture). */
   terrain(map: THREE.Texture): THREE.MeshLambertMaterial {
-    return withDetail(new THREE.MeshLambertMaterial({ map, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 2 }), 'ground');
+    return detail(new THREE.MeshLambertMaterial({ map, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 2 }), 'ground', this.photos, this.smallTextures);
   }
 
   update(time: number): void {

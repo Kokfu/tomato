@@ -11,6 +11,7 @@ import { addHeritageRow, addHeritageRoof } from './arch/HeritageRow.ts';
 import { inDistrict, isDistrictRow } from './district/mainBazaar.ts';
 import { assertGeneric, isProtectedLandmark, mayHaveShopfront } from './landmarks/protect.ts';
 import { v5Exclusion } from '../v5/geo.ts';
+import { addFarTrees } from './VegetationBuilder.ts';
 
 type Kind = (typeof BUILDING_KINDS)[number];
 const WALLS: Record<Kind, number[]> = {
@@ -364,6 +365,8 @@ export function* buildBuildings(data: ChunkData, ctx: BuildContext): Generator<v
     out.push(m);
   }
   yield;
+  // Far chunks carry no instanced trees: their crowns ride along in the plain wall mesh (N1-M2).
+  if (ctx.detail !== 'high') addFarTrees(data, ctx, walls);
   const wg = walls.build();
   if (wg) {
     const m = new THREE.Mesh(wg, ctx.detail === 'high' ? ctx.mats.wallsTextured : ctx.mats.wallsPlain);

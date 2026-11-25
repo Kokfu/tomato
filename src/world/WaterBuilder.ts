@@ -4,6 +4,9 @@ import type { ChunkData } from './types.ts';
 import { toVec2 } from './RoadBuilder.ts';
 import type { BuildContext } from './ChunkManager.ts';
 
+/** Width in metres of the shallow band along a mapped bank (each side of the shoreline). */
+const BANK_BAND = 3.2;
+
 /** Flat water surface triangulated from the mapped (chunk-clipped) river / lake polygons. */
 export function buildWater(data: ChunkData, ctx: BuildContext): THREE.Mesh | null {
   if (!data.water.length) return null;
@@ -27,8 +30,28 @@ export function buildWater(data: ChunkData, ctx: BuildContext): THREE.Mesh | nul
     }
   }
   if (!idx.length) return null;
+  const bank = new Array<number>(pos.length / 3).fill(0);
+  // A ribbon along each mapped shoreline, a hair above the surface, in the same mesh: the water shader turns its
+  // `bank` value (1 on the shoreline, 0 at the ribbon's edges) into shallow water and a lapping line. The half that
+  // falls on the landward side lies under the bank and is never seen.
+  for (const line of data.shore) {
+    const n = line.length / 2;
+    if (n < 2) continue;
+    const base = pos.length / 3;
+    for (let i = 0; i < n; i++) {
+      const x = line[i * 2] / QUANT, z = line[i * 2 + 1] / QUANT;
+      const a = Math.max(0, i - 1), b = Math.min(n - 1, i + 1);
+      let dx = line[b * 2] - line[a * 2], dz = line[b * 2 + 1] - line[a * 2 + 1];
+      const l = Math.hypot(dx, dz) || 1;
+      dx /= l; dz /= l;
+      pos.push(x + dz * BANK_BAND, WATER_LEVEL + 0.02, z - dx * BANK_BAND, x, WATER_LEVEL + 0.02, z, x - dz * BANK_BAND, WATER_LEVEL + 0.02, z + dx * BANK_BAND);
+      bank.push(0, 1, 0);
+      if (i) { const q = base + i * 3, o = q - 3; idx.push(o, q, o + 1, o + 1, q, q + 1, o + 1, q + 1, o + 2, o + 2, q + 1, q + 2); }
+    }
+  }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('bank', new THREE.Float32BufferAttribute(bank, 1));
   geo.setIndex(idx);
   geo.computeBoundingSphere();
   return new THREE.Mesh(geo, ctx.mats.water);

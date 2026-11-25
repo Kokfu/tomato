@@ -35,9 +35,11 @@ test('flag off: c1 switch is off and the V8.6 tables are untouched', () => {
 // ---- budget (owner gate 1, C11) ----
 test('budget: chunk 0_0 grows by at most +16,487 tris (< 12 % of the 137,397 V8.6 baseline)', () => {
   const off = OFF.perChunk['0_0'].total, on = ON.perChunk['0_0'].total;
-  assert.equal(off, 137397, 'flag-off chunk 0_0 baseline moved');
+  // N1-M2 added inferred trees and the river-bank ribbon to every chunk: 137,397 (V8.6) + 10,636 here. The C1a budget
+  // below is still measured against the V8.6 figure.
+  assert.equal(off, 137397 + 10636, 'flag-off chunk 0_0 baseline moved');
   assert.ok(on - off <= 16487, `delta ${on - off}`);
-  assert.ok(on - off < 0.12 * off);
+  assert.ok(on - off < 0.12 * 137397);
   assert.deepEqual(ON.perChunk['0_-1'], OFF.perChunk['0_-1'], 'chunk 0_-1 must not change');
 });
 test('budget: each corner wrap is at most 1,300 tris (gross and net)', () => {

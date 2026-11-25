@@ -51,8 +51,8 @@ An orchestrator session starts **one worker session per milestone** (M5 and M6 a
 | # | Milestone | Status | Commit | Notes |
 |---|---|---|---|---|
 | M0 | Baseline and city tour gate | DONE | 2232f94 | 87 tests, load 5.0 s, phone p95 A/B/C 88/74/73 ms; mean realism 2.3/5 |
-| M1 | Integrate finished experiments | DONE | (hash goes in M2's commit) | v9, ux1, c1 and character picker merged and ON by default (`?name=0` turns one off); phone p95 A/B/C 78/54/51 ms, load 4.9 s, 222 unit tests |
-| M2 | Citywide atmosphere, light and ground | TODO | | |
+| M1 | Integrate finished experiments | DONE | 43dcee5 | v9, ux1, c1 and character picker merged and ON by default (`?name=0` turns one off); phone p95 A/B/C 78/54/51 ms, load 4.9 s, 222 unit tests |
+| M2 | Citywide atmosphere, light and ground | DONE | (hash goes in M3's commit) | haze to the chunk edge, sun for 1.56 N, photo-textured ground, shared asphalt, rain-tree avenues, silty river; mean realism 2.9/5; phone p95 A/B/C 75/82/72 ms vs 88/87/75 in the same (loaded) session, re-measure at M3; load +10 %; 227 unit tests |
 | M3 | Buildings everywhere | TODO | | |
 | M4 | Streets everywhere | TODO | | |
 | M5 | Hero places (Jalan China method) | TODO | | |
@@ -194,3 +194,10 @@ Each place needs:
 - 2026-11-25 M1: v9 arcade, sign fix (part of dev-preview), UX1 guide, character picker and C1 Upper China are ON by default in a browser; `?v9=0`, `?ux1=0`, `?c1=0`, `?char=0` restore the old behaviour; reason: all passed unit, e2e and the phone budget (p95 A +10 %, B and C better, start-up +6 %, no compile stall over 200 ms).
 - 2026-11-25 M1: defaults live in `src/flags.ts` (one registry); with no `location` (node tests, tools) everything stays off so tables keep their V8.6 values; `?lab=1` is a harmless alias now.
 - 2026-11-25 M1: e2e helper `start()` and tools (drive-bench, load-probe, shots) seed `k3d.character=man` so the first-launch picker does not block them; specs that test the "no flag" game now use `?char=0`.
+- 2026-11-25 M2: haze = one fixed exp2 density (0.0012) plus a ramp that closes at the streamed edge, by radial distance, and the fog colour is tone-mapped like the surface it covers (patched three.js fog chunks); reason: the chunk edge showed and fog never matched the sky.
+- 2026-11-25 M2: sun direction comes from solar geometry for 1.56 N on 15 April, 09:40 (evening 17:15); reason: correct for the latitude, and a sun just north of east still lights the river-facing Main Bazaar fronts.
+- 2026-11-25 M2: ground = the chunk's land-use hue map plus three CC0 photographs laid in world space; aprons, road shoulders and rough grass are painted by rule; reason: no data regeneration, no chunk JSON growth, cheap on a phone.
+- 2026-11-25 M2: every road uses the Jalan China asphalt photograph at the same lay; world materials stay Lambert; reason: no seam at the section, and PBR citywide would break the phone budget.
+- 2026-11-25 M2: trees are mostly inferred (roadside avenues, lot trees), without collision; far chunks merge 8-triangle crowns into their wall mesh and Low bakes a chunk's trees into one mesh; reason: tree cover to the horizon at no draw-call cost on phones.
+- 2026-11-25 M2: phone bench ran three times, not one pair: the first pair showed B/C over +15 %, the fix (Low tree bake) needed a second pair, and that pair ran on a loaded machine; reason: the only valid comparison is in-pair. Result kept as DONE with a re-measure owed at M3.
+- 2026-11-25 M2: cut frangipani as its own form, true water reflections and a boat wake; reason: time, and no tour view looks along the river.

@@ -160,3 +160,27 @@ No new asset, and the prototype is **disabled by default** (see docs/V7.4_REPORT
 Considered and not added in this batch: the other Quaternius CC0 characters on the same rig ("Business Man", "Hoodie Character") would give different silhouettes for about 400 kB each; realistic scanned humans with a CC0 or CC BY licence and a walk cycle were not found in a form small enough for this project.
 
 No audio file was added either: a licensed street recording of suitable quality was not sourced. The synthesised ambience from V5 is unchanged (it starts only after the Start click and follows the existing sound switch).
+
+## N1-M2 ground textures: `public/textures/ground/*.webp`
+
+Downloaded 2026-11-25 from Poly Haven. All four are CC0 1.0 ("CC0 License" on each source page, https://polyhaven.com/license);
+attribution is not required. Courtesy credit: "Ground textures by Poly Haven (CC0)". Used by the terrain and road materials of the
+whole city (`src/world/Materials.ts`, loaded by `src/world/GroundTextures.ts`). Only the colour (diffuse) map of each set is used.
+
+| Shipped file | Asset, authors | Source page | Downloaded file (bytes, SHA-256) |
+|---|---|---|---|
+| `grass.webp` (81,444 bytes) | "Sparse Grass", Amal Kumar | https://polyhaven.com/a/sparse_grass | `.../jpg/1k/sparse_grass/sparse_grass_diff_1k.jpg` (955,945; `ae94f2b34597b9108eefd88217f55eccaec6d6b382e858a478ee92df90e66617`) |
+| `laterite.webp` (73,428 bytes) | "Red Laterite Soil Stones", Amal Kumar | https://polyhaven.com/a/red_laterite_soil_stones | `.../jpg/1k/red_laterite_soil_stones/red_laterite_soil_stones_diff_1k.jpg` (906,764; `949cd648409b30e2267d89066965605d22dba4ce73d601673e155046c41e1219`) |
+| `concrete.webp` (29,576 bytes) | "Concrete Floor Worn 001", Dimitrios Savva (photography), Rico Cilliers (processing) | https://polyhaven.com/a/concrete_floor_worn_001 | `.../jpg/1k/concrete_floor_worn_001/concrete_floor_worn_001_diff_1k.jpg` (118,806; `6e40c0fc908f4d66431836f5abe203f3a4eb064e88824378a91a46a26e2f464c`) |
+| `asphalt.webp` (48,954 bytes) | "Asphalt 03" (see the V7.2 section above) | https://polyhaven.com/a/asphalt_03 | made from the shipped `textures/v7/asphalt_03_albedo_rough.webp` |
+
+Download URLs start with `https://dl.polyhaven.org/file/ph-assets/Textures`. Total shipped: 233,402 bytes (night budget for new downloads: 8 MB).
+
+### Modifications
+
+Each 1024 px map was resized to 512 px (Lanczos) and saved as lossy WebP (quality 90 to 92) with Pillow. Nothing else was changed.
+At run time each photograph is laid in world space and divided by its own mean colour, so it supplies texture while the land-use
+map (or the road's vertex colour) supplies the hue. If a file fails to load, a flat texture of that mean colour is used instead.
+
+Considered and not shipped: Poly Haven "Leafy Grass" (too many dead leaves for a mown tropical verge) and "Concrete Pavement"
+(its slab pattern cannot be aligned with streets in a world-space lay).

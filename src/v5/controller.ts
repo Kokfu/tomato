@@ -38,11 +38,13 @@ export const GATE_VIEWS = [
  * V8.6: low has no shadows, like the app's low preset (src/ui/GraphicsSettings.ts). Until V8.5 this tier turned
  * shadows on and the next resize turned them off again, so every program prepared for the street section had to be
  * compiled a second time, shadow-less, when it came into view (250-700 ms stalls on a throttled phone profile).
+ * N1-M2: shadows by tier for the whole city: none on low, 60 m round the player on medium (5.9 cm texels), 96 m on high
+ * (4.7 cm), wide enough that roadside trees and the far side of a street keep their shadows.
  */
 export const V5_TIERS = {
   low: { ao: false, msaa: 0, shadowMap: 0, shadowRange: 40 },
-  medium: { ao: false, msaa: 0, shadowMap: 2048, shadowRange: 46 },
-  high: { ao: true, msaa: 0, shadowMap: 4096, shadowRange: 46 },
+  medium: { ao: false, msaa: 0, shadowMap: 2048, shadowRange: 60 },
+  high: { ao: true, msaa: 0, shadowMap: 4096, shadowRange: 96 },
 };
 
 export class V5Controller {
@@ -152,9 +154,9 @@ export class V5Controller {
         v5Exclusion.setChina(m === 'c');
         for (const id of V5_LANDMARK_IDS) lm.hidden.add(id);
         this.world.scene.add(this.scene.group);
-        // Light balance: the Jalan China section is tuned separately (softer shadow edge, more sky fill, clear air
-        // so that the DUN at the end of the street keeps its colour).
-        this.pipeline.look = m === 'c' ? { sun: 6.6, hemi: 1.15, fog: 0.35, shadowRadius: 2.0, env: 1.0, exposure: 1.05 } : { sun: 6.6, hemi: 1.05, fog: 0.8, shadowRadius: 2.2, env: 0.85, exposure: 0.9 };
+        // Light balance: the Jalan China section is tuned separately (softer shadow edge, more sky fill). N1-M2: the
+        // whole city shares one humid haze, so the DUN at the end of the street is seen through about 350 m of it.
+        this.pipeline.look = m === 'c' ? { sun: 6.6, hemi: 1.3, fog: 1, shadowRadius: 2.0, env: 1.0, exposure: 1.05 } : { sun: 6.6, hemi: 1.05, fog: 1, shadowRadius: 2.2, env: 0.85, exposure: 0.9 };
         this.pipeline.disable();
         this.pipeline.enable();
         this.ambience.start();

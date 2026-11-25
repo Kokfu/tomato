@@ -17,8 +17,11 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { prepareForDraw } from '../world/prepareDraw.ts';
+import type { Haze } from '../world/atmosphere.ts';
 
 const AO_SCALE = 0.5;
+/** Haze and sky-horizon colour by day (docs/night/refs/STYLE_GUIDE.md: horizon wash #c9d8df). */
+const HORIZON = 0xc9d8df;
 
 // AgX's base look is deliberately flat, which read as washed-out walls and weak sun / shade separation. This adds
 // the standard "punchy" AgX look (a contrast power and a saturation gain inside the AgX curve, before the outset
@@ -79,8 +82,8 @@ export class V5Pipeline {
   private saved: Saved | null = null;
   private env: THREE.WebGLRenderTarget | null = null;
   private w = 1; private h = 1; private pr = 1;
-  /** Light balance, set before enable(). The V7 street section uses a softer, hazier-free variant. */
-  look = { sun: 6.6, hemi: 1.05, fog: 0.8, shadowRadius: 2.2, env: 0.85, exposure: 0.9 };
+  /** Light balance, set before enable(). `fog` scales the world's haze density. */
+  look = { sun: 6.6, hemi: 1.05, fog: 1, shadowRadius: 2.2, env: 0.85, exposure: 0.9 };
 
   constructor(renderer: THREE.WebGLRenderer, rig: LightRig, camera: THREE.PerspectiveCamera, options: PipelineOptions) {
     this.renderer = renderer; this.rig = rig; this.camera = camera; this.options = options;
@@ -145,13 +148,15 @@ export class V5Pipeline {
   enable(): void {
     if (this.active) return;
     const { scene, sun, hemi, sky } = this.rig, r = this.renderer;
-    const fog = scene.fog as THREE.FogExp2, u = (sky.material as THREE.ShaderMaterial).uniforms;
+    const fog = scene.fog as Haze, u = (sky.material as THREE.ShaderMaterial).uniforms;
     this.saved = { sunI: sun.intensity, sunC: sun.color.getHex(), hemiI: hemi.intensity, hemiSky: hemi.color.getHex(), hemiGround: hemi.groundColor.getHex(), fogC: fog.color.getHex(), fogD: fog.density, exposure: r.toneMappingExposure, tone: r.toneMapping, horizon: u.uHorizon.value.getHex(), zenith: u.uZenith.value.getHex(), env: scene.environment, envI: scene.environmentIntensity };
     sun.color.setHex(0xffedd2); sun.intensity = this.look.sun;
     hemi.color.setHex(0xc4d2e4); hemi.groundColor.setHex(0x9a917e); hemi.intensity = this.look.hemi;
-    u.uHorizon.value.setHex(0xbfd3e2); u.uZenith.value.setHex(0x2f6fb8);
-    fog.color.setHex(0xc3d3df); fog.density = this.saved.fogD * this.look.fog;
-    (scene.background as THREE.Color | null)?.setHex?.(0xc3d3df);
+    // Equatorial sky: a pale, humid horizon under a soft blue zenith. The haze has exactly the horizon's colour, so the
+    // far ground dissolves into the sky (atmosphere.ts).
+    u.uHorizon.value.setHex(HORIZON); u.uZenith.value.setHex(0x3d7fc4);
+    fog.color.setHex(HORIZON); fog.density = this.saved.fogD * this.look.fog;
+    (scene.background as THREE.Color | null)?.setHex?.(HORIZON);
     r.toneMapping = THREE.AgXToneMapping; r.toneMappingExposure = this.look.exposure;
     // Environment for specular reflections: the sky itself, prefiltered once (256 px cube, ~1.4 MB of GPU memory).
     const pm = new THREE.PMREMGenerator(r);
@@ -177,7 +182,7 @@ export class V5Pipeline {
   disable(): void {
     if (!this.active || !this.saved) return;
     const { scene, sun, hemi, sky } = this.rig, r = this.renderer, s = this.saved;
-    const fog = scene.fog as THREE.FogExp2, u = (sky.material as THREE.ShaderMaterial).uniforms;
+    const fog = scene.fog as Haze, u = (sky.material as THREE.ShaderMaterial).uniforms;
     sun.intensity = s.sunI; sun.color.setHex(s.sunC);
     hemi.intensity = s.hemiI; hemi.color.setHex(s.hemiSky); hemi.groundColor.setHex(s.hemiGround);
     u.uHorizon.value.setHex(s.horizon); u.uZenith.value.setHex(s.zenith);

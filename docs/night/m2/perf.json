@@ -1,0 +1,433 @@
+{
+ "note": "Phone emulation (390x844, Low, 4x CPU), drive-bench A,B,C, cold + warm run each. pair1 measured the M2 build BEFORE Low-preset trees were baked into one mesh; pair2 is the final build. The machine was under other load during pair2 (the baseline itself ran 40-60 % slower than in pair1), so compare within a pair only.",
+ "pair1": {
+  "baseline": [
+   {
+    "name": "A stationary cold",
+    "p95": 47.9,
+    "median": 21.4,
+    "fps": 40.2,
+    "worst": 78.8,
+    "over200": 0,
+    "calls": 113,
+    "trisK": 318,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "B Jalan China lane cold",
+    "p95": 50.8,
+    "median": 19.3,
+    "fps": 42.7,
+    "worst": 99.9,
+    "over200": 0,
+    "calls": 97,
+    "trisK": 322,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "C block loop cold",
+    "p95": 42.3,
+    "median": 18.3,
+    "fps": 47.6,
+    "worst": 605.4,
+    "over200": 1,
+    "calls": 103,
+    "trisK": 349,
+    "maxCompileMs": 18.8
+   },
+   {
+    "name": "A stationary warm1",
+    "p95": 61.8,
+    "median": 24.1,
+    "fps": 34.5,
+    "worst": 103.1,
+    "over200": 0,
+    "calls": 130,
+    "trisK": 323,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "B Jalan China lane warm1",
+    "p95": 41.1,
+    "median": 18.9,
+    "fps": 47.2,
+    "worst": 107.1,
+    "over200": 0,
+    "calls": 110,
+    "trisK": 326,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "C block loop warm1",
+    "p95": 46.8,
+    "median": 19.6,
+    "fps": 43.8,
+    "worst": 140.8,
+    "over200": 0,
+    "calls": 106,
+    "trisK": 353,
+    "maxCompileMs": 43
+   }
+  ],
+  "m2_before_bake": [
+   {
+    "name": "A stationary cold",
+    "p95": 41.9,
+    "median": 30.2,
+    "fps": 33.4,
+    "worst": 76,
+    "over200": 0,
+    "calls": 122,
+    "trisK": 351,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "B Jalan China lane cold",
+    "p95": 66.2,
+    "median": 28.4,
+    "fps": 31.8,
+    "worst": 114.8,
+    "over200": 0,
+    "calls": 107,
+    "trisK": 355,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "C block loop cold",
+    "p95": 70,
+    "median": 24,
+    "fps": 32.9,
+    "worst": 160.5,
+    "over200": 0,
+    "calls": 107,
+    "trisK": 392,
+    "maxCompileMs": 61.5
+   },
+   {
+    "name": "A stationary warm1",
+    "p95": 52.6,
+    "median": 24.6,
+    "fps": 37.6,
+    "worst": 92.2,
+    "over200": 0,
+    "calls": 143,
+    "trisK": 359,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "B Jalan China lane warm1",
+    "p95": 51.2,
+    "median": 21.9,
+    "fps": 38.6,
+    "worst": 480.9,
+    "over200": 1,
+    "calls": 123,
+    "trisK": 361,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "C block loop warm1",
+    "p95": 51.2,
+    "median": 20.5,
+    "fps": 41,
+    "worst": 480.1,
+    "over200": 1,
+    "calls": 115,
+    "trisK": 396,
+    "maxCompileMs": 20.1
+   }
+  ]
+ },
+ "unpaired_final_build_run": [
+  {
+   "name": "A stationary cold",
+   "p95": 69.9,
+   "median": 27.1,
+   "fps": 31.6,
+   "worst": 89.4,
+   "over200": 0,
+   "calls": 112,
+   "trisK": 351,
+   "maxCompileMs": 0
+  },
+  {
+   "name": "B Jalan China lane cold",
+   "p95": 80.3,
+   "median": 31.9,
+   "fps": 26.4,
+   "worst": 114.1,
+   "over200": 0,
+   "calls": 97,
+   "trisK": 355,
+   "maxCompileMs": 0
+  },
+  {
+   "name": "C block loop cold",
+   "p95": 77.4,
+   "median": 28.7,
+   "fps": 28.3,
+   "worst": 186.6,
+   "over200": 0,
+   "calls": 99,
+   "trisK": 393,
+   "maxCompileMs": 101.8
+  },
+  {
+   "name": "A stationary warm1",
+   "p95": 76.7,
+   "median": 36.6,
+   "fps": 24.4,
+   "worst": 99.3,
+   "over200": 0,
+   "calls": 130,
+   "trisK": 359,
+   "maxCompileMs": 0
+  },
+  {
+   "name": "B Jalan China lane warm1",
+   "p95": 73.2,
+   "median": 28.2,
+   "fps": 29.8,
+   "worst": 152.1,
+   "over200": 0,
+   "calls": 110,
+   "trisK": 361,
+   "maxCompileMs": 0
+  },
+  {
+   "name": "C block loop warm1",
+   "p95": 109.5,
+   "median": 28.9,
+   "fps": 25.4,
+   "worst": 272.2,
+   "over200": 12,
+   "calls": 102,
+   "trisK": 401,
+   "maxCompileMs": 106.5
+  }
+ ],
+ "pair2": {
+  "baseline": [
+   {
+    "name": "A stationary cold",
+    "p95": 83.4,
+    "median": 34.1,
+    "fps": 25.2,
+    "worst": 107.3,
+    "over200": 0,
+    "calls": 113,
+    "trisK": 318,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "B Jalan China lane cold",
+    "p95": 76.1,
+    "median": 28.1,
+    "fps": 28.8,
+    "worst": 492.6,
+    "over200": 2,
+    "calls": 98,
+    "trisK": 322,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "C block loop cold",
+    "p95": 75,
+    "median": 21.1,
+    "fps": 31.3,
+    "worst": 4735.9,
+    "over200": 3,
+    "calls": 97,
+    "trisK": 349,
+    "maxCompileMs": 121.9
+   },
+   {
+    "name": "A stationary warm1",
+    "p95": 91.7,
+    "median": 56.7,
+    "fps": 19,
+    "worst": 131.4,
+    "over200": 0,
+    "calls": 130,
+    "trisK": 323,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "B Jalan China lane warm1",
+    "p95": 98.3,
+    "median": 52.9,
+    "fps": 18.6,
+    "worst": 177.4,
+    "over200": 0,
+    "calls": 109,
+    "trisK": 326,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "C block loop warm1",
+    "p95": 75.6,
+    "median": 35.1,
+    "fps": 26.7,
+    "worst": 194.3,
+    "over200": 0,
+    "calls": 105,
+    "trisK": 353,
+    "maxCompileMs": 70.2
+   }
+  ],
+  "m2_final": [
+   {
+    "name": "A stationary cold",
+    "p95": 63.3,
+    "median": 39.2,
+    "fps": 26.9,
+    "worst": 73.9,
+    "over200": 0,
+    "calls": 112,
+    "trisK": 351,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "B Jalan China lane cold",
+    "p95": 69.1,
+    "median": 37.1,
+    "fps": 27,
+    "worst": 122.3,
+    "over200": 0,
+    "calls": 97,
+    "trisK": 355,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "C block loop cold",
+    "p95": 83.2,
+    "median": 42,
+    "fps": 22.8,
+    "worst": 234.9,
+    "over200": 1,
+    "calls": 100,
+    "trisK": 393,
+    "maxCompileMs": 79.6
+   },
+   {
+    "name": "A stationary warm1",
+    "p95": 85.8,
+    "median": 59.5,
+    "fps": 17.1,
+    "worst": 94.5,
+    "over200": 0,
+    "calls": 130,
+    "trisK": 359,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "B Jalan China lane warm1",
+    "p95": 94,
+    "median": 46.6,
+    "fps": 20.8,
+    "worst": 220.9,
+    "over200": 3,
+    "calls": 109,
+    "trisK": 361,
+    "maxCompileMs": 0
+   },
+   {
+    "name": "C block loop warm1",
+    "p95": 61.2,
+    "median": 32.3,
+    "fps": 30.2,
+    "worst": 139.1,
+    "over200": 0,
+    "calls": 103,
+    "trisK": 401,
+    "maxCompileMs": 58.4
+   }
+  ]
+ },
+ "desktopTourFps": {
+  "01-waterfront": {
+   "median": 60,
+   "min": 52.5,
+   "max": 60.1,
+   "n": 50
+  },
+  "02-main-bazaar": {
+   "median": 60,
+   "min": 59.9,
+   "max": 60.1,
+   "n": 50
+  },
+  "03-carpenter-street": {
+   "median": 60,
+   "min": 59.9,
+   "max": 60.1,
+   "n": 50
+  },
+  "04-india-street": {
+   "median": 60,
+   "min": 59.9,
+   "max": 60.1,
+   "n": 50
+  },
+  "05-jalan-gambier": {
+   "median": 60,
+   "min": 59,
+   "max": 61.1,
+   "n": 50
+  },
+  "06-plaza-merdeka": {
+   "median": 60,
+   "min": 60,
+   "max": 60,
+   "n": 50
+  },
+  "07-padungan-cat-statue": {
+   "median": 60,
+   "min": 58.1,
+   "max": 60.2,
+   "n": 50
+  },
+  "08-kuching-mosque": {
+   "median": 60,
+   "min": 57.2,
+   "max": 60.9,
+   "n": 50
+  },
+  "09-satok": {
+   "median": 60,
+   "min": 59.9,
+   "max": 60.1,
+   "n": 50
+  },
+  "10-the-spring": {
+   "median": 60,
+   "min": 59.9,
+   "max": 60.2,
+   "n": 50
+  },
+  "11-residential-overture": {
+   "median": 60,
+   "min": 60,
+   "max": 60.1,
+   "n": 50
+  },
+  "12-trunk-road-openg": {
+   "median": 60,
+   "min": 58,
+   "max": 60.1,
+   "n": 50
+  },
+  "13-river-to-dun": {
+   "median": 60,
+   "min": 60,
+   "max": 60.1,
+   "n": 50
+  },
+  "14-jalan-china-control": {
+   "median": 60,
+   "min": 59.8,
+   "max": 60.2,
+   "n": 50
+  }
+ }
+}
