@@ -3,7 +3,7 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
-import { watch, start, frames } from './helpers.ts';
+import { watch, start, seedCharacter, frames } from './helpers.ts';
 import { carState, placeCar, driveRoute } from './driving-helpers.ts';
 import { CHINA } from '../../src/v5/geo.ts';
 
@@ -59,6 +59,7 @@ const metres = (s: string): number | null => {
 };
 
 async function ready(page: Page): Promise<void> {
+  await seedCharacter(page);
   await page.goto('./');
   await start(page, { navigate: false });
   await page.waitForFunction(() => (window as any).__k3d.driving.placed, null, { timeout: 60_000 });

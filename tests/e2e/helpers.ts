@@ -21,11 +21,20 @@ export function watch(page: Page): Issues {
   return issues;
 }
 
+/**
+ * A saved character choice, so the first-launch picker does not open. Call before `page.goto` in a spec that opens
+ * the page itself and is not about the picker. (N1-M4: the driving and GPS specs did not, and had failed at their
+ * first key press since the picker became the default in N1-M1.)
+ */
+export async function seedCharacter(page: Page): Promise<void> {
+  await page.addInitScript(() => { try { if (!localStorage.getItem('k3d.character')) localStorage.setItem('k3d.character', 'man'); } catch { /* ignore */ } });
+}
+
 /** Load the app and press Start. `navigate: false` when the test has already opened the page. */
 export async function start(page: Page, opts: { navigate?: boolean } = {}): Promise<void> {
   // N1-M1: the character picker is on by default; a saved choice skips it, so every spec starts in the world.
   if (opts.navigate !== false) {
-    await page.addInitScript(() => { try { if (!localStorage.getItem('k3d.character')) localStorage.setItem('k3d.character', 'man'); } catch { /* ignore */ } });
+    await seedCharacter(page);
     await page.goto('./');
   }
   await page.waitForFunction(() => (window as any).__k3d?.ready === true, null, { timeout: 90_000 });

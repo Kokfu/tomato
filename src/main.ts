@@ -409,7 +409,11 @@ async function boot(): Promise<void> {
     if (initialMode === 'v4') return done();
     menu.setLoading(0.97, 'Preparing the Jalan China street section…', false);
     void modeSet.then(async () => {
-      await Promise.race([whenCompiled(renderer, prepareObject(world.scene)), new Promise((r) => window.setTimeout(r, 15000))]);
+      const programs = prepareObject(world.scene);
+      // N1-M4: the road-sign material is first used wherever the first sign board stands, which may be a few chunks
+      // away: its program is compiled now, not on the frame that board comes into view. (Low draws no sign plates.)
+      if (quality.name !== 'low') for (const m of prepareObject(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), world.materials.signs))) programs.add(m);
+      await Promise.race([whenCompiled(renderer, programs), new Promise((r) => window.setTimeout(r, 15000))]);
       // The first frames upload every chunk's buffers and compile the few shadow-pass programs: still behind the screen.
       startHold = false;
       world.chunks.holdWarm = false;

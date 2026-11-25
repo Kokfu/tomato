@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { facadeAtlas } from './arch/FacadeAtlas.ts';
 import { heritageAtlas } from './arch/HeritageAtlas.ts';
 import { cityAtlas } from './arch/CityAtlas.ts';
+import { signAtlas } from './arch/SignAtlas.ts';
 import { flatGroundTextures, GROUND_MEAN } from './GroundTextures.ts';
 import type { GroundTextures } from './GroundTextures.ts';
 
@@ -242,6 +243,7 @@ export class Materials {
   readonly arch: THREE.MeshLambertMaterial;
   /** District (high-fidelity) facades: vertex colour x heritage atlas. Created on first use. */
   private heritageMat: THREE.MeshLambertMaterial | null = null;
+  private signMat: THREE.MeshLambertMaterial | null = null;
   private smallTextures: boolean;
   /** Ground photographs (CC0, docs/ASSETS.md) and the uniforms that hand them to the shaders. */
   readonly ground: GroundTextures;
@@ -268,7 +270,7 @@ export class Materials {
     this.roads = [0, 1, 2, 3].map((g) =>
       withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -(g + 1), polygonOffsetUnits: -(g + 1) * 4 }), g === 1 ? 'paving' : g === 0 ? 'concrete' : 'asphalt'),
     );
-    this.marks = new THREE.MeshBasicMaterial({ color: 0xcfcfc6, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 });
+    this.marks = new THREE.MeshBasicMaterial({ color: 0xd9d9d0, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 });
     // Typed buildings (arch/TypedBuilding.ts): the city atlas, whose alpha says where the building's own colour applies.
     this.wallsTextured = patch(withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, map: cityAtlas(smallTextures) }), 'plaster'), 'k3d-citywalls', (shader) => {
       shader.fragmentShader = shader.fragmentShader
@@ -306,6 +308,12 @@ export class Materials {
   get heritage(): THREE.MeshLambertMaterial {
     if (!this.heritageMat) this.heritageMat = detail(new THREE.MeshLambertMaterial({ vertexColors: true, map: heritageAtlas(this.smallTextures ? 256 : 512), side: THREE.DoubleSide }), 'plaster', this.photos);
     return this.heritageMat;
+  }
+
+  /** Road sign plates (arch/SignAtlas.ts). Created on first use: the Low preset draws none. */
+  get signs(): THREE.MeshLambertMaterial {
+    if (!this.signMat) this.signMat = new THREE.MeshLambertMaterial({ map: signAtlas(), alphaTest: 0.5 });
+    return this.signMat;
   }
 
   /** Terrain material (one per chunk because each chunk owns its land-use texture). */

@@ -79,6 +79,24 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   date is a choice. The haze has one fixed density and closes completely at the edge of the streamed area, which is nearer
   (about 550 m) on the Low preset than real visibility would be.
 
+## Streets (N1-M4)
+
+- **Kerbs, footpaths, drains and slab covers are inferred** from the road class and width alone: OpenStreetMap maps
+  none of them here (`sidewalk` is tagged on one way). Main roads get a kerb, a 1.6 m paved footpath and an open drain
+  behind it; residential and old-town streets get the drain at the road edge; service roads a low kerb. Real streets
+  differ from block to block. Where a building stands closer than the footpath is wide, the narrow layout is used.
+- **They have no collision.** The tallest part is 0.13 m: a walker's feet sink that far into a footpath, and a car
+  drives over a kerb without a bump. Nobody can fall into a drain: it is drawn 0.1 m deep, shaded to read deeper.
+- **Lane lines, edge lines and stop lines are inferred** (lanes from the width, not from `lanes=*`; the chunk files do
+  not carry that tag). A stop line is drawn where a street ends at a junction node inside one chunk; a junction on a
+  chunk border gets none. The black-and-white median kerb is drawn where two one-way main roads run side by side.
+- **Mapped:** traffic signals (113 nodes, 109 placed), zebra crossings (21 nodes, 17 placed: a node further than 3 m from a street is not moved onto it) and bus stops (36 nodes
+  fetched 2026-11-25, 32 placed). The crossing's paint, the bus shelter's form and the yellow box on the junction
+  nearest a signal (42) are generic. **No street lamp is mapped** in this area: all 11,616 lamp posts are spaced by rule.
+- **Road signs are generic and placed by rule**: a speed limit by road class (not the posted limit), a stop sign where
+  a minor street meets a junction, a crossing sign at mapped crossings, "BAS" at bus stops. No sign names a place.
+- On the Low preset: no sign plates, no slab joints, no edge lines, no kerbs on service roads.
+
 ## Gameplay
 
 - Collision uses building footprints as infinitely tall walls up to the roof line; interiors are

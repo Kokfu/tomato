@@ -104,7 +104,11 @@ export interface ChunkData {
   /**
    * Street furniture, 5 ints each: type (see FURN), x, z (cm, chunk-local), rotation (degrees about
    * +Y), extra (street-name signs: index into names). Signals, benches and bollards are mapped OSM
-   * nodes; lamp posts are procedurally spaced (inferred).
+   * nodes; lamp posts are procedurally spaced (inferred). N1-M4: lamps carry extra = 1 on the larger roads (a tall
+   * column); zebra crossings (mapped nodes; extra = carriageway width, cm) and bus stops (mapped nodes) are placed
+   * on the nearest street; yellow box junctions lie on the junction nearest a mapped signal (extra = half length in
+   * decimetres * 1000 + half width in decimetres); bollards also close the mouths of pedestrian streets and sign
+   * boards (extra = index into BOARDS) stand by rule: both are inferred.
    */
   furn?: number[];
   /** River-bank polylines (cm, chunk-local) that get a promenade railing. */
@@ -200,4 +204,9 @@ export const AREA_COLORS: Record<(typeof AREA_KINDS)[number], string> = {
 };
 
 /** Street furniture type codes used in ChunkData.furn. */
-export const FURN = { lamp: 0, signal: 1, sign: 2, bench: 3, bollard: 4 } as const;
+export const FURN = { lamp: 0, signal: 1, sign: 2, bench: 3, bollard: 4, zebra: 5, box: 6, busStop: 7, board: 8 } as const;
+/**
+ * Roadside sign boards (FURN.board, `extra` = index): generic Malaysian road signs only, never a place or business
+ * name. Drawn from src/world/arch/SignAtlas.ts in this order.
+ */
+export const BOARDS = ['speed50', 'speed60', 'speed30', 'crossing', 'stop', 'caution', 'bus', 'noParking'] as const;

@@ -1,0 +1,260 @@
+{
+ "note": "Phone emulation (390x844, Low, 4x CPU), drive-bench A,B,C, cold + warm run each. One alternating pair on a quiet machine (no dev server, no other browser of this session): baseline (M0 build) then the M4 build. The M4 build of this pair predates the carriageway grid in RoadBuilder (same geometry, less build time), so its roads stage time is an upper bound. Absolute numbers are lower than in the M3 pair (machine state); only the in-pair comparison counts.",
+ "baseline": [
+  {
+   "name": "A stationary cold",
+   "p95": 35.6,
+   "median": 20.1,
+   "fps": 45.2,
+   "worst": 84.9,
+   "over100": 0,
+   "over200": 0,
+   "calls": 113,
+   "trisK": 318,
+   "buildMsMax": 0,
+   "roadsStageMsMax": 0,
+   "maxCompileMs": 0,
+   "programs": 99
+  },
+  {
+   "name": "B Jalan China lane cold",
+   "p95": 33.7,
+   "median": 17.4,
+   "fps": 50.2,
+   "worst": 79.2,
+   "over100": 0,
+   "over200": 0,
+   "calls": 129,
+   "trisK": 322,
+   "buildMsMax": 17.4,
+   "roadsStageMsMax": 17.9,
+   "maxCompileMs": 0,
+   "programs": 99
+  },
+  {
+   "name": "C block loop cold",
+   "p95": 32,
+   "median": 17.4,
+   "fps": 50.5,
+   "worst": 113.9,
+   "over100": 1,
+   "over200": 0,
+   "calls": 150,
+   "trisK": 349,
+   "buildMsMax": 20.2,
+   "roadsStageMsMax": 16.9,
+   "maxCompileMs": 0,
+   "programs": 99
+  },
+  {
+   "name": "A stationary warm1",
+   "p95": 34.1,
+   "median": 20.2,
+   "fps": 46.3,
+   "worst": 53,
+   "over100": 0,
+   "over200": 0,
+   "calls": 130,
+   "trisK": 323,
+   "buildMsMax": 0,
+   "roadsStageMsMax": 0,
+   "maxCompileMs": 0,
+   "programs": 99
+  },
+  {
+   "name": "B Jalan China lane warm1",
+   "p95": 30.6,
+   "median": 17.7,
+   "fps": 51.2,
+   "worst": 53.9,
+   "over100": 0,
+   "over200": 0,
+   "calls": 141,
+   "trisK": 326,
+   "buildMsMax": 12.3,
+   "roadsStageMsMax": 13.5,
+   "maxCompileMs": 0,
+   "programs": 99
+  },
+  {
+   "name": "C block loop warm1",
+   "p95": 30.7,
+   "median": 17.3,
+   "fps": 52.1,
+   "worst": 78.6,
+   "over100": 0,
+   "over200": 0,
+   "calls": 150,
+   "trisK": 353,
+   "buildMsMax": 17.9,
+   "roadsStageMsMax": 11,
+   "maxCompileMs": 0,
+   "programs": 99
+  }
+ ],
+ "m4": [
+  {
+   "name": "A stationary cold",
+   "p95": 31.4,
+   "median": 17.6,
+   "fps": 51.1,
+   "worst": 52.4,
+   "over100": 0,
+   "over200": 0,
+   "calls": 117,
+   "trisK": 362,
+   "buildMsMax": 0,
+   "roadsStageMsMax": 0,
+   "maxCompileMs": 0,
+   "programs": 59
+  },
+  {
+   "name": "B Jalan China lane cold",
+   "p95": 32.4,
+   "median": 17.9,
+   "fps": 49.7,
+   "worst": 92.3,
+   "over100": 0,
+   "over200": 0,
+   "calls": 132,
+   "trisK": 366,
+   "buildMsMax": 19.7,
+   "roadsStageMsMax": 64.7,
+   "maxCompileMs": 0,
+   "programs": 59
+  },
+  {
+   "name": "C block loop cold",
+   "p95": 31.9,
+   "median": 17.5,
+   "fps": 50.6,
+   "worst": 75.5,
+   "over100": 0,
+   "over200": 0,
+   "calls": 157,
+   "trisK": 410,
+   "buildMsMax": 17.3,
+   "roadsStageMsMax": 59.1,
+   "maxCompileMs": 0,
+   "programs": 59
+  },
+  {
+   "name": "A stationary warm1",
+   "p95": 30.3,
+   "median": 17.7,
+   "fps": 50.4,
+   "worst": 58.8,
+   "over100": 0,
+   "over200": 0,
+   "calls": 137,
+   "trisK": 372,
+   "buildMsMax": 0,
+   "roadsStageMsMax": 0,
+   "maxCompileMs": 0,
+   "programs": 59
+  },
+  {
+   "name": "B Jalan China lane warm1",
+   "p95": 31.3,
+   "median": 18.7,
+   "fps": 49.4,
+   "worst": 66.9,
+   "over100": 0,
+   "over200": 0,
+   "calls": 147,
+   "trisK": 374,
+   "buildMsMax": 12.7,
+   "roadsStageMsMax": 32.3,
+   "maxCompileMs": 0,
+   "programs": 59
+  },
+  {
+   "name": "C block loop warm1",
+   "p95": 33.9,
+   "median": 17.3,
+   "fps": 49.7,
+   "worst": 131.4,
+   "over100": 4,
+   "over200": 0,
+   "calls": 156,
+   "trisK": 421,
+   "buildMsMax": 27.6,
+   "roadsStageMsMax": 31.4,
+   "maxCompileMs": 0,
+   "programs": 59
+  }
+ ],
+ "startup": {
+  "note": "load-probe, desktop 1920x1080, final M4 build, 3 alternating runs. interactiveMs = ready + two drawn frames.",
+  "baseline": {
+   "loadMs": [
+    4567,
+    4158,
+    4236
+   ],
+   "interactiveMs": [
+    5907,
+    5559,
+    5255
+   ],
+   "programs": 100
+  },
+  "m4": {
+   "loadMs": [
+    3614,
+    3630,
+    3566
+   ],
+   "interactiveMs": [
+    3780,
+    3810,
+    3804
+   ],
+   "programs": 66
+  },
+  "readyMedianVsBaseline": "-15 %",
+  "interactiveMedianVsBaseline": "-32 %"
+ },
+ "tour": {
+  "desktop": {
+   "calls": 2565,
+   "trisM": 4.47,
+   "m3": {
+    "calls": 2569,
+    "trisM": 4.52
+   },
+   "fpsMedian": 60,
+   "fpsMin": 59.8
+  },
+  "phone": {
+   "calls": 944,
+   "trisM": 1.93,
+   "m3": {
+    "calls": 868,
+    "trisM": 1.78
+   }
+  }
+ },
+ "data": {
+  "chunkJsonMB": {
+   "before": 6.5,
+   "after": 6.6
+  },
+  "lamps": 11616,
+  "signals": 109,
+  "zebras": 17,
+  "boxJunctions": 42,
+  "busStops": 32,
+  "boards": 1695,
+  "chunk0_0Tris": {
+   "m3": 148578,
+   "m4": 151500
+  }
+ },
+ "tests": {
+  "unit": "243/243",
+  "e2eDesktop1920": "gameplay, district, driving, gps, shader-prep: 25 passed (15.3 min)",
+  "e2eMobile390": "touch-drive: 1 passed",
+  "dataValidate": "11/11"
+ }
+}

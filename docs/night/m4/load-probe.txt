@@ -1,0 +1,6 @@
+{"dist":"baseline","run":1,"loadMs":4567,"interactiveMs":5907,"progsReady":100,"pan":{"worst":245,"over50":4,"over200":2,"slowMs":628,"progs":100}}
+{"dist":"m4","run":1,"loadMs":3614,"interactiveMs":3780,"progsReady":66,"pan":{"worst":108,"over50":3,"over200":0,"slowMs":295,"progs":66}}
+{"dist":"baseline","run":2,"loadMs":4158,"interactiveMs":5559,"progsReady":100,"pan":{"worst":288,"over50":3,"over200":1,"slowMs":489,"progs":100}}
+{"dist":"m4","run":2,"loadMs":3630,"interactiveMs":3810,"progsReady":66,"pan":{"worst":138,"over50":6,"over200":0,"slowMs":487,"progs":66}}
+{"dist":"baseline","run":3,"loadMs":4236,"interactiveMs":5255,"progsReady":100,"pan":{"worst":244,"over50":3,"over200":1,"slowMs":415,"progs":100}}
+{"dist":"m4","run":3,"loadMs":3566,"interactiveMs":3804,"progsReady":66,"pan":{"worst":103,"over50":3,"over200":0,"slowMs":258,"progs":66}}

@@ -12,13 +12,17 @@
 //     at mapped junctions; procedurally spaced lamp posts along named streets (inferred, never
 //     inside buildings, water or junction areas); railings along the mapped river bank where a
 //     mapped promenade runs beside it.
+//     N1-M4: zebra crossings and bus stops at their mapped nodes (data-src/osm/street.json, fetched by
+//     tools/extract-map-data/fetch-street.ts), a yellow box on the junction nearest each mapped signal, lamp
+//     posts on unnamed streets too; and, inferred by rule, bollards across the mouths of pedestrian streets and
+//     generic road signs (speed limit, stop, crossing, bus). No street lamp is mapped in this area.
 //
 // The pass is idempotent: it recomputes everything from the mapped geometry on every run.
 // Usage: node tools/generate-world/build-streetscape.ts
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { CHUNK_SIZE, QUANT, DATA_ROOT } from '../../src/world/config.ts';
 import type { ChunkData, BuildingData } from '../../src/world/types.ts';
-import { BUILDING_KINDS, ROAD_TYPES, FURN, ARCH_CLASSES, ARCH_BASIS, SHOPFRONT_CLASSES } from '../../src/world/types.ts';
+import { BUILDING_KINDS, ROAD_TYPES, FURN, BOARDS, ARCH_CLASSES, ARCH_BASIS, SHOPFRONT_CLASSES } from '../../src/world/types.ts';
 import { ringArea2, edgeOutward, projectOnSegment, pointInRingFlat } from '../../src/world/arch/frontage.ts';
 import { geoToWorld } from '../../src/world/GeoProjection.ts';
 
@@ -105,7 +109,7 @@ const STREET_TYPES = new Set([T('trunk'), T('primary'), T('secondary'), T('terti
 const PROMENADE_TYPES = new Set([T('pedestrian'), T('footway'), T('path'), T('cycleway'), T('pier')]);
 
 // ---- 1. heritage shophouse frontages ----------------------------------------------------------------
-const stats = { protectedFromShopfronts: 0, heritageBuildings: 0, frontageEdges: 0, frontageMetres: 0, estimatedUnits: 0, lamps: 0, signals: 0, streetSigns: 0, benches: 0, bollards: 0, railMetres: 0 };
+const stats = { protectedFromShopfronts: 0, heritageBuildings: 0, frontageEdges: 0, frontageMetres: 0, estimatedUnits: 0, lamps: 0, signals: 0, streetSigns: 0, benches: 0, bollards: 0, railMetres: 0, zebras: 0, boxJunctions: 0, busStops: 0, mouthBollards: 0, boards: 0 };
 const OK_KINDS = new Set(['generic', 'commercial', 'shophouse']);
 // A named outline is normally an institution or landmark and is left alone. Rows that OSM names
 // after one of the businesses inside them (e.g. "328 Gallery Sdn. Bhd.") are still shophouse rows.
@@ -217,8 +221,11 @@ const LAMP_TYPES = new Set([T('trunk'), T('primary'), T('secondary'), T('tertiar
 for (const d of chunks.values()) {
   const ox = d.cx * CHUNK_SIZE, oz = d.cz * CHUNK_SIZE;
   for (const r of d.roads) {
-    if (!LAMP_TYPES.has(r.t) || r.f & 3 || r.n === undefined) continue;
+    if (!LAMP_TYPES.has(r.t) || r.f & 3) continue;
     const hw = r.w / QUANT / 2;
+    // N1-M4: the column stands on the footpath of a larger road, and behind the roadside drain of a residential one
+    // (src/world/StreetEdges.ts); the larger roads get the tall column.
+    const big = r.t !== T('residential'), off = big ? 0.98 : 1.15;
     // Phase from the way id so spacing does not restart visibly at every chunk border.
     let next = 8 + (Math.abs(r.id) % 16), side = Math.abs(r.id) % 2 ? 1 : -1, acc = 0;
     for (let i = 2; i < r.p.length; i += 2) {
@@ -228,9 +235,9 @@ for (const d of chunks.values()) {
       const dx = (bx - ax) / len, dz = (bz - az) / len;
       while (next <= acc + len) {
         const t = next - acc;
-        const x = ax + dx * t - dz * (hw + 0.7) * side, z = az + dz * t + dx * (hw + 0.7) * side;
-        // The arm points back over the carriageway.
-        if (!onOtherRoad(x, z, r.id, 0.4, true) && putFurn(FURN.lamp, x, z, Math.atan2(dz * side, -dx * side) + Math.PI / 2)) stats.lamps++;
+        const x = ax + dx * t - dz * (hw + off) * side, z = az + dz * t + dx * (hw + off) * side;
+        // The arm (local +Z) points back over the carriageway. (Until N1-M4 it was turned a quarter too far and lay along the road.)
+        if (!onOtherRoad(x, z, r.id, 0.4, true) && putFurn(FURN.lamp, x, z, Math.atan2(dz * side, -dx * side), big ? 1 : 0)) stats.lamps++;
         next += 32;
         side = -side;
       }
@@ -259,12 +266,162 @@ if (existsSync('data-src/osm/pois.json')) {
       const cx = best.ax + (best.bx - best.ax) * bu, cz = best.az + (best.bz - best.az) * bu;
       for (const side of [1, -1]) {
         const px = cx + dz * (best.hw + 0.6) * side, pz = cz - dx * (best.hw + 0.6) * side;
-        if (putFurn(FURN.signal, px, pz, Math.atan2(dx, dz) + (side > 0 ? 0 : Math.PI))) { stats.signals++; break; }
+        // The lenses (local +Z) face the traffic that keeps left on this side: it moves along +d when side > 0.
+        if (putFurn(FURN.signal, px, pz, Math.atan2(dx, dz) + (side > 0 ? Math.PI : 0))) { stats.signals++; break; }
       }
     } else if (e.tags.amenity === 'bench' && !e.tags.name) {
       if (putFurn(FURN.bench, x, z, 0)) stats.benches++;
     } else if (e.tags.barrier === 'bollard') {
       if (putFurn(FURN.bollard, x, z, 0)) stats.bollards++;
+    }
+  }
+}
+
+// 2b'. N1-M4. Junction nodes of the street network (three or more carriageway ends meet, of two or more ways).
+const DRIVE_TYPES = new Set([T('trunk'), T('primary'), T('secondary'), T('tertiary'), T('residential')]);
+const nodeSegs = new Map<string, Seg[]>();
+{
+  const seen = new Set<Seg>();
+  for (const list of segGrid.values()) for (const s of list) {
+    if (seen.has(s) || !DRIVE_TYPES.has(s.t) || s.f & 3) continue;
+    seen.add(s);
+    for (const [x, z] of [[s.ax, s.az], [s.bx, s.bz]]) {
+      const k = `${Math.round(x * 10)},${Math.round(z * 10)}`;
+      const l = nodeSegs.get(k);
+      if (l) l.push(s); else nodeSegs.set(k, [s]);
+    }
+  }
+}
+interface Junction { x: number; z: number; segs: Seg[] }
+const junctions: Junction[] = [];
+for (const [k, segs] of nodeSegs) {
+  if (segs.length < 3 || new Set(segs.map((s) => s.id)).size < 2) continue;
+  const [x, z] = k.split(',').map((v) => +v / 10);
+  junctions.push({ x, z, segs });
+}
+/** Sign board beside a carriageway of half width `hw`, on the left of traffic moving along (tx, tz) and facing it. */
+function putBoard(kind: (typeof BOARDS)[number], cx: number, cz: number, tx: number, tz: number, hw: number, big: boolean): boolean {
+  const off = hw + (big ? 0.98 : 1.05);
+  const x = cx + tz * off, z = cz - tx * off;
+  if (onOtherRoad(x, z, NaN, 0.3) || !putFurn(FURN.board, x, z, Math.atan2(-tx, -tz), BOARDS.indexOf(kind))) return false;
+  stats.boards++;
+  return true;
+}
+function nearestStreet(x: number, z: number, reach: number, types: Set<number>): { s: Seg; u: number; dist: number } | null {
+  let best: { s: Seg; u: number; dist: number } | null = null;
+  for (const s of segsNear(x, z, reach)) {
+    if (!types.has(s.t) || s.f & 3) continue;
+    const [u, dist] = projectOnSegment(x, z, s.ax, s.az, s.bx, s.bz);
+    if (dist < (best?.dist ?? reach)) best = { s, u, dist };
+  }
+  return best;
+}
+if (existsSync('data-src/osm/pois.json')) {
+  const els = JSON.parse(readFileSync('data-src/osm/pois.json', 'utf8')).elements as any[];
+  // Zebra crossings: mapped nodes, laid across the street they sit on, with a crossing sign for each direction.
+  for (const e of els) {
+    if (e.type !== 'node' || e.tags?.highway !== 'crossing') continue;
+    const [x, z] = geoToWorld(e.lat, e.lon);
+    // The node lies on the way it crosses: a street further off (the node is on a service road or a path) is not it.
+    const hit = nearestStreet(x, z, 3, DRIVE_TYPES);
+    if (!hit) continue;
+    const s = hit.s, l = Math.hypot(s.bx - s.ax, s.bz - s.az) || 1, dx = (s.bx - s.ax) / l, dz = (s.bz - s.az) / l;
+    const cx = s.ax + (s.bx - s.ax) * hit.u, cz = s.az + (s.bz - s.az) * hit.u;
+    if (!putFurn(FURN.zebra, cx, cz, Math.atan2(dx, dz), Math.round(s.hw * 2 * QUANT))) continue;
+    stats.zebras++;
+    const big = s.t !== T('residential');
+    putBoard('crossing', cx - dx * 4, cz - dz * 4, dx, dz, s.hw, big);
+    if (!(s.f & 8)) putBoard('crossing', cx + dx * 4, cz + dz * 4, -dx, -dz, s.hw, big);
+  }
+  // Yellow box on the junction nearest each mapped signal (the signal is mapped; the paint is inferred).
+  const boxed = new Set<Junction>();
+  for (const e of els) {
+    if (e.type !== 'node' || e.tags?.highway !== 'traffic_signals') continue;
+    const [x, z] = geoToWorld(e.lat, e.lon);
+    let best: Junction | null = null, bd = 30;
+    for (const j of junctions) { const d = Math.hypot(j.x - x, j.z - z); if (d < bd) { bd = d; best = j; } }
+    // One box per junction: a large junction is mapped as several nodes a few metres apart.
+    if (!best || [...boxed].some((j) => Math.hypot(j.x - best!.x, j.z - best!.z) < 26)) continue;
+    boxed.add(best);
+    const main = best.segs.reduce((a, b) => (b.hw > a.hw ? b : a));
+    const l = Math.hypot(main.bx - main.ax, main.bz - main.az) || 1, dx = (main.bx - main.ax) / l, dz = (main.bz - main.az) / l;
+    // Half length along the main road = the widest road that crosses it; half width = the main road's own.
+    let cross = 0;
+    for (const s of best.segs) {
+      const sl = Math.hypot(s.bx - s.ax, s.bz - s.az) || 1;
+      if (Math.abs(((s.bx - s.ax) * dx + (s.bz - s.az) * dz) / sl) < 0.8) cross = Math.max(cross, s.hw);
+    }
+    if (!cross) continue;
+    const a = Math.min(9, Math.max(2.5, cross - 0.3)), b = Math.min(9, Math.max(2.5, main.hw - 0.3));
+    if (putFurn(FURN.box, best.x, best.z, Math.atan2(dx, dz), Math.round(a * 10) * 1000 + Math.round(b * 10))) stats.boxJunctions++;
+  }
+}
+// Bus stops: mapped nodes, moved to the kerb of the street they serve; shelter (generic form) facing the road.
+if (existsSync('data-src/osm/street.json')) {
+  const els = JSON.parse(readFileSync('data-src/osm/street.json', 'utf8')).elements as any[];
+  for (const e of els) {
+    if (e.type !== 'node') continue;
+    const [x, z] = geoToWorld(e.lat, e.lon);
+    const hit = nearestStreet(x, z, 25, DRIVE_TYPES);
+    if (!hit) continue;
+    const s = hit.s, l = Math.hypot(s.bx - s.ax, s.bz - s.az) || 1, dx = (s.bx - s.ax) / l, dz = (s.bz - s.az) / l;
+    const cx = s.ax + (s.bx - s.ax) * hit.u, cz = s.az + (s.bz - s.az) * hit.u;
+    // Normal toward the mapped node (a node on the centre line goes to the left of the way's direction).
+    let nx = x - cx, nz = z - cz;
+    const nl = Math.hypot(nx, nz);
+    if (nl < 0.5) { nx = dz; nz = -dx; } else { nx /= nl; nz /= nl; }
+    const big = s.t !== T('residential'), off = s.hw + (big ? 1.05 : 1.75);
+    for (const sgn of [1, -1]) {
+      const px = cx + nx * off * sgn, pz = cz + nz * off * sgn;
+      if (onOtherRoad(px, pz, s.id, 1.2) || buildingAt(px + nx * 0.8 * sgn, pz + nz * 0.8 * sgn)) continue;
+      // Local +Z of the shelter points at the carriageway.
+      if (putFurn(FURN.busStop, px, pz, Math.atan2(-nx * sgn, -nz * sgn), big ? 1 : 0)) { stats.busStops++; break; }
+    }
+  }
+}
+// Bollards across the mouth of a pedestrian street where it meets a carriageway (inferred).
+for (const d of chunks.values()) {
+  const ox = d.cx * CHUNK_SIZE, oz = d.cz * CHUNK_SIZE;
+  for (const r of d.roads) {
+    if (r.t !== T('pedestrian') || r.f & 3 || r.p.length < 4) continue;
+    const n = r.p.length / 2;
+    for (const end of [0, n - 1]) {
+      const px = r.p[end * 2], pz = r.p[end * 2 + 1];
+      if (px <= 0 || pz <= 0 || px >= CHUNK_SIZE * QUANT || pz >= CHUNK_SIZE * QUANT) continue; // cut by the chunk border
+      const x = ox + px / QUANT, z = oz + pz / QUANT, o = end ? end - 1 : 1;
+      let dx = ox + r.p[o * 2] / QUANT - x, dz = oz + r.p[o * 2 + 1] / QUANT - z;
+      const l = Math.hypot(dx, dz);
+      if (l < 3) continue;
+      dx /= l; dz /= l;
+      const hit = nearestStreet(x, z, 9, DRIVE_TYPES);
+      if (!hit || hit.dist > hit.s.hw + 1) continue;
+      const hw = r.w / QUANT / 2, back = hit.s.hw - hit.dist + 1.3, count = Math.max(2, Math.round((hw * 2) / 1.5));
+      for (let i = 0; i < count; i++) {
+        const lat = -hw + ((i + 0.5) * hw * 2) / count;
+        if (putFurn(FURN.bollard, x + dx * back - dz * lat, z + dz * back + dx * lat, 0)) { stats.bollards++; stats.mouthBollards++; }
+      }
+    }
+  }
+}
+// Speed-limit signs (inferred: the limit follows the road class), one about every 420 m of road and direction.
+for (const d of chunks.values()) {
+  const ox = d.cx * CHUNK_SIZE, oz = d.cz * CHUNK_SIZE;
+  for (const r of d.roads) {
+    if (!DRIVE_TYPES.has(r.t) || r.f & 3) continue;
+    const kind = r.t === T('residential') ? 'speed30' : r.t <= T('primary') ? 'speed60' : 'speed50';
+    const hw = r.w / QUANT / 2, big = r.t !== T('residential'), step = big ? 420 : 560;
+    let next = (Math.abs(r.id) * 37) % step, acc = 0, flip = Math.abs(r.id) % 2 === 0;
+    for (let i = 2; i < r.p.length; i += 2) {
+      const ax = ox + r.p[i - 2] / QUANT, az = oz + r.p[i - 1] / QUANT, bx = ox + r.p[i] / QUANT, bz = oz + r.p[i + 1] / QUANT;
+      const len = Math.hypot(bx - ax, bz - az);
+      if (len < 1e-3) continue;
+      const dx = (bx - ax) / len, dz = (bz - az) / len;
+      while (next <= acc + len) {
+        const t = next - acc, back = flip && !(r.f & 8);
+        putBoard(kind, ax + dx * t, az + dz * t, back ? -dx : dx, back ? -dz : dz, hw, big);
+        next += step; flip = !flip;
+      }
+      acc += len;
     }
   }
 }
@@ -310,6 +467,9 @@ if (existsSync('data-src/osm/kuching.json')) {
         if (onOtherRoad(px, pz, w.id)) continue;
         if (putFurn(FURN.sign, px, pz, Math.atan2(dx, dz), 0, name)) { stats.streetSigns++; done.add(`${name}@${node}`); break; }
       }
+      // N1-M4: a stop sign where a minor street runs into the junction (inferred; it faces traffic nearing the node).
+      const minor = w.tags.highway === 'residential' || w.tags.highway === 'living_street' || w.tags.highway === 'unclassified';
+      if (minor && total >= 60 && !(w.tags.oneway === 'yes' && end === 0) && !(w.tags.oneway === '-1' && end === 1)) putBoard('stop', x - dx * 3, z - dz * 3, -dx, -dz, hw, false);
     }
   }
 }

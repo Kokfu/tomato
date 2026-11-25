@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-15T07:40:28.958Z",
+  "generatedAt": "2026-11-25T07:01:02.558Z",
   "heritageStreets": [
     "Jalan Main Bazaar",
     "Jalan Gambier",
@@ -27,11 +27,16 @@
     "frontageEdges": 185,
     "frontageMetres": 4715,
     "estimatedUnits": 905,
-    "lamps": 7972,
+    "lamps": 11576,
     "signals": 109,
     "streetSigns": 1600,
     "benches": 5,
-    "bollards": 3,
-    "railMetres": 5024
+    "bollards": 7,
+    "railMetres": 5024,
+    "zebras": 17,
+    "boxJunctions": 42,
+    "busStops": 32,
+    "mouthBollards": 4,
+    "boards": 1695
   }
 }

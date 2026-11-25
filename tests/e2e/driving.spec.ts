@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { watch, start, state, frames, walk, waitChunks, chainOfWays, manifest } from './helpers.ts';
+import { watch, start, seedCharacter, state, frames, walk, waitChunks, chainOfWays, manifest } from './helpers.ts';
 import { carState, placeCar, driveRoute, waysNamed, pathLength } from './driving-helpers.ts';
 import { CAR_START } from '../../src/vehicle/VehiclePhysics.ts';
 import { CHINA } from '../../src/v5/geo.ts';
@@ -31,6 +31,7 @@ const k3d = <T>(page: Page, fn: (k: any) => T): Promise<T> => page.evaluate(`(${
  * line runs through the east row of parked cars (docs/V8_REPORT.md, data finding 1). They are the V4 regressions.
  */
 const ready = async (page: Page, render: 'default' | 'v4' = 'default') => {
+  await seedCharacter(page);
   await page.goto(render === 'v4' ? './?render=v4' : './');
   await start(page, { navigate: false });
   await page.waitForFunction(() => (window as any).__k3d.driving.placed, null, { timeout: 60_000 });

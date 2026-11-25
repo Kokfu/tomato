@@ -5,14 +5,13 @@ import type { ChunkData, RoadData } from './types.ts';
 import { ROAD_TYPES, ROAD_STYLE } from './types.ts';
 import { GeoBuf } from './Materials.ts';
 import type { BuildContext } from './ChunkManager.ts';
+import { streetEdges, laneMarkings, stopLine } from './StreetEdges.ts';
 
 const UP = [0, 1, 0] as const;
 const tmpColor = new THREE.Color();
 const RAIL = new THREE.Color(0xc9ccd0);
 const CONCRETE = new THREE.Color(0x9a968c);
 const QUAY = new THREE.Color(0x8b8578);
-const KERB = new THREE.Color(0xb4b0a4);
-const DRAIN = new THREE.Color(0x5d5c57);
 const RAIL_PAINT = new THREE.Color(0x3d4a52);
 
 interface Sample { x: number; z: number; y: number }
@@ -162,23 +161,54 @@ export function* buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBu
   const high = ctx.detail === 'high';
   const bufs = [new GeoBuf(), new GeoBuf(), new GeoBuf(), new GeoBuf()];
   const marks = new GeoBuf();
-  const white = new THREE.Color(0xffffff);
   // Carriageway segments of this chunk (chunk-local metres) for the kerb clearance test.
   const lanes: number[] = [];
   for (const r of data.roads) {
     const st = ROAD_STYLE[ROAD_TYPES[r.t]];
     if (!high || st.group < 2) continue;
-    for (let i = 2; i < r.p.length; i += 2) lanes.push(r.p[i - 2] / QUANT, r.p[i - 1] / QUANT, r.p[i] / QUANT, r.p[i + 1] / QUANT, r.w / QUANT / 2, r.id);
+    for (let i = 2; i < r.p.length; i += 2) lanes.push(r.p[i - 2] / QUANT, r.p[i - 1] / QUANT, r.p[i] / QUANT, r.p[i + 1] / QUANT, r.w / QUANT / 2, r.id, st.group === 3 && r.f & 8 ? 1 : 0);
   }
-  const onCarriageway = (x: number, z: number, own: number): boolean => {
-    for (let i = 0; i < lanes.length; i += 6) {
-      if (lanes[i + 5] === own) continue;
+  // Vertices of the drivable roads of this chunk (for stop lines): who passes through each, and whether it ends there.
+  // For an end, (dx, dz) is the unit direction in which that road leaves the vertex.
+  const nodes = new Map<number, { id: number; hw: number; end: boolean; dx: number; dz: number }[]>();
+  if (high) for (const r of data.roads) {
+    const st = ROAD_STYLE[ROAD_TYPES[r.t]];
+    if (st.group < 2 || !st.major || r.f & 3) continue;
+    const n = r.p.length / 2;
+    for (let i = 0; i < n; i++) {
+      const end = i === 0 || i === n - 1, o = i === 0 ? 1 : i - 1;
+      const vx = r.p[o * 2] - r.p[i * 2], vz = r.p[o * 2 + 1] - r.p[i * 2 + 1], vl = Math.hypot(vx, vz) || 1;
+      const k = r.p[i * 2] * 100003 + r.p[i * 2 + 1], l = nodes.get(k), e = { id: r.id, hw: r.w / QUANT / 2, end, dx: vx / vl, dz: vz / vl };
+      if (l) l.push(e); else nodes.set(k, [e]);
+    }
+  }
+  // With `oneWayWithin` it answers another question: is (x, z) within that many metres of the carriageway of another
+  // one-way main road that runs beside it in the opposite direction to (dirX, dirZ): the other half of a dual road?
+  // The segments are bucketed in 32 m cells (each in every cell its widest test can reach): the street edges ask this
+  // several times per road sample, and a scan of every segment of a dense chunk made one road a 60 ms step on a phone.
+  const CELL = 32, grid = new Map<number, number[]>();
+  const cellKey = (x: number, z: number) => (Math.floor(x / CELL) + 64) * 4096 + Math.floor(z / CELL) + 64;
+  for (let i = 0; i < lanes.length; i += 7) {
+    const pad = lanes[i + 4] + 8.1;
+    for (let gz = Math.floor((Math.min(lanes[i + 1], lanes[i + 3]) - pad) / CELL); gz <= Math.floor((Math.max(lanes[i + 1], lanes[i + 3]) + pad) / CELL); gz++)
+      for (let gx = Math.floor((Math.min(lanes[i], lanes[i + 2]) - pad) / CELL); gx <= Math.floor((Math.max(lanes[i], lanes[i + 2]) + pad) / CELL); gx++) {
+        const k = (gx + 64) * 4096 + gz + 64, l = grid.get(k);
+        if (l) l.push(i); else grid.set(k, [i]);
+      }
+  }
+  const onCarriageway = (x: number, z: number, own: number, oneWayWithin = 0, dirX = 0, dirZ = 0): boolean => {
+    const cell = grid.get(cellKey(x, z));
+    if (!cell) return false;
+    for (const i of cell) {
+      if (lanes[i + 5] === own || (oneWayWithin && !lanes[i + 6])) continue;
       const ax = lanes[i], az = lanes[i + 1], vx = lanes[i + 2] - ax, vz = lanes[i + 3] - az, hw = lanes[i + 4];
       const l2 = vx * vx + vz * vz;
       let t = l2 > 0 ? ((x - ax) * vx + (z - az) * vz) / l2 : 0;
+      if (oneWayWithin && (t <= 0 || t >= 1 || (vx * dirX + vz * dirZ) / Math.sqrt(l2) > -0.7)) continue;
       t = t < 0 ? 0 : t > 1 ? 1 : t;
       const dx = ax + vx * t - x, dz = az + vz * t - z;
-      if (dx * dx + dz * dz < (hw + 0.05) * (hw + 0.05)) return true;
+      const reach = hw + (oneWayWithin || 0.05);
+      if (dx * dx + dz * dz < reach * reach) return true;
     }
     return false;
   };
@@ -205,50 +235,35 @@ export function* buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBu
     ribbon(bufs[style.group], pts, hw, tmpColor, ox, oz, ctx, !bridge, yOff, true);
     if (bridge && !ctx.landmarks.replacesRoadStructure(r.id)) bridgeStructure(structure, pts, hw, ox, oz, ctx, type === 'pier');
 
-    // Kerb stones and the open roadside drain that lines Kuching streets (decorative, inferred from
-    // the carriageway edge; drawn below the road layers so junctions stay clean).
-    if (high && style.group >= 2 && style.major && !bridge && !(r.f & 2) && pts.length >= 2) {
-      const kerb = offsets(pts, hw + 0.11), drain = offsets(pts, hw + 0.36);
-      for (const sgn of [0, 1]) {
-        // Split into runs that are clear of every other carriageway (the second half of a dual
-        // road, side-street mouths), so no kerb is ever painted across asphalt.
-        let k: Sample[] = [], d: Sample[] = [];
-        const flush = () => {
-          if (k.length >= 2) {
-            ribbon(bufs[0], d, 0.13, DRAIN, ox, oz, ctx, true, 0.035, false);
-            ribbon(bufs[0], k, 0.12, KERB, ox, oz, ctx, true, 0.05, false);
-          }
-          k = []; d = [];
-        };
-        for (let i = 0; i < pts.length; i++) {
-          const ko = kerb[i], dr = drain[i];
-          const kx = sgn ? ko.rx : ko.lx, kz = sgn ? ko.rz : ko.lz;
-          if (onCarriageway(kx, kz, r.id)) { flush(); continue; }
-          k.push({ x: kx, z: kz, y: pts[i].y });
-          d.push({ x: sgn ? dr.rx : dr.lx, z: sgn ? dr.rz : dr.lz, y: pts[i].y });
+    // N1-M4: kerb, footpath and the open monsoon drain beside the carriageway, lane lines and stop lines
+    // (StreetEdges.ts; all inferred from the road class and width).
+    if (high && style.group >= 2 && (style.major || type === 'service') && pts.length >= 2) {
+      const cache = new Map<number, ReturnType<typeof offsets>>();
+      const off = (d: number) => { let o = cache.get(d); if (!o) cache.set(d, (o = offsets(pts, d))); return o; };
+      const blocked = (x: number, z: number, oneWayWithin?: number, dirX?: number, dirZ?: number) => onCarriageway(x, z, r.id, oneWayWithin, dirX, dirZ);
+      if (!bridge && !(r.f & 2)) streetEdges(r, type, pts, hw, ox, oz, ctx, { floor: bufs[0], paving: bufs[1], solid: structure }, off, blocked);
+      const edge = off(hw);
+      const edgeY = pts.map((p, i): [number, number] => (bridge ? [p.y, p.y] : [ctx.height.sample(ox + edge[i].lx, oz + edge[i].lz) + yOff, ctx.height.sample(ox + edge[i].rx, oz + edge[i].rz) + yOff]));
+      laneMarkings(r, type, pts, hw, marks, off, edgeY, ctx.quality.name === 'low', blocked);
+      // (a closed way, a roundabout drawn as one loop, has no end to stop at)
+      if (!bridge && !(r.f & 2) && r === r0 && style.major && (r.p[0] !== r.p[r.p.length - 2] || r.p[1] !== r.p[r.p.length - 1])) {
+        const n = r.p.length / 2;
+        for (const end of [0, 1] as const) {
+          const v = end ? n - 1 : 0, others = (nodes.get(r.p[v * 2] * 100003 + r.p[v * 2 + 1]) ?? []).filter((o) => o.id !== r.id);
+          const o1 = end ? n - 2 : 1, mx = r.p[o1 * 2] - r.p[v * 2], mz = r.p[o1 * 2 + 1] - r.p[v * 2 + 1], ml = Math.hypot(mx, mz) || 1;
+          const me = { dx: mx / ml, dz: mz / ml };
+          // Arms at this node besides this one (a way running through counts as two): fewer than two is a bend or
+          // the same street under another way id, not a junction.
+          const arms = others.reduce((a, o) => a + (o.end ? 1 : 2), 0);
+          if (arms < 2) continue;
+          // Ways that cross this arm, and whether the street carries straight on under another way id. An arm of the
+          // through street stops only at a real crossroads or at a clearly wider road; a side street always stops.
+          const cross = others.filter((o) => !o.end || Math.abs(o.dx * me.dx + o.dz * me.dz) < 0.8);
+          const crossArms = cross.reduce((a, o) => a + (o.end ? 1 : 2), 0);
+          const carriesOn = others.some((o) => o.end && o.dx * me.dx + o.dz * me.dz < -0.8);
+          if (!cross.length || (carriesOn && crossArms < 2 && !cross.some((o) => o.hw > hw * 1.15))) continue;
+          stopLine(r, pts, hw, end, Math.max(...cross.map((o) => o.hw)), marks);
         }
-        flush();
-      }
-    }
-
-    // Dashed centre line on two-way major roads (decorative, inferred - not mapped lane data).
-    if (high && style.group === 3 && !(r.f & 8) && hw >= 3) {
-      let acc = 0;
-      for (let i = 1; i < pts.length; i++) {
-        const a = pts[i - 1], b = pts[i];
-        const len = Math.hypot(b.x - a.x, b.z - a.z);
-        if (len < 1e-3) continue;
-        const dx = (b.x - a.x) / len, dz = (b.z - a.z) / len;
-        let s = (9 - (acc % 9)) % 9;
-        for (; s + 3 <= len; s += 9) {
-          const x0 = a.x + dx * s, z0 = a.z + dz * s, x1 = x0 + dx * 3, z1 = z0 + dz * 3;
-          const y0 = a.y + ((b.y - a.y) * s) / len + 0.02, y1 = a.y + ((b.y - a.y) * (s + 3)) / len + 0.02;
-          const w = 0.07;
-          const v0 = marks.vert(x0 - dz * w, y0, z0 + dx * w, ...UP, white), v1 = marks.vert(x0 + dz * w, y0, z0 - dx * w, ...UP, white);
-          const v2 = marks.vert(x1 + dz * w, y1, z1 - dx * w, ...UP, white), v3 = marks.vert(x1 - dz * w, y1, z1 + dx * w, ...UP, white);
-          marks.triUp(v0, v1, v2); marks.triUp(v0, v2, v3);
-        }
-        acc += len;
       }
     }
   }
