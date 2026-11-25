@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import type { LandmarkBuilder } from '../LandmarkManager.ts';
 import { CHUNK_SIZE } from '../config.ts';
+import { ENV, envListeners } from '../env.ts';
 import { Model, col, findBuilding, fitFootprint, centroid, type V3 } from './kit.ts';
 
 export const DUN_BUILDING = 1357531465;
@@ -53,6 +54,12 @@ function gold(): THREE.MeshStandardMaterial {
   env.needsUpdate = true;
   goldMat = new THREE.MeshStandardMaterial({ color: 0xdcae3e, metalness: 0.82, roughness: 0.36, envMap: env, envMapIntensity: 1.0, side: THREE.DoubleSide });
   goldMat.name = 'dun-gold';
+  // N1-M6: the roof is floodlit at night (and no longer mirrors a daytime sky then).
+  goldMat.emissive.setHex(0x9a6414);
+  goldMat.emissiveIntensity = 0;
+  const mat = goldMat, light = (night: number) => { mat.emissiveIntensity = night * 0.75; mat.envMapIntensity = 1 - 0.88 * night; };
+  envListeners.push(light);
+  light(ENV.uNight.value); // the roof may be built after night has fallen (a saved Night setting, a later chunk)
   return goldMat;
 }
 

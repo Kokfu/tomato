@@ -17,7 +17,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { prepareForDraw } from '../world/prepareDraw.ts';
-import type { Haze } from '../world/atmosphere.ts';
+import type { Look } from '../world/WorldManager.ts';
 
 const AO_SCALE = 0.5;
 /** Haze and sky-horizon colour by day (docs/night/refs/STYLE_GUIDE.md: horizon wash #c9d8df). */
@@ -66,9 +66,16 @@ export interface LightRig {
   scene: THREE.Scene; sun: THREE.DirectionalLight; hemi: THREE.HemisphereLight; sunDir: THREE.Vector3;
   /** Sky dome mesh and its uniforms (horizon, zenith, sun colour). */
   sky: THREE.Mesh;
+  /**
+   * N1-M6: the lights, sky and haze belong to the world, which scales a daylight "look" by the hour and the weather.
+   * The pipeline hands over its own daylight (null: back to the world's) instead of writing to the lights itself.
+   */
+  setLook(look: Look | null): void;
+  /** Run `fn` under a dry daytime sky, whatever the hour (the reflection map is baked once, by day). */
+  inDaylight(fn: () => void): void;
 }
 
-interface Saved { sunI: number; sunC: number; hemiI: number; hemiSky: number; hemiGround: number; fogC: number; fogD: number; exposure: number; tone: THREE.ToneMapping; horizon: number; zenith: number; env: THREE.Texture | null; envI: number }
+interface Saved { tone: THREE.ToneMapping; env: THREE.Texture | null }
 
 export class V5Pipeline {
   active = false;
@@ -106,6 +113,10 @@ export class V5Pipeline {
       const setSize = g.setSize.bind(g);
       g.setSize = (w: number, h: number) => setSize(Math.max(1, Math.round(w * AO_SCALE)), Math.max(1, Math.round(h * AO_SCALE)));
       g.setSize(size.x, size.y);
+      // N1-M6: the pass draws every mesh with its own material, whatever the mesh's material says. Additive light on
+      // the ground (lamp pools, headlights) and rain streaks are not surfaces: they are hidden for it.
+      const gv = g as unknown as { overrideVisibility(): void }, hide = gv.overrideVisibility.bind(g), scene = this.rig.scene;
+      gv.overrideVisibility = () => { hide(); scene.traverse((o) => { if (o.userData.noAO) o.visible = false; }); };
       g.updateGtaoMaterial({ radius: 0.5, distanceExponent: 1.3, thickness: 1.2, scale: 1.0, samples: 12, distanceFallOff: 1, screenSpaceRadius: false });
       g.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 8, radiusExponent: 1.3, rings: 2, samples: 12 });
       g.blendIntensity = 1.0;
@@ -147,33 +158,30 @@ export class V5Pipeline {
 
   enable(): void {
     if (this.active) return;
-    const { scene, sun, hemi, sky } = this.rig, r = this.renderer;
-    const fog = scene.fog as Haze, u = (sky.material as THREE.ShaderMaterial).uniforms;
-    this.saved = { sunI: sun.intensity, sunC: sun.color.getHex(), hemiI: hemi.intensity, hemiSky: hemi.color.getHex(), hemiGround: hemi.groundColor.getHex(), fogC: fog.color.getHex(), fogD: fog.density, exposure: r.toneMappingExposure, tone: r.toneMapping, horizon: u.uHorizon.value.getHex(), zenith: u.uZenith.value.getHex(), env: scene.environment, envI: scene.environmentIntensity };
-    sun.color.setHex(0xffedd2); sun.intensity = this.look.sun;
-    hemi.color.setHex(0xc4d2e4); hemi.groundColor.setHex(0x9a917e); hemi.intensity = this.look.hemi;
-    // Equatorial sky: a pale, humid horizon under a soft blue zenith. The haze has exactly the horizon's colour, so the
-    // far ground dissolves into the sky (atmosphere.ts).
-    u.uHorizon.value.setHex(HORIZON); u.uZenith.value.setHex(0x3d7fc4);
-    fog.color.setHex(HORIZON); fog.density = this.saved.fogD * this.look.fog;
-    (scene.background as THREE.Color | null)?.setHex?.(HORIZON);
-    r.toneMapping = THREE.AgXToneMapping; r.toneMappingExposure = this.look.exposure;
-    // Environment for specular reflections: the sky itself, prefiltered once (256 px cube, ~1.4 MB of GPU memory).
-    const pm = new THREE.PMREMGenerator(r);
-    const envScene = new THREE.Scene();
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(50, 24, 12), sky.material as THREE.Material);
-    envScene.add(dome);
-    // Ground half: a neutral warm grey disc so downward reflections are not sky-blue.
-    const ground = new THREE.Mesh(new THREE.CircleGeometry(60, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x4a473f }));
-    ground.position.y = -1.5;
-    envScene.add(ground);
-    const ring = facadeRing(this.rig.sunDir);
-    envScene.add(ring);
-    this.env?.dispose();
-    this.env = pm.fromScene(envScene, 0, 0.1, 100);
-    pm.dispose(); dome.geometry.dispose(); ground.geometry.dispose(); ring.geometry.dispose(); (ring.material as THREE.Material).dispose();
-    scene.environment = this.env.texture;
-    scene.environmentIntensity = this.look.env;
+    const { scene, sky } = this.rig, r = this.renderer;
+    this.saved = { tone: r.toneMapping, env: scene.environment };
+    // Strong warm sun over a much weaker sky fill. Equatorial sky: a pale, humid horizon under a soft blue zenith; the
+    // haze has exactly the horizon's colour, so the far ground dissolves into the sky (atmosphere.ts).
+    this.rig.setLook({ sun: 0xffedd2, sunI: this.look.sun, sky: 0xc4d2e4, ground: 0x9a917e, hemiI: this.look.hemi, horizon: HORIZON, zenith: 0x3d7fc4, exposure: this.look.exposure, env: this.look.env, fog: this.look.fog });
+    r.toneMapping = THREE.AgXToneMapping;
+    // Environment for specular reflections: the daytime sky itself, prefiltered once (256 px cube, ~1.4 MB of GPU
+    // memory). At other hours its strength follows the sky's (scene.environmentIntensity, set by the world).
+    this.rig.inDaylight(() => {
+      const pm = new THREE.PMREMGenerator(r);
+      const envScene = new THREE.Scene();
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(50, 24, 12), sky.material as THREE.Material);
+      envScene.add(dome);
+      // Ground half: a neutral warm grey disc so downward reflections are not sky-blue.
+      const ground = new THREE.Mesh(new THREE.CircleGeometry(60, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x4a473f }));
+      ground.position.y = -1.5;
+      envScene.add(ground);
+      const ring = facadeRing(this.rig.sunDir);
+      envScene.add(ring);
+      this.env?.dispose();
+      this.env = pm.fromScene(envScene, 0, 0.1, 100);
+      pm.dispose(); dome.geometry.dispose(); ground.geometry.dispose(); ring.geometry.dispose(); (ring.material as THREE.Material).dispose();
+    });
+    scene.environment = this.env!.texture;
     this.active = true;
     this.buildComposer();
     this.applyShadow();
@@ -181,15 +189,10 @@ export class V5Pipeline {
 
   disable(): void {
     if (!this.active || !this.saved) return;
-    const { scene, sun, hemi, sky } = this.rig, r = this.renderer, s = this.saved;
-    const fog = scene.fog as Haze, u = (sky.material as THREE.ShaderMaterial).uniforms;
-    sun.intensity = s.sunI; sun.color.setHex(s.sunC);
-    hemi.intensity = s.hemiI; hemi.color.setHex(s.hemiSky); hemi.groundColor.setHex(s.hemiGround);
-    u.uHorizon.value.setHex(s.horizon); u.uZenith.value.setHex(s.zenith);
-    fog.color.setHex(s.fogC); fog.density = s.fogD;
-    (scene.background as THREE.Color | null)?.setHex?.(s.fogC);
-    r.toneMapping = s.tone; r.toneMappingExposure = s.exposure;
-    scene.environment = s.env; scene.environmentIntensity = s.envI;
+    const { scene } = this.rig, r = this.renderer, s = this.saved;
+    scene.environment = s.env;
+    r.toneMapping = s.tone;
+    this.rig.setLook(null);
     this.composer?.dispose(); this.composer = null; this.gtao = null;
     this.env?.dispose(); this.env = null;
     this.active = false;

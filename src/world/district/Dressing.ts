@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CHUNK_SIZE, QUANT, WATER_LEVEL } from '../config.ts';
 import type { ChunkData } from '../types.ts';
 import { GeoBuf } from '../Materials.ts';
+import { lightPool } from '../StreetFurniture.ts';
 import type { BuildContext } from '../ChunkManager.ts';
 import { PROP, chunkProps, medianRuns, stationOfChunk } from './props.ts';
 import type { Prop } from './props.ts';
@@ -244,8 +245,9 @@ function kerb(buf: GeoBuf, pts: [number, number][], h: (x: number, z: number) =>
 export function buildDressing(data: ChunkData, ctx: BuildContext): THREE.Object3D[] {
   if (!stationOfChunk(data)) return [];
   const ox = data.cx * CHUNK_SIZE, oz = data.cz * CHUNK_SIZE;
-  const solid = new GeoBuf(), leaf = new GeoBuf(), glow = new GeoBuf();
+  const solid = new GeoBuf(), leaf = new GeoBuf(), glow = new GeoBuf(), pools = new GeoBuf();
   const H = (x: number, z: number) => ctx.height.sample(ox + x, oz + z);
+  const low = ctx.quality.name === 'low';
   const inside = (x: number, z: number) => x >= 0 && x < CHUNK_SIZE && z >= 0 && z < CHUNK_SIZE;
   const white = new THREE.Color(0xffffff);
 
@@ -262,6 +264,7 @@ export function buildDressing(data: ChunkData, ctx: BuildContext): THREE.Object3
       const L = Math.hypot(p.tx, p.tz), ux = p.tx / L, uz = p.tz / L, y1 = H(lx + p.tx, lz + p.tz), N = 12;
       const w = new Fr(solid, lx, 0, lz, ux, uz), g = new Fr(glow, lx, 0, lz, ux, uz), wire = new THREE.Color(0x1b1c1e), bulb = new THREE.Color(1.5, 1.35, 0.95);
       const at = (i: number): [number, number] => { const t = i / N; return [L * t, y + (y1 - y) * t + 3.52 - 0.45 * 4 * t * (1 - t)]; };
+      lightPool(pools, H, lx + p.tx / 2, lz + p.tz / 2, 5.5, low, 0.6);
       for (let i = 0; i < N; i++) {
         const [a0, h0] = at(i), [a1, h1] = at(i + 1);
         w.poly([[a0, 0, h0], [a1, 0, h1], [a1, 0, h1 + 0.016], [a0, 0, h0 + 0.016]], wire);
@@ -286,6 +289,7 @@ export function buildDressing(data: ChunkData, ctx: BuildContext): THREE.Object3
         break;
       case PROP.medianLamp: {
         const steel = new THREE.Color(0x8a8f93);
+        lightPool(pools, H, lx, lz, 12, low);
         f.cyl(0, 0, 0.1, 0.8, 0.11, 0.08, 8, steel, false);
         f.cyl(0, 0, 0.8, 9, 0.07, 0.045, 6, steel);
         for (const s of [-1, 1]) {
@@ -299,6 +303,7 @@ export function buildDressing(data: ChunkData, ctx: BuildContext): THREE.Object3
       }
       case PROP.globeLamp: {
         const iron = new THREE.Color(0x1b1c1e);
+        lightPool(pools, H, lx, lz, 5.5, low, 0.8);
         f.cyl(0, 0, 0, 0.7, 0.11, 0.07, 8, iron, false);
         f.cyl(0, 0, 0.7, 3.6, 0.05, 0.04, 6, iron);
         f.cyl(0, 0, 3.6, 3.68, 0.13, 0.1, 8, iron);
@@ -365,5 +370,7 @@ export function buildDressing(data: ChunkData, ctx: BuildContext): THREE.Object3
   add(solid.build(), ctx.mats.furniture, true);
   add(leaf.build(), ctx.mats.foliage, true);
   add(glow.build(), ctx.mats.lampGlow, false);
+  const lg = pools.build();
+  if (lg) { const m = new THREE.Mesh(lg, ctx.mats.pools); m.renderOrder = 7; m.userData.noAO = true; out.push(m); }
   return out;
 }

@@ -1,0 +1,1018 @@
+{
+ "note": "Phone emulation (390x844, Low, 4x CPU), drive-bench A,B,C, cold + warm run each, production builds, nothing else running. \"final\": baseline (M0 build) then the final M6a build, on a frozen dry day (the automated default). \"nightRain\": the same M6a build with ?time=21&rain=on against its own day run just before. \"vsM5c\": two interleaved pairs of the M5c build and M6a (scenarios B and C), taken after the rain-sound fix. \"discarded\": two earlier interleaved pairs against the baseline, taken with a build whose rain sound scheduled two audio-parameter changes every frame on a sleeping audio context; their cost grew with time (A fine, B and C 13 to 28 % over). Kept for the record; that bug is fixed in the committed code. Two still earlier pairs ran while a review agent was reading the repository and are not kept. The machine's speed drifted between runs all night: compare only inside a pair.",
+ "final": [
+  {
+   "name": "A stationary cold",
+   "baseline": {
+    "name": "A stationary cold",
+    "p95Ms": 35,
+    "medianMs": 21,
+    "avgFps": 44.3,
+    "worstMs": 61.3,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 113,
+    "maxTrisK": 318,
+    "lateCompilesMs": []
+   },
+   "m6a": {
+    "name": "A stationary cold",
+    "p95Ms": 30.9,
+    "medianMs": 18.7,
+    "avgFps": 49.5,
+    "worstMs": 70.4,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 115,
+    "maxTrisK": 423,
+    "lateCompilesMs": []
+   },
+   "p95DeltaPct": -12
+  },
+  {
+   "name": "B Jalan China lane cold",
+   "baseline": {
+    "name": "B Jalan China lane cold",
+    "p95Ms": 36.7,
+    "medianMs": 20.6,
+    "avgFps": 44.8,
+    "worstMs": 97.4,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 129,
+    "maxTrisK": 322,
+    "lateCompilesMs": []
+   },
+   "m6a": {
+    "name": "B Jalan China lane cold",
+    "p95Ms": 36.6,
+    "medianMs": 20.6,
+    "avgFps": 44.4,
+    "worstMs": 115.8,
+    "over100": 1,
+    "over200": 0,
+    "maxCalls": 131,
+    "maxTrisK": 429,
+    "lateCompilesMs": []
+   },
+   "p95DeltaPct": 0
+  },
+  {
+   "name": "C block loop cold",
+   "baseline": {
+    "name": "C block loop cold",
+    "p95Ms": 33.1,
+    "medianMs": 18.1,
+    "avgFps": 49,
+    "worstMs": 84.1,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 150,
+    "maxTrisK": 349,
+    "lateCompilesMs": [
+     37.6
+    ]
+   },
+   "m6a": {
+    "name": "C block loop cold",
+    "p95Ms": 33.2,
+    "medianMs": 19.1,
+    "avgFps": 48,
+    "worstMs": 78.2,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 156,
+    "maxTrisK": 485,
+    "lateCompilesMs": [
+     25.7
+    ]
+   },
+   "p95DeltaPct": 0
+  },
+  {
+   "name": "A stationary warm1",
+   "baseline": {
+    "name": "A stationary warm1",
+    "p95Ms": 34.3,
+    "medianMs": 20.7,
+    "avgFps": 45.6,
+    "worstMs": 57.3,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 130,
+    "maxTrisK": 323,
+    "lateCompilesMs": []
+   },
+   "m6a": {
+    "name": "A stationary warm1",
+    "p95Ms": 30.4,
+    "medianMs": 19.6,
+    "avgFps": 48.6,
+    "worstMs": 56.4,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 135,
+    "maxTrisK": 433,
+    "lateCompilesMs": []
+   },
+   "p95DeltaPct": -11
+  },
+  {
+   "name": "B Jalan China lane warm1",
+   "baseline": {
+    "name": "B Jalan China lane warm1",
+    "p95Ms": 33.8,
+    "medianMs": 20.6,
+    "avgFps": 45.6,
+    "worstMs": 66.2,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 141,
+    "maxTrisK": 326,
+    "lateCompilesMs": []
+   },
+   "m6a": {
+    "name": "B Jalan China lane warm1",
+    "p95Ms": 33.8,
+    "medianMs": 20.1,
+    "avgFps": 46.1,
+    "worstMs": 66.8,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 146,
+    "maxTrisK": 437,
+    "lateCompilesMs": []
+   },
+   "p95DeltaPct": 0
+  },
+  {
+   "name": "C block loop warm1",
+   "baseline": {
+    "name": "C block loop warm1",
+    "p95Ms": 32.6,
+    "medianMs": 18.1,
+    "avgFps": 49.8,
+    "worstMs": 85.7,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 150,
+    "maxTrisK": 353,
+    "lateCompilesMs": [
+     44.7
+    ]
+   },
+   "m6a": {
+    "name": "C block loop warm1",
+    "p95Ms": 32.9,
+    "medianMs": 19.5,
+    "avgFps": 47.9,
+    "worstMs": 76.3,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 156,
+    "maxTrisK": 485,
+    "lateCompilesMs": [
+     27.8
+    ]
+   },
+   "p95DeltaPct": 1
+  }
+ ],
+ "nightRain": [
+  {
+   "name": "A stationary cold",
+   "day": {
+    "name": "A stationary cold",
+    "p95Ms": 30.9,
+    "medianMs": 18.7,
+    "avgFps": 49.5,
+    "worstMs": 70.4,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 115,
+    "maxTrisK": 423,
+    "lateCompilesMs": []
+   },
+   "nightRain": {
+    "name": "A stationary cold",
+    "p95Ms": 29.7,
+    "medianMs": 18,
+    "avgFps": 50.9,
+    "worstMs": 57.3,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 120,
+    "maxTrisK": 425,
+    "lateCompilesMs": []
+   },
+   "p95DeltaPct": -4
+  },
+  {
+   "name": "B Jalan China lane cold",
+   "day": {
+    "name": "B Jalan China lane cold",
+    "p95Ms": 36.6,
+    "medianMs": 20.6,
+    "avgFps": 44.4,
+    "worstMs": 115.8,
+    "over100": 1,
+    "over200": 0,
+    "maxCalls": 131,
+    "maxTrisK": 429,
+    "lateCompilesMs": []
+   },
+   "nightRain": {
+    "name": "B Jalan China lane cold",
+    "p95Ms": 34.9,
+    "medianMs": 19.7,
+    "avgFps": 46.6,
+    "worstMs": 99.3,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 136,
+    "maxTrisK": 430,
+    "lateCompilesMs": []
+   },
+   "p95DeltaPct": -5
+  },
+  {
+   "name": "C block loop cold",
+   "day": {
+    "name": "C block loop cold",
+    "p95Ms": 33.2,
+    "medianMs": 19.1,
+    "avgFps": 48,
+    "worstMs": 78.2,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 156,
+    "maxTrisK": 485,
+    "lateCompilesMs": [
+     25.7
+    ]
+   },
+   "nightRain": {
+    "name": "C block loop cold",
+    "p95Ms": 34.1,
+    "medianMs": 19.3,
+    "avgFps": 47.3,
+    "worstMs": 79.4,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 164,
+    "maxTrisK": 487,
+    "lateCompilesMs": [
+     40.7
+    ]
+   },
+   "p95DeltaPct": 3
+  },
+  {
+   "name": "A stationary warm1",
+   "day": {
+    "name": "A stationary warm1",
+    "p95Ms": 30.4,
+    "medianMs": 19.6,
+    "avgFps": 48.6,
+    "worstMs": 56.4,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 135,
+    "maxTrisK": 433,
+    "lateCompilesMs": []
+   },
+   "nightRain": {
+    "name": "A stationary warm1",
+    "p95Ms": 29,
+    "medianMs": 19.6,
+    "avgFps": 48.8,
+    "worstMs": 46.7,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 141,
+    "maxTrisK": 435,
+    "lateCompilesMs": []
+   },
+   "p95DeltaPct": -5
+  },
+  {
+   "name": "B Jalan China lane warm1",
+   "day": {
+    "name": "B Jalan China lane warm1",
+    "p95Ms": 33.8,
+    "medianMs": 20.1,
+    "avgFps": 46.1,
+    "worstMs": 66.8,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 146,
+    "maxTrisK": 437,
+    "lateCompilesMs": []
+   },
+   "nightRain": {
+    "name": "B Jalan China lane warm1",
+    "p95Ms": 33.8,
+    "medianMs": 19.7,
+    "avgFps": 46.7,
+    "worstMs": 84.8,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 151,
+    "maxTrisK": 438,
+    "lateCompilesMs": []
+   },
+   "p95DeltaPct": 0
+  },
+  {
+   "name": "C block loop warm1",
+   "day": {
+    "name": "C block loop warm1",
+    "p95Ms": 32.9,
+    "medianMs": 19.5,
+    "avgFps": 47.9,
+    "worstMs": 76.3,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 156,
+    "maxTrisK": 485,
+    "lateCompilesMs": [
+     27.8
+    ]
+   },
+   "nightRain": {
+    "name": "C block loop warm1",
+    "p95Ms": 32.1,
+    "medianMs": 19.3,
+    "avgFps": 48,
+    "worstMs": 91.1,
+    "over100": 0,
+    "over200": 0,
+    "maxCalls": 164,
+    "maxTrisK": 487,
+    "lateCompilesMs": [
+     52.5
+    ]
+   },
+   "p95DeltaPct": -2
+  }
+ ],
+ "vsM5c": [
+  [
+   {
+    "name": "B Jalan China lane cold",
+    "m5c": {
+     "name": "B Jalan China lane cold",
+     "p95Ms": 36.4,
+     "medianMs": 22.8,
+     "avgFps": 42,
+     "worstMs": 96.5,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 131,
+     "maxTrisK": 429,
+     "lateCompilesMs": []
+    },
+    "m6a": {
+     "name": "B Jalan China lane cold",
+     "p95Ms": 35.8,
+     "medianMs": 22.2,
+     "avgFps": 42.4,
+     "worstMs": 93.3,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 131,
+     "maxTrisK": 429,
+     "lateCompilesMs": []
+    },
+    "p95DeltaPct": -2
+   },
+   {
+    "name": "C block loop cold",
+    "m5c": {
+     "name": "C block loop cold",
+     "p95Ms": 33.5,
+     "medianMs": 21.2,
+     "avgFps": 45,
+     "worstMs": 63.4,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 156,
+     "maxTrisK": 485,
+     "lateCompilesMs": [
+      42.7
+     ]
+    },
+    "m6a": {
+     "name": "C block loop cold",
+     "p95Ms": 33.7,
+     "medianMs": 20.4,
+     "avgFps": 46,
+     "worstMs": 88.1,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 156,
+     "maxTrisK": 485,
+     "lateCompilesMs": [
+      27
+     ]
+    },
+    "p95DeltaPct": 1
+   },
+   {
+    "name": "B Jalan China lane warm1",
+    "m5c": {
+     "name": "B Jalan China lane warm1",
+     "p95Ms": 35.3,
+     "medianMs": 23.8,
+     "avgFps": 41.2,
+     "worstMs": 74.7,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 146,
+     "maxTrisK": 437,
+     "lateCompilesMs": []
+    },
+    "m6a": {
+     "name": "B Jalan China lane warm1",
+     "p95Ms": 35.6,
+     "medianMs": 20.6,
+     "avgFps": 45.3,
+     "worstMs": 76,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 146,
+     "maxTrisK": 437,
+     "lateCompilesMs": []
+    },
+    "p95DeltaPct": 1
+   },
+   {
+    "name": "C block loop warm1",
+    "m5c": {
+     "name": "C block loop warm1",
+     "p95Ms": 33.2,
+     "medianMs": 20.6,
+     "avgFps": 46.1,
+     "worstMs": 66.1,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 156,
+     "maxTrisK": 485,
+     "lateCompilesMs": [
+      34.9
+     ]
+    },
+    "m6a": {
+     "name": "C block loop warm1",
+     "p95Ms": 32.2,
+     "medianMs": 18.8,
+     "avgFps": 48.8,
+     "worstMs": 69.9,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 156,
+     "maxTrisK": 485,
+     "lateCompilesMs": [
+      36.1
+     ]
+    },
+    "p95DeltaPct": -3
+   }
+  ],
+  [
+   {
+    "name": "B Jalan China lane cold",
+    "m5c": {
+     "name": "B Jalan China lane cold",
+     "p95Ms": 37.9,
+     "medianMs": 20.7,
+     "avgFps": 44.1,
+     "worstMs": 84.1,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 131,
+     "maxTrisK": 429,
+     "lateCompilesMs": []
+    },
+    "m6a": {
+     "name": "B Jalan China lane cold",
+     "p95Ms": 35.1,
+     "medianMs": 19.5,
+     "avgFps": 46.4,
+     "worstMs": 121.4,
+     "over100": 2,
+     "over200": 0,
+     "maxCalls": 131,
+     "maxTrisK": 429,
+     "lateCompilesMs": []
+    },
+    "p95DeltaPct": -7
+   },
+   {
+    "name": "C block loop cold",
+    "m5c": {
+     "name": "C block loop cold",
+     "p95Ms": 34.4,
+     "medianMs": 19.7,
+     "avgFps": 46.8,
+     "worstMs": 73.1,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 156,
+     "maxTrisK": 485,
+     "lateCompilesMs": [
+      27.9
+     ]
+    },
+    "m6a": {
+     "name": "C block loop cold",
+     "p95Ms": 35.2,
+     "medianMs": 20,
+     "avgFps": 46.3,
+     "worstMs": 82.1,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 156,
+     "maxTrisK": 485,
+     "lateCompilesMs": [
+      26.3
+     ]
+    },
+    "p95DeltaPct": 2
+   },
+   {
+    "name": "B Jalan China lane warm1",
+    "m5c": {
+     "name": "B Jalan China lane warm1",
+     "p95Ms": 40,
+     "medianMs": 21.4,
+     "avgFps": 42.7,
+     "worstMs": 114.6,
+     "over100": 1,
+     "over200": 0,
+     "maxCalls": 146,
+     "maxTrisK": 437,
+     "lateCompilesMs": []
+    },
+    "m6a": {
+     "name": "B Jalan China lane warm1",
+     "p95Ms": 36.6,
+     "medianMs": 22.4,
+     "avgFps": 42.1,
+     "worstMs": 77.1,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 146,
+     "maxTrisK": 437,
+     "lateCompilesMs": []
+    },
+    "p95DeltaPct": -8
+   },
+   {
+    "name": "C block loop warm1",
+    "m5c": {
+     "name": "C block loop warm1",
+     "p95Ms": 32.6,
+     "medianMs": 19.3,
+     "avgFps": 47.9,
+     "worstMs": 68.2,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 156,
+     "maxTrisK": 485,
+     "lateCompilesMs": [
+      31.6
+     ]
+    },
+    "m6a": {
+     "name": "C block loop warm1",
+     "p95Ms": 34.1,
+     "medianMs": 19.3,
+     "avgFps": 47.3,
+     "worstMs": 68.7,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 155,
+     "maxTrisK": 481,
+     "lateCompilesMs": [
+      34.5
+     ]
+    },
+    "p95DeltaPct": 5
+   }
+  ]
+ ],
+ "discarded": [
+  [
+   {
+    "name": "A stationary cold",
+    "baseline": {
+     "name": "A stationary cold",
+     "p95Ms": 40,
+     "medianMs": 29.3,
+     "avgFps": 34.3,
+     "worstMs": 48.3,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 113,
+     "maxTrisK": 318,
+     "lateCompilesMs": []
+    },
+    "m6aWithSoundBug": {
+     "name": "A stationary cold",
+     "p95Ms": 41.4,
+     "medianMs": 29.2,
+     "avgFps": 33.2,
+     "worstMs": 66.3,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 115,
+     "maxTrisK": 423,
+     "lateCompilesMs": []
+    },
+    "p95DeltaPct": 3
+   },
+   {
+    "name": "B Jalan China lane cold",
+    "baseline": {
+     "name": "B Jalan China lane cold",
+     "p95Ms": 43.8,
+     "medianMs": 28.5,
+     "avgFps": 33.2,
+     "worstMs": 121.2,
+     "over100": 1,
+     "over200": 0,
+     "maxCalls": 129,
+     "maxTrisK": 322,
+     "lateCompilesMs": []
+    },
+    "m6aWithSoundBug": {
+     "name": "B Jalan China lane cold",
+     "p95Ms": 48.8,
+     "medianMs": 32.3,
+     "avgFps": 29.6,
+     "worstMs": 111.8,
+     "over100": 2,
+     "over200": 0,
+     "maxCalls": 131,
+     "maxTrisK": 429,
+     "lateCompilesMs": []
+    },
+    "p95DeltaPct": 11
+   },
+   {
+    "name": "C block loop cold",
+    "baseline": {
+     "name": "C block loop cold",
+     "p95Ms": 39,
+     "medianMs": 24.6,
+     "avgFps": 38.8,
+     "worstMs": 101.5,
+     "over100": 1,
+     "over200": 0,
+     "maxCalls": 150,
+     "maxTrisK": 349,
+     "lateCompilesMs": [
+      71.2
+     ]
+    },
+    "m6aWithSoundBug": {
+     "name": "C block loop cold",
+     "p95Ms": 44.9,
+     "medianMs": 28.6,
+     "avgFps": 33.7,
+     "worstMs": 108.7,
+     "over100": 1,
+     "over200": 0,
+     "maxCalls": 156,
+     "maxTrisK": 485,
+     "lateCompilesMs": [
+      68.3
+     ]
+    },
+    "p95DeltaPct": 15
+   },
+   {
+    "name": "A stationary warm1",
+    "baseline": {
+     "name": "A stationary warm1",
+     "p95Ms": 39.5,
+     "medianMs": 30.2,
+     "avgFps": 32.5,
+     "worstMs": 48,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 130,
+     "maxTrisK": 323,
+     "lateCompilesMs": []
+    },
+    "m6aWithSoundBug": {
+     "name": "A stationary warm1",
+     "p95Ms": 42.2,
+     "medianMs": 29.1,
+     "avgFps": 34.9,
+     "worstMs": 51.4,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 135,
+     "maxTrisK": 433,
+     "lateCompilesMs": []
+    },
+    "p95DeltaPct": 7
+   },
+   {
+    "name": "B Jalan China lane warm1",
+    "baseline": {
+     "name": "B Jalan China lane warm1",
+     "p95Ms": 39.2,
+     "medianMs": 26.1,
+     "avgFps": 36.8,
+     "worstMs": 56.2,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 141,
+     "maxTrisK": 326,
+     "lateCompilesMs": []
+    },
+    "m6aWithSoundBug": {
+     "name": "B Jalan China lane warm1",
+     "p95Ms": 47.5,
+     "medianMs": 31.4,
+     "avgFps": 31.3,
+     "worstMs": 112.5,
+     "over100": 1,
+     "over200": 0,
+     "maxCalls": 146,
+     "maxTrisK": 437,
+     "lateCompilesMs": []
+    },
+    "p95DeltaPct": 21
+   },
+   {
+    "name": "C block loop warm1",
+    "baseline": {
+     "name": "C block loop warm1",
+     "p95Ms": 38.1,
+     "medianMs": 23.6,
+     "avgFps": 40.2,
+     "worstMs": 76.3,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 150,
+     "maxTrisK": 353,
+     "lateCompilesMs": [
+      46.3
+     ]
+    },
+    "m6aWithSoundBug": {
+     "name": "C block loop warm1",
+     "p95Ms": 46.6,
+     "medianMs": 31.1,
+     "avgFps": 31.1,
+     "worstMs": 90.7,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 155,
+     "maxTrisK": 481,
+     "lateCompilesMs": [
+      61.6
+     ]
+    },
+    "p95DeltaPct": 22
+   }
+  ],
+  [
+   {
+    "name": "A stationary cold",
+    "baseline": {
+     "name": "A stationary cold",
+     "p95Ms": 36.9,
+     "medianMs": 25.2,
+     "avgFps": 38.8,
+     "worstMs": 57.6,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 113,
+     "maxTrisK": 318,
+     "lateCompilesMs": []
+    },
+    "m6aWithSoundBug": {
+     "name": "A stationary cold",
+     "p95Ms": 36,
+     "medianMs": 26.5,
+     "avgFps": 36.9,
+     "worstMs": 44.9,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 115,
+     "maxTrisK": 423,
+     "lateCompilesMs": []
+    },
+    "p95DeltaPct": -2
+   },
+   {
+    "name": "B Jalan China lane cold",
+    "baseline": {
+     "name": "B Jalan China lane cold",
+     "p95Ms": 35.1,
+     "medianMs": 20.9,
+     "avgFps": 44.5,
+     "worstMs": 87.8,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 129,
+     "maxTrisK": 322,
+     "lateCompilesMs": []
+    },
+    "m6aWithSoundBug": {
+     "name": "B Jalan China lane cold",
+     "p95Ms": 44.9,
+     "medianMs": 29.6,
+     "avgFps": 33.2,
+     "worstMs": 105.8,
+     "over100": 1,
+     "over200": 0,
+     "maxCalls": 131,
+     "maxTrisK": 429,
+     "lateCompilesMs": []
+    },
+    "p95DeltaPct": 28
+   },
+   {
+    "name": "C block loop cold",
+    "baseline": {
+     "name": "C block loop cold",
+     "p95Ms": 32.8,
+     "medianMs": 19.4,
+     "avgFps": 47.9,
+     "worstMs": 82,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 150,
+     "maxTrisK": 349,
+     "lateCompilesMs": [
+      57.1
+     ]
+    },
+    "m6aWithSoundBug": {
+     "name": "C block loop cold",
+     "p95Ms": 38.4,
+     "medianMs": 24.3,
+     "avgFps": 39.6,
+     "worstMs": 106.5,
+     "over100": 1,
+     "over200": 0,
+     "maxCalls": 156,
+     "maxTrisK": 485,
+     "lateCompilesMs": [
+      37.1
+     ]
+    },
+    "p95DeltaPct": 17
+   },
+   {
+    "name": "A stationary warm1",
+    "baseline": {
+     "name": "A stationary warm1",
+     "p95Ms": 33.3,
+     "medianMs": 24.9,
+     "avgFps": 39.7,
+     "worstMs": 41.6,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 130,
+     "maxTrisK": 323,
+     "lateCompilesMs": []
+    },
+    "m6aWithSoundBug": {
+     "name": "A stationary warm1",
+     "p95Ms": 36,
+     "medianMs": 20.9,
+     "avgFps": 44.6,
+     "worstMs": 45.6,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 135,
+     "maxTrisK": 433,
+     "lateCompilesMs": []
+    },
+    "p95DeltaPct": 8
+   },
+   {
+    "name": "B Jalan China lane warm1",
+    "baseline": {
+     "name": "B Jalan China lane warm1",
+     "p95Ms": 33.8,
+     "medianMs": 22.2,
+     "avgFps": 43.5,
+     "worstMs": 61.3,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 141,
+     "maxTrisK": 326,
+     "lateCompilesMs": []
+    },
+    "m6aWithSoundBug": {
+     "name": "B Jalan China lane warm1",
+     "p95Ms": 40.7,
+     "medianMs": 24.4,
+     "avgFps": 39,
+     "worstMs": 67,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 146,
+     "maxTrisK": 437,
+     "lateCompilesMs": []
+    },
+    "p95DeltaPct": 20
+   },
+   {
+    "name": "C block loop warm1",
+    "baseline": {
+     "name": "C block loop warm1",
+     "p95Ms": 32.2,
+     "medianMs": 18.7,
+     "avgFps": 49,
+     "worstMs": 68.1,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 150,
+     "maxTrisK": 353,
+     "lateCompilesMs": [
+      27.4
+     ]
+    },
+    "m6aWithSoundBug": {
+     "name": "C block loop warm1",
+     "p95Ms": 36.5,
+     "medianMs": 23,
+     "avgFps": 41.9,
+     "worstMs": 91.5,
+     "over100": 0,
+     "over200": 0,
+     "maxCalls": 156,
+     "maxTrisK": 485,
+     "lateCompilesMs": [
+      42.3
+     ]
+    },
+    "p95DeltaPct": 13
+   }
+  ]
+ ],
+ "startup": {
+  "note": "load-probe, 3 alternating runs, medians",
+  "baseline": {
+   "readyMs": 4542,
+   "interactiveMs": 5771
+  },
+  "m6a": {
+   "readyMs": 3899,
+   "interactiveMs": 4266
+  },
+  "runs": [
+   {
+    "dist": "baseline",
+    "run": 1,
+    "loadMs": 4608,
+    "interactiveMs": 5847,
+    "programs": 100
+   },
+   {
+    "dist": "m6a",
+    "run": 1,
+    "loadMs": 3899,
+    "interactiveMs": 4266,
+    "programs": 70
+   },
+   {
+    "dist": "baseline",
+    "run": 2,
+    "loadMs": 4491,
+    "interactiveMs": 5771,
+    "programs": 100
+   },
+   {
+    "dist": "m6a",
+    "run": 2,
+    "loadMs": 3964,
+    "interactiveMs": 4337,
+    "programs": 70
+   },
+   {
+    "dist": "baseline",
+    "run": 3,
+    "loadMs": 4542,
+    "interactiveMs": 5690,
+    "programs": 100
+   },
+   {
+    "dist": "m6a",
+    "run": 3,
+    "loadMs": 3760,
+    "interactiveMs": 3960,
+    "programs": 70
+   }
+  ]
+ }
+}

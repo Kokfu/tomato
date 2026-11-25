@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { facadeAtlas } from './arch/FacadeAtlas.ts';
 import { heritageAtlas } from './arch/HeritageAtlas.ts';
-import { cityAtlas } from './arch/CityAtlas.ts';
+import { cityAtlas, cityGlow } from './arch/CityAtlas.ts';
+import { ENV, ENV_PARS } from './env.ts';
 import { signAtlas } from './arch/SignAtlas.ts';
 import { flatGroundTextures, GROUND_MEAN } from './GroundTextures.ts';
 import type { GroundTextures } from './GroundTextures.ts';
@@ -77,6 +78,11 @@ const WATER_FRAG = /* glsl */ `
   uniform vec3 uSky;
   uniform vec3 uSunDir;
   uniform vec3 uSunCol;
+  // N1-M6: daylight on the silt relative to day, how far night has fallen, and the lights that stand on the river.
+  uniform vec3 uAmb;
+  uniform float uNight;
+  uniform vec4 uLights[RIVER_LIGHTS];
+  uniform vec3 uLightCol[RIVER_LIGHTS];
   varying vec3 vWorld;
   varying float vBank;
   #include <fog_pars_fragment>
@@ -101,12 +107,25 @@ const WATER_FRAG = /* glsl */ `
     float fres = pow(1.0 - max(dot(n, v), 0.0), 4.0);
     vec3 silt = mix(uDeep, uDeep * vec3(0.76, 0.92, 0.8), smoothstep(0.35, 0.7, vnoise(p * vec2(0.011, 0.03) + uTime * 0.004)));
     // Along the mapped bank (vBank: 1 at the shoreline, 0 three metres out): shallower, paler water and a lapping line.
-    silt = mix(silt, uDeep * 1.3 + 0.02, vBank * 0.6);
+    silt = mix(silt, uDeep * 1.3 + 0.02, vBank * 0.6) * uAmb;
     vec3 col = mix(silt, uSky, clamp(0.05 + fres * 0.6, 0.0, 1.0));
     vec3 h = normalize(v + uSunDir);
     col += uSunCol * pow(max(dot(n, h), 0.0), 90.0) * 0.22;
     float lap = smoothstep(0.62, 0.98, vBank + 0.14 * sin(uTime * 0.8 + dot(p, vec2(0.23, 0.19))) + 0.3 * (vnoise(p * 0.8 + uTime * 0.12) - 0.5));
-    col = mix(col, mix(uDeep, uSky, 0.6) * 1.25 + 0.06, lap * 0.5);
+    col = mix(col, (mix(uDeep, uSky, 0.6) * 1.25 + 0.06) * min(uAmb, vec3(1.0)), lap * 0.5);
+    if (uNight > 0.01) {
+      // Each light lies on the water as a long broken streak toward the viewer: tight in bearing, loose in height.
+      vec3 r = reflect(-v, n);
+      vec2 rh = normalize(r.xz + vec2(1e-5));
+      float sparkle = 0.3 + 0.7 * vnoise(p * 2.3 + uTime * 0.7);
+      for (int i = 0; i < RIVER_LIGHTS; i++) {
+        vec4 L = uLights[i];
+        if (L.w <= 0.0) continue;
+        vec3 d = L.xyz - vWorld;
+        float dl = length(d.xz), az = 1.0 - dot(rh, d.xz / max(dl, 1.0)), el = r.y - d.y / max(length(d), 1.0);
+        col += uLightCol[i] * (L.w * uNight * sparkle * 1.6 * exp(-az * 700.0 - el * el * 10.0) / (1.0 + dl * 0.004));
+      }
+    }
     gl_FragColor = vec4(col, 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -202,13 +221,35 @@ const DETAIL = {
     col *= 0.88 + 0.2 * k3n(p.xz * 0.9 + p.y * 1.7);`,
 };
 
+/**
+ * N1-M6 rain on a road or pavement (inside a DETAIL block): the surface darkens, water stands in the low spots, and
+ * the sky lies on it at a grazing angle. On all but the Low preset rings spread from the drops while it rains.
+ */
+const WET = /* glsl */ `
+    if (uWet > 0.003 && n.y > 0.6) {
+      vec3 kv = normalize(cameraPosition - p);
+      float pud = smoothstep(0.5, 0.68, k3n(p.xz * 0.17 + 3.7) * 0.72 + k3n(p.xz * 0.61 + 11.0) * 0.28) * smoothstep(0.3, 0.85, uWet);
+      col *= mix(1.0, 0.6, uWet) * (1.0 - 0.3 * pud);
+      float shine = 1.0;
+      #ifndef K3_LOW
+        if (uRain > 0.02 && dist < 45.0) {
+          vec2 c = p.xz / 0.6, id = floor(c);
+          float t = fract(uEnvTime * 1.3 + k3h(id));
+          float rr = length(fract(c) - 0.5 - (vec2(k3h(id + 7.0), k3h(id + 13.0)) - 0.5) * 0.5);
+          shine += uRain * 1.6 * (1.0 - t) * smoothstep(0.06, 0.0, abs(rr - t * 0.45)) * (1.0 - dist / 45.0);
+        }
+      #endif
+      totalEmissiveRadiance += uSkyRefl * (uWet * (0.03 + 0.55 * pow(1.0 - max(kv.y, 0.0), 5.0)) * (0.3 + 0.7 * pud) * shine);
+    }`;
+const WET_KEYS = new Set<string>(['asphalt', 'paving', 'concrete']);
+
 /** The ground photographs as shader uniforms (shared by every material that uses one). */
 type PhotoUniforms = Record<'uGrass' | 'uEarth' | 'uConc' | 'uAsphalt', { value: THREE.Texture }>;
 
 /** Add world-space surface detail to a Lambert material. `low`: the cheaper variant of the Low preset. */
 function detail<T extends THREE.Material>(mat: T, key: keyof typeof DETAIL, photos: PhotoUniforms, low = false): T {
   mat.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, photos);
+    Object.assign(shader.uniforms, photos, ENV);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vWp;\nvarying vec3 vWn;')
       .replace('#include <project_vertex>', `#include <project_vertex>
@@ -218,11 +259,30 @@ function detail<T extends THREE.Material>(mat: T, key: keyof typeof DETAIL, phot
         #endif
         vWp = (modelMatrix * k3w).xyz; vWn = normalize(mat3(modelMatrix) * k3d); }`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${low ? '#define K3_LOW 1\n' : ''}${NOISE_GLSL}`)
-      .replace('#include <color_fragment>', `#include <color_fragment>\n{ vec3 p = vWp; vec3 n = normalize(vWn); vec3 col = diffuseColor.rgb; float dist = length(cameraPosition - p); float fade = clamp(1.0 - dist / 140.0, 0.0, 1.0);\n${DETAIL[key]}\ndiffuseColor.rgb = col; }`);
+      .replace('#include <common>', `#include <common>\n${low ? '#define K3_LOW 1\n' : ''}${NOISE_GLSL}${ENV_PARS}`)
+      .replace('#include <color_fragment>', `#include <color_fragment>\n{ vec3 p = vWp; vec3 n = normalize(vWn); vec3 col = diffuseColor.rgb; float dist = length(cameraPosition - p); float fade = clamp(1.0 - dist / 140.0, 0.0, 1.0);\n${DETAIL[key]}${WET_KEYS.has(key) ? WET : key === 'ground' ? '\ncol *= mix(1.0, 0.78, uWet);' : ''}\ndiffuseColor.rgb = col; }`);
   };
   mat.customProgramCacheKey = () => `k3d-${key}${low ? '-l' : ''}`;
   return mat;
+}
+
+/** Lights the river can mirror at night (WorldManager fills them in). */
+const RIVER_LIGHTS = 8;
+
+/**
+ * Night light for a 4 x 4 tile atlas (FacadeAtlas, HeritageAtlas), in place of <emissivemap_fragment>: glass (told by
+ * its blue-grey paint) glows warm, and the tiles matching `interior` (open shops) are lit rooms in their own colours.
+ * The brightness drifts slowly along the street, so a row is not uniformly lit.
+ */
+function tileGlow(interior: string): string {
+  return /* glsl */ `
+    if (uNight > 0.003) {
+      vec4 k3x = texture2D(map, vMapUv);
+      float k3tile = floor(vMapUv.x * 4.0) + 4.0 * floor((1.0 - vMapUv.y) * 4.0);
+      float k3glass = smoothstep(1.12, 1.3, k3x.b / max(k3x.r, 0.02)) * step(k3x.g, 0.72);
+      float k3on = 0.35 + 0.65 * smoothstep(0.3, 0.6, k3n(vWp.xz * 0.21 + 4.0));
+      totalEmissiveRadiance += uNight * k3on * (k3glass * 0.6 * vec3(1.0, 0.7, 0.38) +((${interior}) ? 1.0 : 0.0) * 1.6 * k3x.rgb);
+    }`;
 }
 
 /** Run `more` on the shader after the material's own onBeforeCompile, under a cache key of its own. */
@@ -261,43 +321,88 @@ export class Materials {
   readonly furniture: THREE.MeshLambertMaterial;
   /** Lamp heads: glow in the evening. */
   readonly lampGlow: THREE.MeshBasicMaterial;
+  /** N1-M6: pools of lamp light on the ground. Additive; not drawn at all by day (`visible` is false). */
+  readonly pools: THREE.MeshBasicMaterial;
 
   constructor(scene: THREE.Scene, sunDir: THREE.Vector3, smallTextures = false, ground: GroundTextures = flatGroundTextures()) {
     this.smallTextures = smallTextures;
     this.ground = ground;
     const photos = (this.photos = { uGrass: { value: ground.grass }, uEarth: { value: ground.laterite }, uConc: { value: ground.concrete }, uAsphalt: { value: ground.asphalt } });
     const withDetail = <T extends THREE.Material>(mat: T, key: keyof typeof DETAIL) => detail(mat, key, photos);
+    // (the Low preset's road programs leave out the raindrop rings)
     this.roads = [0, 1, 2, 3].map((g) =>
-      withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -(g + 1), polygonOffsetUnits: -(g + 1) * 4 }), g === 1 ? 'paving' : g === 0 ? 'concrete' : 'asphalt'),
+      detail(new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -(g + 1), polygonOffsetUnits: -(g + 1) * 4 }), g === 1 ? 'paving' : g === 0 ? 'concrete' : 'asphalt', photos, smallTextures),
     );
     this.marks = new THREE.MeshBasicMaterial({ color: 0xd9d9d0, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 });
     // Typed buildings (arch/TypedBuilding.ts): the city atlas, whose alpha says where the building's own colour applies.
-    this.wallsTextured = patch(withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, map: cityAtlas(smallTextures) }), 'plaster'), 'k3d-citywalls', (shader) => {
+    // N1-M6: the emissive map is the atlas's night layer (windows in red, signs and shop interiors in green). Which
+    // windows are lit is read from the bay number in u (TypedBuilding.ts gives every building and storey its own run).
+    this.wallsTextured = patch(withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, map: cityAtlas(smallTextures), emissiveMap: cityGlow(smallTextures) }), 'plaster'), 'k3d-citywalls', (shader) => {
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <map_fragment>', 'vec4 k3t = texture2D(map, vMapUv); diffuseColor.rgb *= k3t.rgb;')
-        .replace('#include <color_fragment>', 'diffuseColor.rgb *= mix(vec3(1.0), vColor, k3t.a);');
+        .replace('#include <color_fragment>', 'diffuseColor.rgb *= mix(vec3(1.0), vColor, k3t.a);')
+        .replace('#include <emissivemap_fragment>', `
+          if (uNight > 0.003) {
+            vec2 k3g = texture2D(emissiveMap, vEmissiveMapUv).rg;
+            float k3b = floor(vMapUv.x * 2.0), k3r = k3h(vec2(k3b * 0.37, 1.7)), k3s = k3h(vec2(k3b * 0.61, 9.1));
+            // far away a bay is smaller than a pixel: the on / off pattern gives way to its mean
+            float k3lit = mix(step(0.52, k3r) * (0.5 + 0.7 * k3s), 0.4, clamp(fwidth(vMapUv.x) * 3.0, 0.0, 1.0));
+            vec3 k3w = mix(vec3(1.0, 0.7, 0.38), vec3(0.78, 0.92, 1.0), step(0.6, k3s));
+            totalEmissiveRadiance += uNight * (k3g.r * k3lit * 1.7 * k3w + k3g.g * 1.5 * k3t.rgb);
+          }`);
     });
-    this.wallsPlain = new THREE.MeshLambertMaterial({ vertexColors: true });
-    this.arch = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, map: facadeAtlas(smallTextures ? 256 : 512), side: THREE.DoubleSide }), 'plaster');
+    // Far chunks draw walls without the atlas: at night a plain grid of windows stands in for it, from world position.
+    this.wallsPlain = patch(new THREE.MeshLambertMaterial({ vertexColors: true }), 'k3d-farwalls', (shader) => {
+      Object.assign(shader.uniforms, ENV);
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vWp;\nvarying vec3 vWn;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvWp = (modelMatrix * vec4(transformed, 1.0)).xyz; vWn = normalize(mat3(modelMatrix) * objectNormal);');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>\nvarying vec3 vWp;\nvarying vec3 vWn;${ENV_PARS}`)
+        .replace('#include <emissivemap_fragment>', `
+          if (uNight > 0.003 && abs(vWn.y) < 0.02) {
+            vec2 k3c = vec2(dot(vWp.xz, normalize(vec2(-vWn.z, vWn.x))) / 3.4, vWp.y / 3.3), k3i = floor(k3c), k3f = fract(k3c);
+            float k3r = fract(sin(dot(k3i, vec2(12.9898, 78.233))) * 43758.5453);
+            float k3win = step(0.2, k3f.x) * step(k3f.x, 0.8) * step(0.3, k3f.y) * step(k3f.y, 0.75) * step(0.56, k3r);
+            totalEmissiveRadiance += uNight * 1.3 * mix(k3win, 0.1, clamp(fwidth(k3c.x) * 1.5, 0.0, 1.0)) * mix(vec3(1.0, 0.7, 0.38), vec3(0.78, 0.92, 1.0), step(0.8, k3r));
+          }`);
+    });
+    // Shophouse rows: the glass of the upper windows and the open shop of the ground floor are lit.
+    this.arch = patch(withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, map: facadeAtlas(smallTextures ? 256 : 512), side: THREE.DoubleSide }), 'plaster'), 'k3d-arch', (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', tileGlow('k3tile == 7.0'));
+    });
     // Roofs carry their surface in uv (tile or zinc, and how rusty), not a texture coordinate.
     this.roofs = patch(withDetail(new THREE.MeshLambertMaterial({ vertexColors: true }), 'roof'), 'k3d-roofs', (shader) => {
       shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vRoof;').replace('#include <project_vertex>', '#include <project_vertex>\nvRoof = uv;');
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vRoof;');
     });
     this.structure = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 'concrete');
-    this.landmark = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    // Landmarks are floodlit at night: a warm wash of their own colour.
+    this.landmark = patch(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 'k3d-landmark', (shader) => {
+      Object.assign(shader.uniforms, ENV);
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>${ENV_PARS}`)
+        .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance += diffuseColor.rgb * vec3(1.0, 0.85, 0.6) * (uNight * 0.3);');
+    });
     this.trunk = new THREE.MeshLambertMaterial({ color: 0x9a8468 }); // multiplied by each tree's bark colour
     this.crown = withDetail(new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true }), 'foliage');
     this.frond = withDetail(new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true, side: THREE.DoubleSide }), 'foliage');
     this.foliage = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true }), 'foliage');
     this.furniture = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
     this.lampGlow = new THREE.MeshBasicMaterial({ color: 0x9a9a96, vertexColors: true, side: THREE.DoubleSide });
+    this.pools = new THREE.MeshBasicMaterial({ color: 0x000000, vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false, polygonOffset: true, polygonOffsetFactor: -7, polygonOffsetUnits: -28 });
+    this.pools.visible = false;
     this.water = new THREE.ShaderMaterial({
       vertexShader: WATER_VERT,
       fragmentShader: WATER_FRAG,
+      defines: { RIVER_LIGHTS },
       uniforms: THREE.UniformsUtils.merge([
         THREE.UniformsLib.fog,
-        { uTime: { value: 0 }, uDeep: { value: new THREE.Color(0x8f7650) }, uSky: { value: new THREE.Color(0xa9c4d6) }, uSunDir: { value: sunDir.clone() }, uSunCol: { value: new THREE.Color(1, 0.93, 0.8) } },
+        {
+          uTime: { value: 0 }, uDeep: { value: new THREE.Color(0x8f7650) }, uSky: { value: new THREE.Color(0xa9c4d6) }, uSunDir: { value: sunDir.clone() }, uSunCol: { value: new THREE.Color(1, 0.93, 0.8) },
+          uAmb: { value: new THREE.Color(1, 1, 1) }, uNight: { value: 0 },
+          uLights: { value: Array.from({ length: RIVER_LIGHTS }, () => new THREE.Vector4()) }, uLightCol: { value: Array.from({ length: RIVER_LIGHTS }, () => new THREE.Vector3()) },
+        },
       ]),
       fog: true,
       side: THREE.DoubleSide, // the bank ribbon (WaterBuilder.ts) is not wound consistently
@@ -306,7 +411,12 @@ export class Materials {
   }
 
   get heritage(): THREE.MeshLambertMaterial {
-    if (!this.heritageMat) this.heritageMat = detail(new THREE.MeshLambertMaterial({ vertexColors: true, map: heritageAtlas(this.smallTextures ? 256 : 512), side: THREE.DoubleSide }), 'plaster', this.photos);
+    if (!this.heritageMat) {
+      this.heritageMat = patch(detail(new THREE.MeshLambertMaterial({ vertexColors: true, map: heritageAtlas(this.smallTextures ? 256 : 512), side: THREE.DoubleSide }), 'plaster', this.photos), 'k3d-heritage', (shader) => {
+        // lit at night: the three shop interiors and the goods on show (tiles 6, 7, 8, 13) and all glass
+        shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', tileGlow('(k3tile >= 6.0 && k3tile <= 8.0) || k3tile == 13.0'));
+      });
+    }
     return this.heritageMat;
   }
 

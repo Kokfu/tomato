@@ -1,0 +1,86 @@
+{
+ "01-waterfront": {
+  "median": 60,
+  "min": 59.9,
+  "max": 60.1,
+  "n": 30
+ },
+ "02-main-bazaar": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 30
+ },
+ "03-carpenter-street": {
+  "median": 60,
+  "min": 59.9,
+  "max": 60.1,
+  "n": 30
+ },
+ "04-india-street": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 30
+ },
+ "07-padungan-cat-statue": {
+  "median": 60,
+  "min": 59.9,
+  "max": 60.1,
+  "n": 30
+ },
+ "08-kuching-mosque": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 30
+ },
+ "09-satok": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 30
+ },
+ "11-residential-overture": {
+  "median": 60,
+  "min": 60,
+  "max": 60,
+  "n": 30
+ },
+ "13-river-to-dun": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 30
+ },
+ "14-jalan-china-control": {
+  "median": 60,
+  "min": 60,
+  "max": 60,
+  "n": 30
+ },
+ "river-lights": {
+  "median": 60,
+  "min": 59.9,
+  "max": 60,
+  "n": 30
+ },
+ "dusk-02-main-bazaar": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 30
+ },
+ "dusk-13-river-to-dun": {
+  "median": 60,
+  "min": 60,
+  "max": 60,
+  "n": 30
+ },
+ "dawn-12-trunk-road-openg": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 30
+ }
+}

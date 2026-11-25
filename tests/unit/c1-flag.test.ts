@@ -39,7 +39,8 @@ test('budget: chunk 0_0 grows by at most +16,487 tris (< 12 % of the 137,397 V8.
   // below is still measured against the V8.6 figure.
   // N1-M3 typed buildings (storey quads, roof forms, canopies, roof tanks) add 545 more.
   // N1-M4 street edges (kerbs, drains with slab covers, lane and stop lines, more furniture) add 2,922.
-  assert.equal(off, 137397 + 10636 + 545 + 2922, 'flag-off chunk 0_0 baseline moved');
+  // N1-M6 lamp-light pools (one fan of 30 triangles under each lamp, drawn only at night) add 144.
+  assert.equal(off, 137397 + 10636 + 545 + 2922 + 144, 'flag-off chunk 0_0 baseline moved');
   assert.ok(on - off <= 16487, `delta ${on - off}`);
   assert.ok(on - off < 0.12 * 137397);
   assert.deepEqual(ON.perChunk['0_-1'], OFF.perChunk['0_-1'], 'chunk 0_-1 must not change');

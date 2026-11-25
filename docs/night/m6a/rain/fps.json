@@ -1,0 +1,50 @@
+{
+ "02-main-bazaar": {
+  "median": 60,
+  "min": 59.3,
+  "max": 60.7,
+  "n": 30
+ },
+ "05-jalan-gambier": {
+  "median": 60,
+  "min": 59.6,
+  "max": 60.5,
+  "n": 30
+ },
+ "09-satok": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 30
+ },
+ "12-trunk-road-openg": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 30
+ },
+ "14-jalan-china-control": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 30
+ },
+ "night-07-padungan-cat-statue": {
+  "median": 60,
+  "min": 59.9,
+  "max": 60.1,
+  "n": 30
+ },
+ "night-12-trunk-road-openg": {
+  "median": 60,
+  "min": 60,
+  "max": 60,
+  "n": 30
+ },
+ "night-14-jalan-china-control": {
+  "median": 60,
+  "min": 59.9,
+  "max": 60.1,
+  "n": 30
+ }
+}

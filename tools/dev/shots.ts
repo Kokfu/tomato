@@ -1,7 +1,8 @@
 // Capture screenshots of the running app at given views (dev utility, also used for docs).
 // Usage: node tools/dev/shots.ts <outDir> '<json views>' [--url=http://localhost:3000/] [--size=1280x720] [--mobile]
 //        [--quality=low|medium|high] [--jpeg] [--fps[=ms]]  (--fps: sample __k3d.fps for 5 s per view, writes <outDir>/fps.json)
-// A view: { name, lm?: landmarkId, lat?, lon?, yaw?, pitch?, dist?, fp?: boolean, map?: boolean, wait?: ms }
+//        [--time=<hour 0..24>|day|evening|night] [--rain=<0..1>]  (N1-M6: the clock is stopped there; default a dry day at 09:40)
+// A view: { name, lm?: landmarkId, lat?, lon?, yaw?, pitch?, dist?, fp?: boolean, map?: boolean, wait?: ms, time?, rain? }
 import { chromium } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 
@@ -14,6 +15,13 @@ const jpeg = rest.includes('--jpeg');
 const fpsArg = rest.find((a) => a === '--fps' || a.startsWith('--fps='));
 const fpsMs = fpsArg ? +(fpsArg.split('=')[1] ?? 5000) : 0;
 const quality = opt('quality', '');
+const timeOpt = opt('time', ''), rainOpt = opt('rain', '');
+/** Stop the clock at an hour or a named setting, and set the rain (0 = dry). */
+const setSky = (time: string | number | undefined, rain: string | number | undefined) => page.evaluate(([t, r]) => {
+  const k = (window as any).__k3d;
+  if (t !== undefined && t !== '') k.setTime(Number.isFinite(Number(t)) ? Number(t) : t);
+  if (r !== undefined && r !== '') k.setRain(Number(r) > 0 ? 'on' : 'off', Number(r));
+}, [time, rain] as const);
 const fpsOut: Record<string, any> = {};
 const views = JSON.parse(viewsJson);
 mkdirSync(outDir, { recursive: true });
@@ -30,6 +38,7 @@ await page.goto(url);
 await page.waitForFunction(() => (window as any).__k3d?.ready, null, { timeout: 60000 });
 await page.click('#btn-start');
 if (quality) await page.evaluate((q) => (document.querySelector(`#quality-seg [data-q="${q}"]`) as HTMLElement).click(), quality);
+await setSky(timeOpt, rainOpt);
 for (const v of views) {
   await page.evaluate((v) => {
     const k = (window as any).__k3d;
@@ -43,6 +52,7 @@ for (const v of views) {
     if (v.fp !== undefined) { k.tpc.firstPerson = !!v.fp; k.player.visual.root.visible = !v.fp; }
     if (v.quality) (document.querySelector(`#quality-seg [data-q="${v.quality}"]`) as HTMLElement).click();
   }, v);
+  if (v.time !== undefined || v.rain !== undefined) await setSky(v.time, v.rain);
   await page.waitForFunction(() => (window as any).__k3d.world.chunks.progress() >= 0.999, null, { timeout: 60000 }).catch(() => errors.push('chunk load timeout'));
   await page.waitForFunction(() => (window as any).__k3d.world.landmarkModels?.settled !== false, null, { timeout: 30000 }).catch(() => errors.push('landmark model load timeout'));
   await page.waitForTimeout(v.wait ?? 700);

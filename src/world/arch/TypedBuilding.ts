@@ -201,7 +201,10 @@ export function addTypedBuilding(t: TypedBuilding, rings: number[][], ox: number
       for (let k = 0; k < t.storeys; k++) {
         const y0 = k === 0 ? (plinth ? ground : base) : floor + t.ground + (k - 1) * upperH, y1 = floor + t.ground + k * upperH;
         const v = blank ? [pv, pv] : rowV(k === 0 ? st.ground : upperRow);
-        quad(ax, az, bx, bz, y0, y1, nx, nz, ccw, k === 0 && !t.stilt ? footC : wallC, wallC, u0, u1, v[0], v[1]);
+        // N1-M6: a whole number of atlas repeats is added to u, different for every building and storey. The picture
+        // does not move, but the bay number the shader reads from u (which windows are lit at night) differs.
+        const uo = blank ? 0 : ((h >>> 3) % 53) + k * 7;
+        quad(ax, az, bx, bz, y0, y1, nx, nz, ccw, k === 0 && !t.stilt ? footC : wallC, wallC, u0 + uo, u1 + uo, v[0], v[1]);
       }
       if (st.parapet) {
         quad(ax, az, bx, bz, top, top + st.parapet, nx, nz, ccw, wallC, wallC, pu, pu, pv, pv);

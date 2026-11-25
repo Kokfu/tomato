@@ -27,6 +27,48 @@ const SHELTER_ROOF = new THREE.Color(0x4d6f8f);
 const SHELTER_PANEL = new THREE.Color(0xb9c4c8);
 const tmp = new THREE.Color();
 
+const POOL = new THREE.Color(), BLACK = new THREE.Color(0, 0, 0);
+/**
+ * N1-M6: the light a lamp throws on the ground, as a fan that is bright in the middle and black at its rim. It is drawn
+ * additively, and only at night (Materials.pools). `ground` gives the height at a point; `low`: a coarser fan.
+ */
+export function lightPool(buf: GeoBuf, ground: (x: number, z: number) => number, x: number, z: number, radius: number, low: boolean, strength = 1): void {
+  const n = low ? 6 : 10, lift = 0.17;
+  const centre = buf.vert(x, ground(x, z) + lift, z, 0, 1, 0, POOL.setScalar(strength));
+  const ring = (r: number, c: THREE.Color) => {
+    const first = buf.count;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+      buf.vert(px, ground(px, pz) + lift, pz, 0, 1, 0, c);
+    }
+    return first;
+  };
+  if (low) {
+    const rim = ring(radius, BLACK);
+    for (let i = 0; i < n; i++) buf.triUp(centre, rim + i, rim + ((i + 1) % n));
+    return;
+  }
+  const mid = ring(radius * 0.4, POOL.setScalar(strength * 0.45)), rim = ring(radius, BLACK);
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    buf.triUp(centre, mid + i, mid + j);
+    buf.triUp(mid + i, rim + i, rim + j);
+    buf.triUp(mid + i, rim + j, mid + j);
+  }
+}
+
+/**
+ * N1-M6: the patch of road a car's headlights light, in the car's frame (+Z forward, the ground at y = 0): bright at
+ * the nose, gone 17 m ahead. For a mesh with Materials.pools, so it costs nothing by day.
+ */
+export function headlightGeometry(): THREE.BufferGeometry {
+  const buf = new GeoBuf(), y = 0.16;
+  const rows: [number, number, number][] = [[1.9, 0.75, 1.5], [7, 2.1, 0.75], [17, 3.6, 0]]; // z ahead, half width, brightness
+  const v = rows.map(([z, w, k]) => [buf.vert(w, y, z, 0, 1, 0, POOL.setScalar(k)), buf.vert(-w, y, z, 0, 1, 0, POOL)]);
+  for (let i = 0; i + 1 < v.length; i++) { buf.triUp(v[i][0], v[i][1], v[i + 1][1]); buf.triUp(v[i][0], v[i + 1][1], v[i + 1][0]); }
+  return buf.build()!;
+}
+
 /** Box centred at (x, z) in the frame rotated by `a` about +Y; lx along the local X, lz along local Z. */
 function box(buf: GeoBuf, x: number, y0: number, y1: number, z: number, a: number, lx0: number, lx1: number, lz0: number, lz1: number, c: THREE.Color): void {
   const ca = Math.cos(a), sa = Math.sin(a);
@@ -79,7 +121,7 @@ export function buildFurniture(data: ChunkData, ctx: BuildContext): THREE.Object
   if (!furn?.length) return [];
   const ox = data.cx * CHUNK_SIZE, oz = data.cz * CHUNK_SIZE;
   const low = ctx.quality.name === 'low';
-  const solid = new GeoBuf(), glow = new GeoBuf(), paint = new GeoBuf(), plates = new GeoBuf(true);
+  const solid = new GeoBuf(), glow = new GeoBuf(), paint = new GeoBuf(), plates = new GeoBuf(true), pools = new GeoBuf();
   const ground = (x: number, z: number) => ctx.height.sample(ox + x, oz + z);
   for (let i = 0; i < furn.length; i += 5) {
     const x = furn[i + 1] / QUANT, z = furn[i + 2] / QUANT, a = (furn[i + 3] * Math.PI) / 180, extra = furn[i + 4];
@@ -97,6 +139,8 @@ export function buildFurniture(data: ChunkData, ctx: BuildContext): THREE.Object
         box(solid, x, y + H - 0.1, y + H, z, a, -0.04, 0.04, 0, arm, POLE_LIGHT);
         box(solid, x, y + H - 0.18, y + H - 0.08, z, a, -0.14, 0.14, arm - 0.3, arm + 0.3, POLE);
         box(glow, x, y + H - 0.22, y + H - 0.18, z, a, -0.11, 0.11, arm - 0.25, arm + 0.25, WHITE);
+        // its light falls a little out over the carriageway
+        lightPool(pools, ground, x + (arm + 1.2) * Math.sin(a), z + (arm + 1.2) * Math.cos(a), extra === 1 ? 11 : 8, low);
         break;
       }
       case FURN.signal: {
@@ -171,6 +215,8 @@ export function buildFurniture(data: ChunkData, ctx: BuildContext): THREE.Object
   }
   const gg = glow.build();
   if (gg) out.push(new THREE.Mesh(gg, ctx.mats.lampGlow));
+  const lg = pools.build();
+  if (lg) { const m = new THREE.Mesh(lg, ctx.mats.pools); m.renderOrder = 7; m.userData.noAO = true; out.push(m); }
   const pg = paint.build();
   if (pg) { const m = new THREE.Mesh(pg, ctx.mats.marks); m.renderOrder = 6; out.push(m); }
   const sp = plates.build();

@@ -30,9 +30,12 @@ const INNER = process.env.V9_INNER === '1';
 // N1-M3 (typed buildings) re-pinned all three on 2026-11-25: every generic building's walls and roof changed on purpose
 // (was f24d6a92..., 55179 tris, 0615b4ef...). The shophouse-row (arch) and heritage buffers did not change: the scope
 // tests below still compare them mesh by mesh.
-const V86_CHUNK_0_1 = { hash: '9fb34e18eda13c32c8edd8200fee52be857b3efa20a2af1cb391b464694ba408', tris: 55667 };
+// N1-M6 re-pinned the two hashes on 2026-11-26 (were 9fb34e18..., 74136e24...): the u of every typed wall carries a whole
+// number of atlas repeats more (the bay number that says which windows are lit at night). Positions, normals, colours,
+// indices and the triangle count are unchanged.
+const V86_CHUNK_0_1 = { hash: '4690de4a9d0b435e845a25d9008d182f4ad8500f1461c75e6a4016a875461196', tris: 55667 };
 /** sha256 over (chunk key + chunk hash), keys sorted, of all 503 chunks that contain buildings. */
-const V86_ALL_CHUNKS = '74136e2480ce9cd003ec95e9be4a8644d07f50537e5704cd75d940056f9da1f5';
+const V86_ALL_CHUNKS = '06e1f363be50d495e358d58b6f224039594d0c8ad3db03a4d0399de779eb7119';
 
 test('v9flag: false when location is undefined, true only for ?v9=1, read once', () => {
   assert.equal(typeof (globalThis as { location?: unknown }).location, 'undefined');

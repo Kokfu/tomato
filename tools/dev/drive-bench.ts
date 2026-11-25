@@ -31,6 +31,8 @@ const CPU = +opt('cpu', '1');
 const GPS = opt('gps', '');
 /** --mobile: V8.5 phone emulation (390x844 CSS px, DPR 3, touch, mobile viewport); pair with --quality=low --cpu=4. Emulated, not a real phone. */
 const MOBILE = process.argv.includes('--mobile');
+/** --query=time=21&rain=on: N1-M6: address parameters for the page (the bench otherwise runs on a frozen dry day). */
+const QUERY = opt('query', '');
 
 const BLOCK_LOOP: [number, number][] = [
   [176, 34], [180.2, 36.4], [183, 37.4], [256, 54.8], [264, 56.7],
@@ -295,7 +297,7 @@ try {
   if (CPU > 1) { const cdp = await ctx.newCDPSession(page); await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU }); }
   page.on('console', (m) => { if (m.type() === 'error' || m.text().startsWith('bench')) console.log('[page]', m.text()); });
   const tLoad = Date.now();
-  await page.goto(`http://localhost:${PORT}/`);
+  await page.goto(`http://localhost:${PORT}/${QUERY ? `?${QUERY}` : ''}`);
   await page.waitForFunction(() => (window as any).__k3d?.ready, null, { timeout: 120_000 });
   const loadMs = Date.now() - tLoad;
   const programsAtReady = await page.evaluate(() => (window as any).__k3d.renderer.info.programs.length);

@@ -1,0 +1,15 @@
+01-waterfront {"fps":60,"calls":247,"tris":684722,"geo":402,"tex":75,"chunks":44,"pos":[-188.9,1.8,-202]}
+02-main-bazaar {"fps":60,"calls":216,"tris":975572,"geo":420,"tex":77,"chunks":48,"pos":[285.5,2.1,-8.9]}
+03-carpenter-street {"fps":60,"calls":221,"tris":607194,"geo":492,"tex":83,"chunks":51,"pos":[166.4,8.3,28.4]}
+04-india-street {"fps":60,"calls":156,"tris":165376,"geo":493,"tex":84,"chunks":51,"pos":[-134.1,5.4,-110.1]}
+07-padungan-cat-statue {"fps":60,"calls":154,"tris":131035,"geo":422,"tex":78,"chunks":47,"pos":[1074.8,6,239.2]}
+08-kuching-mosque {"fps":60,"calls":148,"tris":240833,"geo":453,"tex":82,"chunks":51,"pos":[-406.2,4.9,26.2]}
+09-satok {"fps":60,"calls":118,"tris":121924,"geo":321,"tex":64,"chunks":34,"pos":[-2533.1,1.8,492.1]}
+11-residential-overture {"fps":60,"calls":180,"tris":182093,"geo":386,"tex":77,"chunks":43,"pos":[-1610,5.2,1003]}
+13-river-to-dun {"fps":60,"calls":139,"tris":200779,"geo":370,"tex":64,"chunks":37,"pos":[274.4,1.8,-38.7]}
+14-jalan-china-control {"fps":60,"calls":327,"tris":1116394,"geo":465,"tex":78,"chunks":46,"pos":[156.6,8,17.2]}
+river-lights {"fps":60,"calls":186,"tris":297580,"geo":483,"tex":80,"chunks":49,"pos":[60,1.8,-222]}
+dusk-02-main-bazaar {"fps":60,"calls":232,"tris":621933,"geo":483,"tex":80,"chunks":49,"pos":[285.5,2.1,-8.9]}
+dusk-13-river-to-dun {"fps":60,"calls":145,"tris":204143,"geo":483,"tex":80,"chunks":49,"pos":[274.4,1.8,-38.7]}
+dawn-12-trunk-road-openg {"fps":60,"calls":196,"tris":300533,"geo":375,"tex":75,"chunks":44,"pos":[-321,10.9,1290]}
+fps {"01-waterfront":{"median":60,"min":59.9,"max":60.1,"n":30},"02-main-bazaar":{"median":60,"min":60,"max":60.1,"n":30},"03-carpenter-street":{"median":60,"min":59.9,"max":60.1,"n":30},"04-india-street":{"median":60,"min":60,"max":60.1,"n":30},"07-padungan-cat-statue":{"median":60,"min":59.9,"max":60.1,"n":30},"08-kuching-mosque":{"median":60,"min":60,"max":60.1,"n":30},"09-satok":{"median":60,"min":60,"max":60.1,"n":30},"11-residential-overture":{"median":60,"min":60,"max":60,"n":30},"13-river-to-dun":{"median":60,"min":60,"max":60.1,"n":30},"14-jalan-china-control":{"median":60,"min":60,"max":60,"n":30},"river-lights":{"median":60,"min":59.9,"max":60,"n":30},"dusk-02-main-bazaar":{"median":60,"min":60,"max":60.1,"n":30},"dusk-13-river-to-dun":{"median":60,"min":60,"max":60,"n":30},"dawn-12-trunk-road-openg":{"median":60,"min":60,"max":60.1,"n":30}}

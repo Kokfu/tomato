@@ -1,6 +1,7 @@
 import { QUALITY, saveQuality } from './GraphicsSettings.ts';
 import type { QualityName } from './GraphicsSettings.ts';
 import { buildLabel } from '../version.ts';
+import type { RainMode, TimeMode } from '../world/dayCycle.ts';
 
 const $ = (id: string) => document.getElementById(id)!;
 
@@ -18,7 +19,10 @@ export interface MenuCallbacks {
   onSensitivity: (v: number) => void;
   onToggleView: () => void;
   onToggleMap: () => void;
-  onTimeOfDay?: (t: 'day' | 'evening') => void;
+  /** 'auto': the day passes; the others stop the clock at that time. */
+  onTimeOfDay?: (t: TimeMode) => void;
+  /** 'auto': occasional showers. */
+  onRain?: (r: RainMode) => void;
   onSound?: (on: boolean) => void;
 }
 
@@ -29,7 +33,7 @@ export class GameMenu {
   private settingsFromPause = false;
   showStats = false;
 
-  constructor(cb: MenuCallbacks, quality: QualityName) {
+  constructor(cb: MenuCallbacks, quality: QualityName, modes: { time: TimeMode; rain: RainMode } = { time: 'day', rain: 'off' }) {
     this.cb = cb;
     $('btn-start').addEventListener('click', () => {
       $('start').classList.add('hidden');
@@ -77,12 +81,20 @@ export class GameMenu {
       this.showStats = (e.target as HTMLInputElement).checked;
       $('stats').classList.toggle('hidden', !this.showStats);
     });
-    for (const b of Array.from($('time-seg').querySelectorAll('button'))) {
-      b.addEventListener('click', () => {
-        for (const o of Array.from($('time-seg').querySelectorAll('button'))) o.classList.toggle('active', o === b);
-        cb.onTimeOfDay?.(b.dataset.t as 'day' | 'evening');
-      });
-    }
+    // N1-M6: time of day and rain. The choice is kept for the next visit.
+    const seg = (id: string, key: 't' | 'r', store: string, current: string, pick: (v: string) => void) => {
+      const buttons = Array.from($(id).querySelectorAll('button'));
+      for (const b of buttons) {
+        b.classList.toggle('active', b.dataset[key] === current);
+        b.addEventListener('click', () => {
+          for (const o of buttons) o.classList.toggle('active', o === b);
+          try { localStorage.setItem(store, b.dataset[key]!); } catch { /* storage unavailable */ }
+          pick(b.dataset[key]!);
+        });
+      }
+    };
+    seg('time-seg', 't', 'k3d.time', modes.time, (v) => cb.onTimeOfDay?.(v as TimeMode));
+    seg('rain-seg', 'r', 'k3d.rain', modes.rain, (v) => cb.onRain?.(v as RainMode));
     ($('opt-sound') as HTMLInputElement).addEventListener('change', (e) => cb.onSound?.((e.target as HTMLInputElement).checked));
     ($('opt-sens') as HTMLInputElement).addEventListener('input', (e) => cb.onSensitivity(parseFloat((e.target as HTMLInputElement).value)));
   }

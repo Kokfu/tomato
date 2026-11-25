@@ -108,7 +108,7 @@ export class V5Controller {
     this.scene.realAssets = new URLSearchParams(location.search).get('assets') !== 'off';
     this.scene.materials.uniforms.uAxis.value.set((bx - ax) / l, (bz - az) / l);
     this.scene.materials.uniforms.uGroundY.value = world.height.sample(120, 3);
-    this.pipeline = new V5Pipeline(renderer, { scene: world.scene, sun: world.sun, hemi: world.hemi, sunDir: world.sunDir, sky: world.sky }, camera,
+    this.pipeline = new V5Pipeline(renderer, { scene: world.scene, sun: world.sun, hemi: world.hemi, sunDir: world.sunDir, sky: world.sky, setLook: (l) => world.setLook(l), inDaylight: (f) => world.inDaylight(f) }, camera,
       V5_TIERS[tier]);
 
     // comparison bar

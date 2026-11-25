@@ -32,6 +32,10 @@ import { Driving } from './vehicle/Driving.ts';
 import { ControlsHelp } from './ui/ControlsHelp.ts';
 import { QuickGuide, enterCarToast, ux1Enabled } from './ui/QuickGuide.ts';
 import type { ControlsContext } from './ui/ControlsHelp.ts';
+import { startModes } from './world/dayCycle.ts';
+import type { RainMode, TimeMode } from './world/dayCycle.ts';
+import { RainSound } from './world/Rain.ts';
+import { headlightGeometry } from './world/StreetFurniture.ts';
 
 /** Rendering at start: V7 Jalan China (its detailed section, the normal geographic rendering elsewhere). The legacy
  *  comparison modes stay available in Settings > Developer settings, by keys 1-4 and by ?render=v4|a|b|c. */
@@ -74,6 +78,11 @@ async function boot(): Promise<void> {
   let placeOpen = false;
   let pickerOpen = false; // CHAR-P5 G2 (only with ?char): the character picker is open
   const steps = new Footsteps();
+  // N1-M6: the day passes and it rains now and then, unless the settings (or ?time= / ?rain=) say otherwise. An
+  // automated browser gets a frozen dry day, so tests, screenshots and benchmarks are repeatable (dayCycle.ts).
+  const saved = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+  const modes = startModes(location.search, { time: saved('k3d.time'), rain: saved('k3d.rain') }, navigator.webdriver === true);
+  const rainSound = new RainSound();
   const syncInput = () => {
     input.enabled = started && !paused && !mapOpen && !placeOpen && !pickerOpen;
     if (!input.enabled) input.releasePointer();
@@ -92,6 +101,7 @@ async function boot(): Promise<void> {
       onStart: () => {
         started = true;
         steps.unlock();
+        rainSound.unlock();
         if (charStart.needsPick) void openPicker('first'); // CHAR-P5 G2: first launch: choose before entering the world
         else if (charStart.flag && !charStart.persist) menu.toast(`Playing as ${getProfile(charStart.id)?.picker?.name ?? 'your character'}. Change character is in the pause menu.`, 3.5);
         syncInput();
@@ -101,15 +111,10 @@ async function boot(): Promise<void> {
           if (steps.enabled && v5.mode !== 'v4') v5.ambience.start();
         }
       },
-      onTimeOfDay: (t) => {
-        const m = v5?.mode ?? 'v4';
-        // The V5 lighting is defined for daytime only: time-of-day changes go through V4 lighting first.
-        if (v5?.usesPipeline) v5.pipeline.disable();
-        world.setTimeOfDay(t);
-        renderer.toneMappingExposure = world.exposure;
-        if (m !== 'v4' && t === 'day') v5!.pipeline.enable();
-      },
-      onSound: (on) => { steps.enabled = on; v5?.ambience.setEnabled(on); if (on && v5 && v5.mode !== 'v4') v5.ambience.start(); },
+      // N1-M6: every rendering follows the hour (the world scales each one's own daylight): nothing is switched or recompiled.
+      onTimeOfDay: (t) => world.setTime(t),
+      onRain: (r) => world.setRain(r),
+      onSound: (on) => { steps.enabled = on; rainSound.enabled = on; v5?.ambience.setEnabled(on); if (on && v5 && v5.mode !== 'v4') v5.ambience.start(); },
       onResume: () => {
         endCarTrip(); // leaving the pause menu cancels a "Drive Car" that is still loading
         if (charStart.flag) { cancelPickerWarm(); swapper.cancelPendingWarm(); } // CHAR-P5: no model building while the game runs
@@ -157,6 +162,7 @@ async function boot(): Promise<void> {
       onToggleMap: () => minimap.toggleFullMap(),
     },
     qualityName,
+    modes,
   );
 
   try {
@@ -166,6 +172,8 @@ async function boot(): Promise<void> {
     menu.showError('Could not load map data. Run "npm run data:build" and reload.');
     return;
   }
+  world.setTime(modes.time, modes.hour ?? undefined);
+  world.setRain(modes.rain, modes.rain === 'on' ? 1 : undefined);
   registerLandmarks(world.landmarks);
   world.chunks.renderer = renderer;
   // A streamed landmark model joins the scene only once its programs are compiled (for whichever render path is in
@@ -357,6 +365,12 @@ async function boot(): Promise<void> {
   // along (hidden), so the map, the location read-out and the streaming keep following `player.position`.
   const driving = new Driving(world, camera, { toast: (t) => menu.toast(t, 2) });
   world.scene.add(driving.model.root);
+  // N1-M6: while it is driven at night the car lights the road ahead (the lamp-pool material: additive, not drawn by day).
+  const headlights = new THREE.Mesh(headlightGeometry(), world.materials.pools);
+  headlights.renderOrder = 7;
+  headlights.visible = false;
+  headlights.userData.noAO = true;
+  driving.model.root.add(headlights);
   driving.prepare = (o) => { prepareObject(o); };
   /** Teleports and resets act on the walking character: the car is left where it stands. */
   const leaveCar = () => {
@@ -406,7 +420,9 @@ async function boot(): Promise<void> {
   world.chunks.onBuilt = (o) => { if (startHold && v5?.usesPipeline) prepareObject(o); };
   const applyInitialMode = () => {
     const done = () => { startHold = false; world.chunks.holdWarm = false; world.chunks.onBuilt = null; renderReady = true; menu.setLoading(1, 'Ready', true); };
-    if (initialMode === 'v4') return done();
+    // (N1-M6: this rendering draws from the first frame, so only what is not drawn by day, the rain and the pools of
+    // lamp light, is still to compile: now, not on the frame night falls or rain starts)
+    if (initialMode === 'v4') { prepareObject(world.scene); return done(); }
     menu.setLoading(0.97, 'Preparing the Jalan China street section…', false);
     void modeSet.then(async () => {
       const programs = prepareObject(world.scene);
@@ -638,6 +654,9 @@ async function boot(): Promise<void> {
     const focus = flying ? fly.focus : trip ? tripFocus.set(trip.x, player.position.y, trip.z) : player.position;
     // Until the player starts, chunk building may take long frames (V8.2 time budget, ChunkManager.runJobs).
     world.chunks.loadingBoost = !spawnReady || !started;
+    // the day and the weather stand still behind the start screen and the pause menu
+    world.clockRunning = started && !paused;
+    rainSound.update(dt, started && !paused ? world.weather.rain : 0);
     world.update(dt, focus, flying ? fly.velocity : trip ? noVelocity : driving.active ? driving.velocity : player.velocity, camera);
     v5?.update(dt, rawDt, focus.x, focus.z);
     if (carTrip) stepCarTrip(dt);
@@ -689,6 +708,7 @@ async function boot(): Promise<void> {
       : driving.near ? 'walk-car' : placePanel.nearShop && !placeOpen ? 'walk-shop' : 'walk';
     controls.set(context);
 
+    headlights.visible = driving.active;
     blob.visible = quality.shadowMap === 0 && !tpc.firstPerson && !driving.active;
     if (blob.visible) blob.position.set(player.position.x, world.collision.groundAt(player.position.x, player.position.z, player.position.y).h + 0.08, player.position.z);
 
@@ -720,6 +740,7 @@ async function boot(): Promise<void> {
     }
 
     renderer.info.reset();
+    renderer.toneMappingExposure = world.exposure;
     // After a preset change the previous frame stays on screen until the new program variants have compiled.
     if (holdDraw || startHold) { /* compiling */ } else if (v5?.usesPipeline) v5.pipeline.render();
     else renderer.render(world.scene, camera);
@@ -817,6 +838,10 @@ async function boot(): Promise<void> {
       bodyVisible: () => bodyVisible({ firstPerson: tpc.firstPerson, driving: driving.active, flying: fly.active }),
     },
     driveCar,
+    /** N1-M6: stop the clock at a setting ('day', 'evening', 'night') or at an hour (0..24), or let it run ('auto'). */
+    setTime: (t: TimeMode | number) => (typeof t === 'number' ? world.setTime('day', t) : world.setTime(t)),
+    /** `now` (0..1): that much rain at once, instead of letting the weather build. */
+    setRain: (r: RainMode, now?: number) => world.setRain(r, now),
     setSimulatedDt: (v: number) => (simulatedDt = v),
     setStepsPerFrame: (n: number) => (stepsPerFrame = Math.max(1, n | 0)),
     teleportGeo: (lat: number, lon: number) => {

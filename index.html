@@ -73,11 +73,19 @@
         </div>
         <label>Time of day</label>
         <div class="seg" id="time-seg">
+          <button data-t="auto">Passing</button>
           <button data-t="day" class="active">Day</button>
           <button data-t="evening">Evening</button>
+          <button data-t="night">Night</button>
+        </div>
+        <label>Rain</label>
+        <div class="seg" id="rain-seg">
+          <button data-r="auto">Sometimes</button>
+          <button data-r="off" class="active">Off</button>
+          <button data-r="on">Raining</button>
         </div>
         <label class="row"><input type="checkbox" id="opt-adaptive" checked /> Adaptive resolution</label>
-        <label class="row"><input type="checkbox" id="opt-sound" checked /> Footstep sound</label>
+        <label class="row"><input type="checkbox" id="opt-sound" checked /> Sound (footsteps, street, rain)</label>
         <label class="row"><input type="checkbox" id="opt-stats" /> Show performance stats</label>
         <label>Look sensitivity <input type="range" id="opt-sens" min="0.5" max="2" step="0.1" value="1" /></label>
         <p class="note">Quality settings change rendering only. Geography and collision are identical at every level.</p>

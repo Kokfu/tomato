@@ -1,0 +1,4 @@
+01-waterfront {"fps":60,"calls":79,"tris":113081,"geo":273,"tex":52,"chunks":26,"pos":[-188.9,1.8,-202]}
+07-padungan-cat-statue {"fps":60,"calls":77,"tris":77003,"geo":226,"tex":50,"chunks":24,"pos":[1074.8,6,239.2]}
+09-satok {"fps":60,"calls":47,"tris":46310,"geo":198,"tex":46,"chunks":21,"pos":[-2533.1,1.8,492.1]}
+14-jalan-china-control {"fps":60,"calls":91,"tris":386210,"geo":277,"tex":49,"chunks":21,"pos":[156.6,8,17.2]}

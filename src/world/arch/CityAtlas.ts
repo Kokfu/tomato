@@ -7,6 +7,9 @@ import * as THREE from 'three';
 //
 // The alpha channel is a TINT MASK, not transparency: 1 = plaster, planks or cladding that take the building's own
 // colour (vertex colour), 0 = glass, shutters, grilles, air-conditioners and signs that keep the colour painted here.
+//
+// N1-M6: a second, two-channel texture of the same layout says what is lit at night: red = a window (lit or dark by
+// bay, in a warm or a cool white), green = a sign or a shop interior (glows in its own painted colour).
 
 export const ROW = {
   plain: 0, houseUp: 1, houseGround: 2, kampung: 3, shopUpA: 4, shopUpB: 5, shopGround: 6, ribbon: 7, balcony: 8, curtain: 9,
@@ -32,9 +35,16 @@ class Painter {
   private y0 = 0;
   private c: G;
   private m: G;
-  constructor(c: G, m: G) {
+  private g: G;
+  constructor(c: G, m: G, g: G) {
     this.c = c;
     this.m = m;
+    this.g = g;
+  }
+  /** Mark what is there as lit at night: `win` 0..1 window light, `own` 0..1 glow in its own colour. */
+  lit(x: number, y: number, w: number, h: number, win: number, own = 0): void {
+    this.g.fillStyle = `rgb(${Math.round(win * 255)},${Math.round(own * 255)},0)`;
+    this.g.fillRect(x, this.y0 + y, w, h);
   }
   row(r: number): void { this.y0 = r * H; this.r(0, 0, W, H, '#f6f4ee', 1); }
   /** Filled rectangle; `tint` 1 = takes the building colour. */
@@ -43,6 +53,7 @@ class Painter {
     this.c.fillRect(x, this.y0 + y, w, h);
     this.m.fillStyle = tint ? '#fff' : '#000';
     this.m.fillRect(x, this.y0 + y, w, h);
+    this.lit(x, y, w, h, 0); // whatever is painted over a window (a frame, a bar) is not lit
   }
   /** Round-headed opening. */
   arch(x: number, y: number, w: number, h: number, col: string, tint = 0): void {
@@ -67,6 +78,7 @@ class Painter {
     this.c.fillStyle = g;
     this.c.fillRect(x, this.y0 + y, w, h);
     this.shade(x, y, w * 0.4, h, 0.07, '255,255,255');
+    this.lit(x, y, w, h, 1);
   }
   /** Bars over an opening: nx vertical, ny horizontal. */
   grille(x: number, y: number, w: number, h: number, nx: number, ny: number, col = '#e9e9e4'): void {
@@ -146,6 +158,7 @@ function paint(p: Painter): void {
   p.slats(0, 0, W, H, 13, 0.16);
   for (let x = 31; x < W; x += 64) p.shade(x, 0, 1.5, H, 0.14);
   p.r(34, 36, 60, 52, '#2c2723');
+  p.lit(34, 36, 60, 52, 0.7);
   p.r(34, 36, 17, 52, '#b9b2a2', 1);
   p.r(77, 36, 17, 52, '#b9b2a2', 1);
   p.slats(34, 36, 17, 52, 9, 0.3);
@@ -165,6 +178,7 @@ function paint(p: Painter): void {
     for (const x of [22, 72]) {
       p.r(b + x - 3, 27, 40, 66, '#e3e1da');
       p.r(b + x, 30, 34, 60, '#6f858e');
+      p.lit(b + x, 30, 34, 60, 0.8);
       p.slats(b + x, 30, 34, 60, 11, 0.36);
       p.shade(b + x - 4, 93, 42, 4, 0.24);
     }
@@ -196,6 +210,8 @@ function paint(p: Painter): void {
   p.r(136, 4, 114, 24, '#e3dcc6');
   p.r(144, 11, 72, 3, '#3f6a4a');
   p.r(144, 18, 46, 2, '#3f6a4a');
+  p.lit(8, 4, 114, 24, 0, 1);
+  p.lit(136, 4, 114, 24, 0, 1);
   p.shade(0, 28, W, 7, 0.34);
   p.r(12, 35, 106, 93, '#7f8d8f');
   p.slats(12, 35, 106, 93, 22, 0.24);
@@ -207,6 +223,7 @@ function paint(p: Painter): void {
   }
   p.r(140, 90, 106, 3, '#5a5148');
   p.shade(140, 35, 106, 20, 0.35);
+  p.lit(140, 35, 106, 93, 0.55, 1); // an open shop: a lit room and its goods
   p.shade(0, 120, W, 8, 0.2, '70,74,60');
 
   // -- mid-rise: ribbon windows between plaster spandrels --
@@ -265,6 +282,7 @@ function paint(p: Painter): void {
   p.r(158, 28, 66, 56, '#e9e6dc');
   p.r(161, 31, 60, 50, '#b9a78c');
   p.r(161, 58, 60, 23, '#6f8798');
+  p.lit(161, 31, 60, 50, 0, 1);
 
   // -- mall ground floor: shop glazing, entrance doors, fascia band --
   p.row(ROW.mallGround);
@@ -328,6 +346,7 @@ function paint(p: Painter): void {
   p.shade(0, 0, W, 6, 0.14);
   for (const b of bays) {
     p.arch(b + 20, 16, 88, 112, '#35302c');
+    p.lit(b + 24, 50, 80, 78, 0.4);
     p.arch(b + 44, 52, 40, 76, '#5f3528');
     p.shade(b + 20, 16, 88, 30, 0.3);
   }
@@ -339,6 +358,7 @@ function paint(p: Painter): void {
   for (const b of bays) {
     p.arch(b + 44, 20, 40, 84, '#f4f3ee');
     p.arch(b + 48, 24, 32, 78, '#6f8f9c');
+    p.lit(b + 48, 40, 32, 62, 1);
     p.grille(b + 48, 40, 32, 62, 2, 4, '#e6e6e0');
     p.streak(b + 46, 106, 36, 20);
   }
@@ -351,7 +371,13 @@ function paint(p: Painter): void {
   p.shade(0, 96, W, 32, 0.22, '110,70,44');
 }
 
-let cached: { small: boolean; tex: THREE.DataTexture } | null = null;
+let cached: { small: boolean; tex: THREE.DataTexture; glow: THREE.DataTexture } | null = null;
+
+/** What is lit at night, in the atlas's layout (red: windows, green: signs and shop interiors). Browser only. */
+export function cityGlow(small = false): THREE.DataTexture {
+  cityAtlas(small);
+  return cached!.glow;
+}
 
 /** The atlas texture. `small`: half resolution (Low preset). Browser only. */
 export function cityAtlas(small = false): THREE.DataTexture {
@@ -365,8 +391,10 @@ export function cityAtlas(small = false): THREE.DataTexture {
     g.scale(s, s);
     return g;
   };
-  const col = mk(), mask = mk();
-  paint(new Painter(col, mask));
+  const col = mk(), mask = mk(), lit = mk();
+  lit.fillStyle = '#000';
+  lit.fillRect(0, 0, W, H * ROWS);
+  paint(new Painter(col, mask, lit));
   const rgba = col.getImageData(0, 0, w, h).data, m = mask.getImageData(0, 0, w, h).data;
   const data = new Uint8Array(w * h * 4);
   for (let i = 0; i < data.length; i += 4) { data[i] = rgba[i]; data[i + 1] = rgba[i + 1]; data[i + 2] = rgba[i + 2]; data[i + 3] = m[i]; }
@@ -380,6 +408,16 @@ export function cityAtlas(small = false): THREE.DataTexture {
   tex.generateMipmaps = true;
   tex.anisotropy = small ? 2 : 8;
   tex.needsUpdate = true;
-  cached = { small, tex };
+  const lg = lit.getImageData(0, 0, w, h).data, rg = new Uint8Array(w * h * 2);
+  for (let i = 0, j = 0; i < lg.length; i += 4, j += 2) { rg[j] = lg[i]; rg[j + 1] = lg[i + 1]; }
+  const glow = new THREE.DataTexture(rg, w, h, THREE.RGFormat, THREE.UnsignedByteType);
+  glow.wrapS = THREE.RepeatWrapping;
+  glow.wrapT = THREE.ClampToEdgeWrapping;
+  glow.magFilter = THREE.LinearFilter;
+  glow.minFilter = THREE.LinearMipmapLinearFilter;
+  glow.generateMipmaps = true;
+  glow.unpackAlignment = 1;
+  glow.needsUpdate = true;
+  cached = { small, tex, glow };
   return tex;
 }

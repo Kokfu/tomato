@@ -1,0 +1,14 @@
+01-waterfront {"fps":60,"calls":77,"tris":112655,"geo":273,"tex":52,"chunks":26,"pos":[-188.9,1.8,-202]}
+02-main-bazaar {"fps":60,"calls":75,"tris":408452,"geo":275,"tex":50,"chunks":25,"pos":[285.5,2.1,-8.9]}
+03-carpenter-street {"fps":60,"calls":101,"tris":458075,"geo":327,"tex":58,"chunks":29,"pos":[166.4,8.3,28.4]}
+04-india-street {"fps":60,"calls":39,"tris":48923,"geo":314,"tex":56,"chunks":27,"pos":[-134.1,5.4,-110.1]}
+05-jalan-gambier {"fps":60,"calls":106,"tris":116292,"geo":314,"tex":56,"chunks":27,"pos":[-45.8,1.8,-222.4]}
+06-plaza-merdeka {"fps":60,"calls":89,"tris":384288,"geo":328,"tex":59,"chunks":29,"pos":[-91.4,3,40.5]}
+07-padungan-cat-statue {"fps":60,"calls":73,"tris":76391,"geo":253,"tex":53,"chunks":25,"pos":[1074.8,6,239.2]}
+08-kuching-mosque {"fps":60,"calls":39,"tris":45520,"geo":254,"tex":52,"chunks":24,"pos":[-406.2,4.9,26.2]}
+09-satok {"fps":60,"calls":45,"tris":45980,"geo":218,"tex":48,"chunks":21,"pos":[-2533.1,1.8,492.1]}
+10-the-spring {"fps":60,"calls":30,"tris":43037,"geo":145,"tex":39,"chunks":13,"pos":[1622.9,20.1,2536.8]}
+11-residential-overture {"fps":60,"calls":51,"tris":61253,"geo":218,"tex":50,"chunks":21,"pos":[-1610,5.2,1003]}
+12-trunk-road-openg {"fps":60,"calls":65,"tris":78467,"geo":228,"tex":52,"chunks":24,"pos":[-321,10.9,1290]}
+13-river-to-dun {"fps":60,"calls":80,"tris":372620,"geo":234,"tex":45,"chunks":21,"pos":[274.4,1.8,-38.7]}
+14-jalan-china-control {"fps":60,"calls":97,"tris":399225,"geo":325,"tex":56,"chunks":27,"pos":[156.6,8,17.2]}

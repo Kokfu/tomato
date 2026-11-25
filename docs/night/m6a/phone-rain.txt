@@ -1,0 +1,4 @@
+02-main-bazaar {"fps":60,"calls":79,"tris":409968,"geo":290,"tex":51,"chunks":26,"pos":[285.5,2.1,-8.9]}
+12-trunk-road-openg {"fps":60,"calls":70,"tris":80565,"geo":211,"tex":48,"chunks":21,"pos":[-321,10.9,1290]}
+14-jalan-china-control {"fps":60,"calls":92,"tris":387210,"geo":291,"tex":52,"chunks":24,"pos":[156.6,8,17.2]}
+night-12-trunk-road-openg {"fps":60,"calls":70,"tris":80049,"geo":241,"tex":52,"chunks":24,"pos":[-321,10.9,1290]}

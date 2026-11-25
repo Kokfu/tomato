@@ -75,8 +75,8 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - **Distant trees are simplified**: outside the nearest ring of chunks each tree is an eight-triangle crown without a trunk.
 - **The river bank band** (paler water and a lapping line 3 m wide along the mapped shoreline) is decorative; the river has no
   tide, current or depth data. Its tea-brown colour follows the style guide, not a measurement.
-- **Sun and haze.** The sun stands where it does over Kuching on 15 April at 09:40 solar time (17:15 for the evening preset); the
-  date is a choice. The haze has one fixed density and closes completely at the edge of the streamed area, which is nearer
+- **Sun and haze.** The sun stands where it does over Kuching on 15 April (09:40 solar time for the Day setting, 17:36 for
+  Evening); the date is a choice. The haze has one fixed density and closes completely at the edge of the streamed area, which is nearer
   (about 550 m) on the Low preset than real visibility would be.
 
 ## Streets (N1-M4)
@@ -129,7 +129,7 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - **Boards carry mapped business names only** (17). Which lot of its block a business occupies is decided by the nearest
   frontage point: it can be off by a lot or two. No house number is shown.
 - **The canopy is a stand-in:** a plain fabric vault on fourteen columns, every dimension estimated. It is unlit cloth
-  and throws no shadow. The real canopy's ornament and banners are not built.
+  and throws no shadow (since N1-M6 it darkens with the daylight, like the lane paint it is drawn with). The real canopy's ornament and banners are not built.
 - **Stalls, awnings, flags, parked cars, kapcai and the cars in the riverside car park are placed by rule.** Jalan
   Gambier has no licensed photograph at all.
 - **Parked cars on Jalan Gambier stand on the outer 1.9 m of the carriageway** (no parking bay is mapped) and block a
@@ -199,6 +199,32 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - Ground textures are low resolution (0.5-1 m per pixel) by design; land-use edges are soft.
 - No texture compression is used because the app ships almost no textures (one 128 px facade
   tile plus per-chunk canvas ground textures generated at runtime).
+
+## Day, night and rain (N1-M6 part A, all invented)
+
+- **The clock is not a real clock.** A day of play lasts 13 min 25 s (daylight 9 min 45 s, night 3 min 40 s) and always
+  starts at 09:40. The date is fixed (15 April), the moon is always full and stands opposite the sun, and the stars are
+  a random pattern, not the sky over Kuching. The light of the sun and moon is never drawn from lower than 12 degrees,
+  so shadows at sunrise and sunset are shorter than they should be.
+- **Night light is a look, not a simulation.** No lamp, window or sign lights anything round it. Lamp light on the
+  ground is a painted pool under each lamp; it does not fall on walls, cars or people, and nothing casts a shadow in it.
+  The Jalan China section gets a warm wash near street level instead. Reflections in the section stay those of a
+  daytime sky, only weaker.
+- **Which windows are lit is random**, by bay and storey, and does not change through the night; about half are lit. On
+  distant buildings a plain grid of windows stands in for the real facade. Shop rows are lit by a slow random drift
+  along the street. Every sign board is lit, whatever the business is.
+- **Every landmark is floodlit** the same way (a wash of its own colour), the DUN roof a little more. Which buildings
+  in Kuching are really floodlit, and in what colour, was not looked up.
+- **Lights on the river** are seven fixed points (the DUN, the Darul Hana bridge, the floating mosque, the waterfront,
+  the Square Tower, Fort Margherita, the Astana) with made-up colours and strengths; the river does not mirror the
+  bank itself.
+- **Street lamps are placed by rule** (N1-M4: none is mapped), so every pool of light is inferred too.
+- **Rain is one weather for the whole city**: showers of 1.5 to 3 minutes after dry spells of 5 to 11 minutes, by a
+  random schedule, not Kuching's climate. Streaks fall through roofs, arcades and the car's roof. Puddles are a noise
+  pattern, not low ground; drains do not fill; nothing gets slippery. Walls and roofs do not look wet.
+- **Sound is synthesised** (filtered noise for rain, a low rumble for thunder); there is no lightning flash.
+- **In an automated browser** (tests, screenshot and benchmark tools) the game starts on a frozen dry day unless the
+  address or a saved setting says otherwise, so those runs do not show the cycle.
 
 ## Testing
 

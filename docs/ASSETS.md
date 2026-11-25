@@ -161,6 +161,12 @@ Considered and not added in this batch: the other Quaternius CC0 characters on t
 
 No audio file was added either: a licensed street recording of suitable quality was not sourced. The synthesised ambience from V5 is unchanged (it starts only after the Start click and follows the existing sound switch).
 
+## N1-M6 day/night and rain
+
+No asset was added. Stars, moon, clouds, lit windows, lamp pools, puddles and rain streaks are drawn by shaders and
+by the painted facade atlas; the rain and thunder sounds are synthesised in the browser (`src/world/Rain.ts`), like
+the V5 street ambience. No audio file, texture or model was downloaded.
+
 ## N1-M2 ground textures: `public/textures/ground/*.webp`
 
 Downloaded 2026-11-25 from Poly Haven. All four are CC0 1.0 ("CC0 License" on each source page, https://polyhaven.com/license);

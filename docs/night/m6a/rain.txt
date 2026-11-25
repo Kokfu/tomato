@@ -1,0 +1,9 @@
+02-main-bazaar {"fps":60.1,"calls":205,"tris":973205,"geo":394,"tex":71,"chunks":44,"pos":[285.5,2.1,-8.9]}
+05-jalan-gambier {"fps":60,"calls":272,"tris":686587,"geo":452,"tex":79,"chunks":48,"pos":[-45.8,1.8,-222.4]}
+09-satok {"fps":60.1,"calls":119,"tris":124924,"geo":322,"tex":64,"chunks":34,"pos":[-2533.1,1.8,492.1]}
+12-trunk-road-openg {"fps":60,"calls":180,"tris":277012,"geo":333,"tex":68,"chunks":37,"pos":[-321,10.9,1290]}
+14-jalan-china-control {"fps":60,"calls":165,"tris":535263,"geo":437,"tex":75,"chunks":44,"pos":[156.6,8,17.2]}
+night-07-padungan-cat-statue {"fps":60,"calls":155,"tris":134035,"geo":439,"tex":78,"chunks":47,"pos":[1074.8,6,239.2]}
+night-12-trunk-road-openg {"fps":60,"calls":196,"tris":315959,"geo":378,"tex":74,"chunks":43,"pos":[-321,10.9,1290]}
+night-14-jalan-china-control {"fps":60,"calls":254,"tris":1068682,"geo":438,"tex":75,"chunks":44,"pos":[156.6,8,17.2]}
+fps {"02-main-bazaar":{"median":60,"min":59.3,"max":60.7,"n":30},"05-jalan-gambier":{"median":60,"min":59.6,"max":60.5,"n":30},"09-satok":{"median":60,"min":60,"max":60.1,"n":30},"12-trunk-road-openg":{"median":60,"min":60,"max":60.1,"n":30},"14-jalan-china-control":{"median":60,"min":60,"max":60.1,"n":30},"night-07-padungan-cat-statue":{"median":60,"min":59.9,"max":60.1,"n":30},"night-12-trunk-road-openg":{"median":60,"min":60,"max":60,"n":30},"night-14-jalan-china-control":{"median":60,"min":59.9,"max":60.1,"n":30}}

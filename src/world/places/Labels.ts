@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SIGN_GLOW } from '../env.ts';
 
 // Text signs (shop signboards, street-name plates) for one chunk: every label is drawn into one
 // canvas texture and rendered as one merged mesh, so a chunk full of signs costs a single draw call.
@@ -100,7 +101,10 @@ export function buildLabels(specs: LabelSpec[], maxAnisotropy = 4): THREE.Mesh |
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = maxAnisotropy;
-  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide }));
+  // N1-M6: the boards are lit at night. Every board material shares one emissive colour object (black by day).
+  const mat = new THREE.MeshLambertMaterial({ map: tex, emissiveMap: tex, side: THREE.DoubleSide });
+  mat.emissive = SIGN_GLOW;
+  const mesh = new THREE.Mesh(geo, mat);
   mesh.userData.ownMaterial = true;
   mesh.receiveShadow = true;
   return mesh;

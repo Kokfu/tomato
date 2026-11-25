@@ -9,6 +9,7 @@
 //
 // Vertex colours carry paint colour x baked occlusion (see kit.ts).
 import * as THREE from 'three';
+import { ENV, ENV_PARS } from '../world/env.ts';
 
 export const MATERIAL_NAMES = [
   'plaster', 'concrete', 'tile', 'glazed', 'shutter', 'louvre', 'timber', 'paint', 'asphalt', 'paving', 'stone',
@@ -302,7 +303,31 @@ interface Spec {
   rough?: number; metal?: number; env?: number;
   defines?: Record<string, string>;
   double?: boolean; transparent?: number; glow?: number; sway?: boolean; map?: THREE.Texture | null; shadowSide?: THREE.Side;
+  /**
+   * N1-M6, what the surface does at night: 'window' glass lit from inside (in patches along the street), 'sign' a board
+   * lit in its own colours, 'lamp' a `glow` that gets stronger, 'daylight' a `glow` that stands for light coming
+   * through (the polycarbonate roofs) and goes out with the day.
+   */
+  night?: 'window' | 'sign' | 'lamp' | 'daylight';
+  /** Rain makes it dark and glossy (roads and floors). */
+  wet?: boolean;
 }
+
+/**
+ * The street at night: lanterns, shop lights and lamps are not light sources here, so everything near street level
+ * gets a warm wash of its own colour, fading out about two storeys up.
+ */
+const STREET_WASH = 'totalEmissiveRadiance += diffuseColor.rgb * vec3(1.0, 0.76, 0.48) * (uNight * 0.17 * smoothstep(uGroundY + 9.0, uGroundY + 0.5, vWp.y));';
+/** A wet road or floor mirrors the sky at a grazing angle (as the roads of the rest of the city do). */
+const WET_SHEEN = 'if (uWet > 0.003 && vWn.y > 0.6) totalEmissiveRadiance += uSkyRefl * (uWet * (0.03 + 0.5 * pow(1.0 - max(normalize(cameraPosition - vWp).y, 0.0), 5.0)));';
+
+const NIGHT = {
+  // (upper floors only: the same glass material glazes the parked cars)
+  window: 'totalEmissiveRadiance += vec3(1.0, 0.72, 0.4) * (uNight * 0.9 * step(uGroundY + 3.0, vWp.y) * smoothstep(0.42, 0.56, kTex(vec2(dot(vWp.xz, vec2(0.031, 0.027)), floor(vWp.y / 3.2) * 0.37)).r));',
+  sign: 'totalEmissiveRadiance += diffuseColor.rgb * (uNight * 0.75);',
+  lamp: '',
+  daylight: '',
+};
 
 /** Sky irradiance comes from the hemisphere light shared with the rest of the world; the environment map adds specular only. */
 const LIGHTS_MAPS = THREE.ShaderChunk.lights_fragment_maps.replace('iblIrradiance += getIBLIrradiance( geometryNormal );', '');
@@ -326,7 +351,7 @@ function make(spec: Spec, uniforms: KuchingMaterials['uniforms'], low: boolean, 
   m.shadowSide = spec.shadowSide ?? THREE.DoubleSide;
   const defs = Object.entries({ ...(spec.defines ?? {}), ...(low ? { K_LOW: '1' } : {}) }).map(([k, v]) => `#define ${k} ${v}`).join('\n');
   m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, uniforms);
+    Object.assign(sh.uniforms, uniforms, ENV);
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>\nvarying vec3 vWp;\nvarying vec3 vWn;\nuniform float uTime;`)
       .replace('#include <begin_vertex>', spec.sway
@@ -339,18 +364,21 @@ function make(spec: Spec, uniforms: KuchingMaterials['uniforms'], low: boolean, 
         #endif
         vWp = (modelMatrix * wp4).xyz; vWn = normalize(mat3(modelMatrix) * wn3); }`);
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', `#include <common>\n${defs}\n${COMMON}`)
+      .replace('#include <common>', `#include <common>\n${defs}\n${COMMON}${ENV_PARS}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         vec3 kAlb = diffuseColor.rgb; float kRough = roughness; float kMetal = metalness; float kH = 0.0; vec3 kNw = vec3(0.0);
         { vec3 p = vWp; vec3 n = normalize(vWn); float dist = length(cameraPosition - p); float fade = clamp(1.3 - dist / 42.0, 0.0, 1.0);
         ${SURFACE[spec.surface]}
+        ${spec.wet ? 'if (uWet > 0.003 && n.y > 0.6) { kAlb *= mix(1.0, 0.62, uWet); kRough = mix(kRough, 0.1, uWet * 0.85); }' : ''}
         }
         diffuseColor.rgb = kAlb;`)
       .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = clamp(kRough, 0.045, 1.0);')
       .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = clamp(kMetal, 0.0, 1.0);')
       .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n#ifndef K_LOW\n if (dot(kNw, kNw) > 0.0) normal = normalize(mat3(viewMatrix) * kNw);\n if (kH != 0.0) normal = kBump(normal, -vViewPosition, kH, faceDirection);\n#endif')
       .replace('#include <lights_fragment_maps>', LIGHTS_MAPS)
-      .replace('#include <emissivemap_fragment>', spec.glow ? `#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * ${spec.glow.toFixed(3)};` : '#include <emissivemap_fragment>');
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\n${
+        spec.glow ? `totalEmissiveRadiance += diffuseColor.rgb * (${spec.glow.toFixed(3)} * ${spec.night === 'lamp' ? '(1.0 + 1.6 * uNight)' : spec.night === 'daylight' ? '(1.0 - 0.92 * uNight)' : '1.0'});` : ''
+      }\n${spec.night ? NIGHT[spec.night] : ''}\n${spec.transparent === undefined ? STREET_WASH : ''}\n${spec.wet ? WET_SHEEN : ''}`);
   };
   m.customProgramCacheKey = () => `k5-${key}-${low ? 'l' : 'h'}`;
   return m;
@@ -374,22 +402,22 @@ export function createMaterials(opts: { low?: boolean; atlas?: THREE.Texture | n
     louvre: { surface: 'louvre', env: 0.5, double: true },
     timber: { surface: 'timber', env: 0.4, double: true },
     paint: { surface: 'paint', env: 0.8, double: true },
-    asphalt: { surface: 'asphalt', env: 0.6 },
-    paving: { surface: 'paving', env: 0.8, defines: { K_TILE: '0.3', K_GLOSS: '0.34' } },
-    stone: { surface: 'stone', env: 0.5 },
+    asphalt: { surface: 'asphalt', env: 0.6, wet: true },
+    paving: { surface: 'paving', env: 0.8, defines: { K_TILE: '0.3', K_GLOSS: '0.34' }, wet: true },
+    stone: { surface: 'stone', env: 0.5, wet: true },
     zinc: { surface: 'zinc', env: 1.0, double: true },
-    glass: { surface: 'glass', rough: 0.07, metal: 0.6, env: 1.35, double: true },
+    glass: { surface: 'glass', rough: 0.07, metal: 0.6, env: 1.35, double: true, night: 'window' },
     fabric: { surface: 'fabric', env: 0.2, double: true },
     foliage: { surface: 'foliage', env: 0.3, double: true, sway: true },
-    glow: { surface: 'none', rough: 0.6, env: 0.3, glow: 0.95, double: true },
+    glow: { surface: 'none', rough: 0.6, env: 0.3, glow: 0.95, double: true, night: 'lamp' },
     gold: { surface: 'gold', env: 1.2 },
     atlas: { surface: 'none', rough: 0.62, env: 0.5, map: opts.atlas ?? null, double: true },
-    sign: { surface: 'none', rough: 0.55, env: 0.6, map: opts.sign ?? null, double: true },
-    poly: { surface: 'poly', env: 1.0, double: true, transparent: 0.62, glow: 0.5 },
+    sign: { surface: 'none', rough: 0.55, env: 0.6, map: opts.sign ?? null, double: true, night: 'sign' },
+    poly: { surface: 'poly', env: 1.0, double: true, transparent: 0.62, glow: 0.5, night: 'daylight' },
     wire: { surface: 'none', rough: 0.7, env: 0.2 },
     carpaint: { surface: 'carpaint', env: 1.2 },
     contact: { surface: 'none' },
-    asphaltPhoto: { surface: 'asphaltPhoto', env: 0.6 },
+    asphaltPhoto: { surface: 'asphaltPhoto', env: 0.6, wet: true },
     // Clear glass of display cases (V7.4): see-through, with a faint reflection.
     pane: { surface: 'none', rough: 0.05, env: 0.4, double: true, transparent: 0.2 },
   };
