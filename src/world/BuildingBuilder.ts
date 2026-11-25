@@ -12,6 +12,9 @@ import { inDistrict, isDistrictRow } from './district/mainBazaar.ts';
 import { assertGeneric, isProtectedLandmark, mayHaveShopfront } from './landmarks/protect.ts';
 import { v5Exclusion } from '../v5/geo.ts';
 import { addFarTrees } from './VegetationBuilder.ts';
+import { typedBuildings } from './arch/buildingType.ts';
+import { addTypedBuilding } from './arch/TypedBuilding.ts';
+import { ROW, rowV, PLAIN_UV } from './arch/CityAtlas.ts';
 
 type Kind = (typeof BUILDING_KINDS)[number];
 const WALLS: Record<Kind, number[]> = {
@@ -59,7 +62,6 @@ const wallColor = new THREE.Color();
 const roofColor = new THREE.Color();
 const footColor = new THREE.Color();
 const BAY = 3.4;
-const STOREY = 3.3;
 
 function addBuilding(b: BuildingData, ox: number, oz: number, ctx: BuildContext, walls: GeoBuf, roofs: GeoBuf, skipWalls = false): void {
   assertGeneric(b, 'extruded building');
@@ -98,8 +100,9 @@ function addBuilding(b: BuildingData, ox: number, oz: number, ctx: BuildContext,
       const nx = (dz / len) * s, nz = (-dx / len) * s;
       // Whole number of bays per wall so windows are not cut at corners.
       const bays = Math.max(1, Math.round(len / BAY));
-      const u0 = u, u1 = u + bays;
-      const v0 = 0, v1 = isRoof ? 0.05 : Math.max(1, Math.round((top - y0 - 0.3) / STOREY));
+      // One storey of the city atlas (arch/CityAtlas.ts) stretched over the wall; open roofs get blank wall.
+      const u0 = isRoof ? PLAIN_UV[0] : u / 2, u1 = isRoof ? PLAIN_UV[0] : (u + bays) / 2;
+      const [v0, v1] = isRoof ? [PLAIN_UV[1], PLAIN_UV[1]] : rowV(ROW.houseGround);
       // Darker wall foot: a cheap ambient-occlusion gradient where the wall meets the ground.
       footColor.copy(wallColor).multiplyScalar(isRoof ? 1 : 0.72);
       const A = walls.vert(ax, y0, az, nx, 0, nz, footColor, u0, v0);
@@ -107,7 +110,7 @@ function addBuilding(b: BuildingData, ox: number, oz: number, ctx: BuildContext,
       const A2 = walls.vert(ax, top, az, nx, 0, nz, wallColor, u0, v1);
       const B2 = walls.vert(bx, top, bz, nx, 0, nz, wallColor, u1, v1);
       if (ccw) { walls.tri(B, A, A2); walls.tri(B, A2, B2); } else { walls.tri(A, B, B2); walls.tri(A, B2, A2); }
-      u = u1;
+      u += bays;
     }
   });
 
@@ -204,10 +207,11 @@ function addBuilding(b: BuildingData, ox: number, oz: number, ctx: BuildContext,
     const nrm: [number, number][] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
     for (let k = 0; k < 4; k++) {
       const p = c[k], q = c[(k + 1) % 4];
-      const A = walls.vert(p[0], ground, p[1], nrm[k][0], 0, nrm[k][1], soffitColor, 0.05, 0.02);
-      const B = walls.vert(q[0], ground, q[1], nrm[k][0], 0, nrm[k][1], soffitColor, 0.05, 0.02);
-      const A2 = walls.vert(p[0], y0, p[1], nrm[k][0], 0, nrm[k][1], soffitColor, 0.05, 0.02);
-      const B2 = walls.vert(q[0], y0, q[1], nrm[k][0], 0, nrm[k][1], soffitColor, 0.05, 0.02);
+      const [pu, pv] = PLAIN_UV;
+      const A = walls.vert(p[0], ground, p[1], nrm[k][0], 0, nrm[k][1], soffitColor, pu, pv);
+      const B = walls.vert(q[0], ground, q[1], nrm[k][0], 0, nrm[k][1], soffitColor, pu, pv);
+      const A2 = walls.vert(p[0], y0, p[1], nrm[k][0], 0, nrm[k][1], soffitColor, pu, pv);
+      const B2 = walls.vert(q[0], y0, q[1], nrm[k][0], 0, nrm[k][1], soffitColor, pu, pv);
       triFacing(walls, B, A, A2, nrm[k][0], 0, nrm[k][1]);
       triFacing(walls, B, A2, B2, nrm[k][0], 0, nrm[k][1]);
     }
@@ -311,7 +315,8 @@ function addPitchedRoof(kind: Kind, hash: number, ringIn: number[], top: number,
 export function* buildBuildings(data: ChunkData, ctx: BuildContext): Generator<void, THREE.Object3D[]> {
   const ox = data.cx * CHUNK_SIZE, oz = data.cz * CHUNK_SIZE;
   const walls = new GeoBuf(true);
-  const roofs = new GeoBuf();
+  const roofs = new GeoBuf(true); // uv = roof surface (arch/TypedBuilding.ts ROOF_*), not a texture coordinate
+  const typed = typedBuildings(data);
   const arch = new GeoBuf(true);
   const herit = new GeoBuf(true);
   for (const b of data.buildings) {
@@ -347,7 +352,10 @@ export function* buildBuildings(data: ChunkData, ctx: BuildContext): Generator<v
         continue;
       }
     }
-    addBuilding(b, ox, oz, ctx, walls, roofs, row);
+    // Everything else is a typed generic building (N1-M3): kampung house, terrace, shophouse block, mall ...
+    const t = typed.get(b.id);
+    if (row || !t || t.type === 'open_roof') addBuilding(b, ox, oz, ctx, walls, roofs, row);
+    else addTypedBuilding(t, b.r.map((r) => r.map((v) => v / QUANT)), ox, oz, ctx, walls, roofs);
   }
   const out: THREE.Object3D[] = [];
   yield;

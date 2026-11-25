@@ -52,8 +52,8 @@ An orchestrator session starts **one worker session per milestone** (M5 and M6 a
 |---|---|---|---|---|
 | M0 | Baseline and city tour gate | DONE | 2232f94 | 87 tests, load 5.0 s, phone p95 A/B/C 88/74/73 ms; mean realism 2.3/5 |
 | M1 | Integrate finished experiments | DONE | 43dcee5 | v9, ux1, c1 and character picker merged and ON by default (`?name=0` turns one off); phone p95 A/B/C 78/54/51 ms, load 4.9 s, 222 unit tests |
-| M2 | Citywide atmosphere, light and ground | DONE | (hash goes in M3's commit) | haze to the chunk edge, sun for 1.56 N, photo-textured ground, shared asphalt, rain-tree avenues, silty river; mean realism 2.9/5; phone p95 A/B/C 75/82/72 ms vs 88/87/75 in the same (loaded) session, re-measure at M3; load +10 %; 227 unit tests |
-| M3 | Buildings everywhere | TODO | | |
+| M2 | Citywide atmosphere, light and ground | DONE | 5e09d43 | haze to the chunk edge, sun for 1.56 N, photo-textured ground, shared asphalt, rain-tree avenues, silty river; mean realism 2.9/5; phone p95 A/B/C 75/82/72 ms vs 88/87/75 in the same (loaded) session, re-measure at M3; load +10 %; 227 unit tests |
+| M3 | Buildings everywhere | PARTIAL | (hash goes in M4's commit) | every footprint is one of 11 typed Kuching buildings (atlas facades, roof forms, palettes, varied heights), no new draw calls or downloads; mean realism 3.3/5; phone p95 within +15 % in one quiet pair (cold A/B/C 79/87/85 vs 80/83/79 ms), 0 stalls; 235 unit tests. **Not met:** start-up +37 % vs baseline (limit +20 %; M3 itself +7 % over M2): profile start-up before M4 adds more. View 03's slab is the section's own wall (M5) |
 | M4 | Streets everywhere | TODO | | |
 | M5 | Hero places (Jalan China method) | TODO | | |
 | M6 | Living city: day/night, rain, traffic, people | TODO | | |
@@ -201,3 +201,10 @@ Each place needs:
 - 2026-11-25 M2: trees are mostly inferred (roadside avenues, lot trees), without collision; far chunks merge 8-triangle crowns into their wall mesh and Low bakes a chunk's trees into one mesh; reason: tree cover to the horizon at no draw-call cost on phones.
 - 2026-11-25 M2: phone bench ran three times, not one pair: the first pair showed B/C over +15 %, the fix (Low tree bake) needed a second pair, and that pair ran on a loaded machine; reason: the only valid comparison is in-pair. Result kept as DONE with a re-measure owed at M3.
 - 2026-11-25 M2: cut frangipani as its own form, true water reflections and a boat wake; reason: time, and no tour view looks along the river.
+- 2026-11-25 M3: building type is decided at runtime from the chunk data (kind / arch class from OSM tags first, then footprint size and shape, land use, distance to main roads and the river bank, "Kampung" street names); reason: 88 % of footprints carry no tags, and it needs no data regeneration and no chunk JSON growth.
+- 2026-11-25 M3: one painted atlas of full-width rows (two bays by one storey, repeating along U) with a tint mask in alpha, and all typed geometry merged into the chunk's existing wall and roof meshes instead of InstancedMesh props; reason: draw calls are the phone's limit, and this adds none.
+- 2026-11-25 M3: default heights from the data are replaced by a varied storey count per type (mapped heights and civic / worship buildings keep theirs), and collision uses the drawn height; reason: every street was a level row of boxes.
+- 2026-11-25 M3: machine-detected footprints are drawn like any other building; they stay distinguishable on the map (M / OP mode) and the inference is documented in LIMITATIONS.md; reason: the plan asks that Overture buildings no longer look grey.
+- 2026-11-25 M3: unregistered places of worship are plain halls with round-headed windows; reason: a landmark's form is never invented.
+- 2026-11-25 M3: marked PARTIAL, not DONE: the start-up budget is missed (+37 % vs the M0 baseline in an alternating 4-run pair). M3 adds about +7 % over the M2 build; M2's own +10 % reading did not reproduce. Visual goals and the phone budget are met.
+- 2026-11-25 M3: cut car porches and fences, modelled air-conditioners, a recessed five-foot way on generic shop blocks and a second bench pair; reason: time, and the brief asked for one pair.

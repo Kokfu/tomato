@@ -37,7 +37,8 @@ test('budget: chunk 0_0 grows by at most +16,487 tris (< 12 % of the 137,397 V8.
   const off = OFF.perChunk['0_0'].total, on = ON.perChunk['0_0'].total;
   // N1-M2 added inferred trees and the river-bank ribbon to every chunk: 137,397 (V8.6) + 10,636 here. The C1a budget
   // below is still measured against the V8.6 figure.
-  assert.equal(off, 137397 + 10636, 'flag-off chunk 0_0 baseline moved');
+  // N1-M3 typed buildings (storey quads, roof forms, canopies, roof tanks) add 545 more.
+  assert.equal(off, 137397 + 10636 + 545, 'flag-off chunk 0_0 baseline moved');
   assert.ok(on - off <= 16487, `delta ${on - off}`);
   assert.ok(on - off < 0.12 * 137397);
   assert.deepEqual(ON.perChunk['0_-1'], OFF.perChunk['0_-1'], 'chunk 0_-1 must not change');

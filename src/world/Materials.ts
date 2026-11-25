@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { facadeAtlas } from './arch/FacadeAtlas.ts';
 import { heritageAtlas } from './arch/HeritageAtlas.ts';
+import { cityAtlas } from './arch/CityAtlas.ts';
 import { flatGroundTextures, GROUND_MEAN } from './GroundTextures.ts';
 import type { GroundTextures } from './GroundTextures.ts';
 
@@ -53,37 +54,6 @@ export class GeoBuf {
     g.computeBoundingBox();
     return g;
   }
-}
-
-function facadeTexture(): THREE.CanvasTexture {
-  // One bay x one storey. Multiplied by the per-building vertex colour, so the wall stays white.
-  const S = 128;
-  const c = document.createElement('canvas');
-  c.width = c.height = S;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#ffffff';
-  g.fillRect(0, 0, S, S);
-  // faint floor line
-  g.fillStyle = '#e4e4e2';
-  g.fillRect(0, S - 5, S, 5);
-  // window: frame, glass with sky tint, mullions, sill
-  g.fillStyle = '#b9bcbf';
-  g.fillRect(38, 30, 52, 62);
-  const grad = g.createLinearGradient(0, 33, 0, 89);
-  grad.addColorStop(0, '#8fa9bd');
-  grad.addColorStop(1, '#566b7c');
-  g.fillStyle = grad;
-  g.fillRect(41, 33, 46, 56);
-  g.fillStyle = '#c7cacd';
-  g.fillRect(63, 33, 2, 56);
-  g.fillRect(41, 58, 46, 2);
-  g.fillStyle = '#eceae6';
-  g.fillRect(34, 92, 60, 4);
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
-  return t;
 }
 
 const WATER_VERT = /* glsl */ `
@@ -181,7 +151,15 @@ const DETAIL = {
     col *= mix(1.0, 0.95 + 0.1 * k3n(vec2(dot(p.xz, vec2(0.71, -0.71)), p.y) * 9.0), fade);`,
   roof: /* glsl */ `
     float slope = length(n.xz);
-    if (slope > 0.2) {
+    if (vRoof.x > 0.5) {
+      // Corrugated zinc sheet: ribs running down the slope, sheet laps, and rust spreading from the laps (vRoof.y).
+      vec2 t = slope > 0.05 ? normalize(vec2(-n.z, n.x)) : vec2(1.0, 0.0);
+      float u = dot(p.xz, t) / 0.2, s = (slope > 0.05 ? p.y / slope : dot(p.xz, vec2(-t.y, t.x))) / 2.4;
+      col *= mix(1.0, 0.8 + 0.2 * (0.5 + 0.5 * cos(u * 6.2832)), fade);
+      col *= (0.9 + 0.16 * k3h(floor(vec2(u / 4.0, s)))) * (1.0 - 0.22 * smoothstep(0.86, 1.0, fract(s)) * fade);
+      float rust = smoothstep(0.78 - 0.5 * vRoof.y, 0.98 - 0.5 * vRoof.y, k3n(p.xz * 0.33 + 3.0) * 0.7 + k3n(p.xz * 1.9) * 0.3);
+      col = mix(col, vec3(0.3, 0.165, 0.1) * (0.75 + 0.5 * k3n(p.xz * 2.3)), rust * step(0.02, vRoof.y) * 0.8);
+    } else if (slope > 0.2) {
       // Clay-tile courses running along the slope, with staggered joints.
       float s = p.y / max(slope, 0.25) / 0.34;
       vec2 t = normalize(vec2(-n.z, n.x));
@@ -246,6 +224,14 @@ function detail<T extends THREE.Material>(mat: T, key: keyof typeof DETAIL, phot
   return mat;
 }
 
+/** Run `more` on the shader after the material's own onBeforeCompile, under a cache key of its own. */
+function patch<T extends THREE.Material>(mat: T, key: string, more: (shader: THREE.WebGLProgramParametersWithUniforms) => void): T {
+  const first = mat.onBeforeCompile;
+  mat.onBeforeCompile = (shader, renderer) => { first.call(mat, shader, renderer); more(shader); };
+  mat.customProgramCacheKey = () => key;
+  return mat;
+}
+
 /** Shared materials: one instance per layer for the whole world keeps draw state changes low. */
 export class Materials {
   readonly roads: THREE.MeshLambertMaterial[];
@@ -283,10 +269,19 @@ export class Materials {
       withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -(g + 1), polygonOffsetUnits: -(g + 1) * 4 }), g === 1 ? 'paving' : g === 0 ? 'concrete' : 'asphalt'),
     );
     this.marks = new THREE.MeshBasicMaterial({ color: 0xcfcfc6, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 });
-    this.wallsTextured = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, map: facadeTexture() }), 'plaster');
+    // Typed buildings (arch/TypedBuilding.ts): the city atlas, whose alpha says where the building's own colour applies.
+    this.wallsTextured = patch(withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, map: cityAtlas(smallTextures) }), 'plaster'), 'k3d-citywalls', (shader) => {
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <map_fragment>', 'vec4 k3t = texture2D(map, vMapUv); diffuseColor.rgb *= k3t.rgb;')
+        .replace('#include <color_fragment>', 'diffuseColor.rgb *= mix(vec3(1.0), vColor, k3t.a);');
+    });
     this.wallsPlain = new THREE.MeshLambertMaterial({ vertexColors: true });
     this.arch = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, map: facadeAtlas(smallTextures ? 256 : 512), side: THREE.DoubleSide }), 'plaster');
-    this.roofs = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true }), 'roof');
+    // Roofs carry their surface in uv (tile or zinc, and how rusty), not a texture coordinate.
+    this.roofs = patch(withDetail(new THREE.MeshLambertMaterial({ vertexColors: true }), 'roof'), 'k3d-roofs', (shader) => {
+      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vRoof;').replace('#include <project_vertex>', '#include <project_vertex>\nvRoof = uv;');
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vRoof;');
+    });
     this.structure = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 'concrete');
     this.landmark = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
     this.trunk = new THREE.MeshLambertMaterial({ color: 0x9a8468 }); // multiplied by each tree's bark colour

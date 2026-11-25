@@ -7,10 +7,20 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - **Most buildings are machine-detected, not mapped.** OSM maps about 3,600 buildings in the
   prepared 33.6 km2, mainly in the city centre. The other 25,990 footprints (88 %) come from
   Overture Maps (Microsoft ML Buildings, Google Open Buildings): outlines detected automatically
-  in aerial / satellite imagery. They are drawn as plain grey flat-roofed boxes so they can be told
-  apart from OSM buildings. Expect regularised or rounded outlines, merged neighbours, offsets of
-  a few metres, occasional false positives (canopies, containers, bright ground), buildings that
+  in aerial / satellite imagery. Expect regularised or rounded outlines, merged neighbours, offsets
+  of a few metres, occasional false positives (canopies, containers, bright ground), buildings that
   no longer exist and missing new ones. They have no type, name or height. See `DATA_COVERAGE.md`.
+  The map (M, and OP mode) still draws them in their own lighter tone so they can be told apart.
+- **The type of almost every building is a guess (N1-M3).** Each footprint is drawn as one of
+  eleven generic Kuching building types (kampung stilt house, house, terrace, concrete shophouse
+  block, colonial civic, mid-rise, mall, warehouse, school, place of worship, shed). For the 88 %
+  without tags, and for OSM `building=yes`, the type comes only from the footprint's size and
+  shape, mapped land use, the distance to main roads and the river bank, and "Kampung" street
+  names (`src/world/arch/buildingType.ts`). A detected house may be drawn as a shop block, a hall
+  as a warehouse, a riverside house as a stilt house. Evidence is read per map chunk, so a
+  building just across a chunk border from a main road can get a different type from its
+  neighbour. Stilts, roof tanks, canopies, sign boards (no words) and air-conditioners are generic
+  dressing, not observed. Registered landmarks are never typed this way.
 - **Machine-detected buildings can touch roads and each other.** A footprint is removed only when
   a mapped way's centre line runs through it, when more than half of it lies on a carriageway or
   in water, or when it duplicates an OSM building or another detection. Smaller overlaps (a corner
@@ -22,8 +32,8 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - **Many shophouse rows are mapped as one large footprint** in OSM rather than individual lots, so
   a whole block is extruded as a single building.
 - **Building heights are almost all estimated** (3 tagged heights, 51 derived from levels,
-  the rest by type/area defaults; machine-detected footprints by area alone, so a large detected
-  house and a small warehouse get the same height). Skylines are therefore not accurate.
+  the rest invented: a plausible storey count for the guessed type, varied per building, also
+  used for collision). Skylines are therefore not accurate.
 - **Roof shapes, facades, colours and window patterns are procedural**, not observed.
 - **Road widths are inferred** from class or lane count except for 6 tagged ways. Kerbs,
   medians, lane counts and markings are not mapped; the centre dashes are decorative.

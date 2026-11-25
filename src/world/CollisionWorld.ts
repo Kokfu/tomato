@@ -1,6 +1,7 @@
 import { CHUNK_SIZE, QUANT, chunkKey } from './config.ts';
 import type { ChunkData } from './types.ts';
 import { BUILDING_KINDS } from './types.ts';
+import { typedBuildings } from './arch/buildingType.ts';
 import type { HeightMap } from './HeightMap.ts';
 import { ARCADE_DEPTH, insetEdges } from './arch/frontage.ts';
 import { isDistrictRow } from './district/mainBazaar.ts';
@@ -111,6 +112,7 @@ export class CollisionWorld {
     const roofKind = BUILDING_KINDS.indexOf('roof');
     const walls: Wall[] = [];
     const floors: ChunkCollision['floors'] = [];
+    const typed = typedBuildings(data);
     for (const b of data.buildings) {
       if (b.k === roofKind) continue; // open-sided roofs do not block movement
       if (b.lm !== undefined) continue; // landmark site: collision comes from its model (below), never both
@@ -119,7 +121,9 @@ export class CollisionWorld {
       // outline is the recessed shopfront line (same geometry the facade builder draws).
       if (b.a?.f.length) rings[0] = Float32Array.from(insetEdges(rings[0], b.a.f, ARCADE_DEPTH));
       const base = this.height.sample(rings[0][0], rings[0][1]);
-      walls.push({ ...bbox(rings[0]), rings, top: base + b.h / QUANT });
+      // Typed generic buildings are drawn at their own plausible height, not the data default (arch/buildingType.ts).
+      const drawn = b.a?.f.length ? undefined : typed.get(b.id)?.height;
+      walls.push({ ...bbox(rings[0]), rings, top: base + (drawn ?? b.h / QUANT) });
       // District rows: piers and the goods standing in the five-foot way block movement too.
       if (isDistrictRow(b, ox, oz)) {
         for (const fl of frontFloors(b.id, toWorld(b.r[0], ox, oz), b.a!.f, (x, z) => this.height.sample(x, z))) {

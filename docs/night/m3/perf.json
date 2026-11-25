@@ -1,0 +1,221 @@
+{
+ "note": "Phone emulation (390x844, Low, 4x CPU), drive-bench A,B,C, cold + warm run each. One alternating pair on a quiet machine (no dev server, no other browser): baseline (M0 build) then the M3 build. This pair also settles the re-measure M2 owed: the M3 build contains M2.",
+ "baseline": [
+  {
+   "name": "A stationary cold",
+   "p95": 80.4,
+   "median": 48.9,
+   "fps": 20.5,
+   "worst": 120.8,
+   "over100": 3,
+   "over200": 0,
+   "calls": 113,
+   "trisK": 318,
+   "buildMsMax": 0,
+   "maxCompileMs": 0
+  },
+  {
+   "name": "B Jalan China lane cold",
+   "p95": 83.2,
+   "median": 45.3,
+   "fps": 21,
+   "worst": 166.7,
+   "over100": 13,
+   "over200": 0,
+   "calls": 129,
+   "trisK": 322,
+   "buildMsMax": 25.5,
+   "maxCompileMs": 0
+  },
+  {
+   "name": "C block loop cold",
+   "p95": 79.2,
+   "median": 40.9,
+   "fps": 23.3,
+   "worst": 158.5,
+   "over100": 24,
+   "over200": 0,
+   "calls": 150,
+   "trisK": 349,
+   "buildMsMax": 42.1,
+   "maxCompileMs": 66.3
+  },
+  {
+   "name": "A stationary warm1",
+   "p95": 71.2,
+   "median": 40.2,
+   "fps": 26.2,
+   "worst": 90.3,
+   "over100": 0,
+   "over200": 0,
+   "calls": 130,
+   "trisK": 323,
+   "buildMsMax": 0,
+   "maxCompileMs": 0
+  },
+  {
+   "name": "B Jalan China lane warm1",
+   "p95": 84.9,
+   "median": 35.3,
+   "fps": 25.4,
+   "worst": 142.5,
+   "over100": 14,
+   "over200": 0,
+   "calls": 141,
+   "trisK": 326,
+   "buildMsMax": 22.8,
+   "maxCompileMs": 0
+  },
+  {
+   "name": "C block loop warm1",
+   "p95": 77.6,
+   "median": 38.5,
+   "fps": 24.4,
+   "worst": 148.5,
+   "over100": 26,
+   "over200": 0,
+   "calls": 150,
+   "trisK": 353,
+   "buildMsMax": 18.6,
+   "maxCompileMs": 42
+  }
+ ],
+ "m3": [
+  {
+   "name": "A stationary cold",
+   "p95": 79,
+   "median": 32.2,
+   "fps": 26.2,
+   "worst": 106.8,
+   "over100": 2,
+   "over200": 0,
+   "calls": 112,
+   "trisK": 352,
+   "buildMsMax": 0,
+   "maxCompileMs": 0
+  },
+  {
+   "name": "B Jalan China lane cold",
+   "p95": 86.7,
+   "median": 48.4,
+   "fps": 19.8,
+   "worst": 146.1,
+   "over100": 7,
+   "over200": 0,
+   "calls": 127,
+   "trisK": 356,
+   "buildMsMax": 48.9,
+   "maxCompileMs": 0
+  },
+  {
+   "name": "C block loop cold",
+   "p95": 85.1,
+   "median": 38.3,
+   "fps": 24.3,
+   "worst": 173,
+   "over100": 48,
+   "over200": 0,
+   "calls": 149,
+   "trisK": 396,
+   "buildMsMax": 38.3,
+   "maxCompileMs": 42.7
+  },
+  {
+   "name": "A stationary warm1",
+   "p95": 82.2,
+   "median": 55.7,
+   "fps": 18.3,
+   "worst": 112.2,
+   "over100": 2,
+   "over200": 0,
+   "calls": 130,
+   "trisK": 361,
+   "buildMsMax": 0,
+   "maxCompileMs": 0
+  },
+  {
+   "name": "B Jalan China lane warm1",
+   "p95": 84.2,
+   "median": 45.2,
+   "fps": 21.4,
+   "worst": 148.6,
+   "over100": 12,
+   "over200": 0,
+   "calls": 140,
+   "trisK": 363,
+   "buildMsMax": 9.9,
+   "maxCompileMs": 0
+  },
+  {
+   "name": "C block loop warm1",
+   "p95": 71.1,
+   "median": 39.1,
+   "fps": 24.9,
+   "worst": 159.2,
+   "over100": 13,
+   "over200": 0,
+   "calls": 148,
+   "trisK": 403,
+   "buildMsMax": 41.5,
+   "maxCompileMs": 94.9
+  }
+ ],
+ "startup": {
+  "note": "load-probe, ms to __k3d.ready, alternating runs in one session. Compare within a pair only.",
+  "pairBaselineVsM3": {
+   "baseline": [
+    5224,
+    4570,
+    4621,
+    6088
+   ],
+   "m3": [
+    6231,
+    6143,
+    7360,
+    9169
+   ]
+  },
+  "earlierPairBaselineVsM3": {
+   "baseline": [
+    5622,
+    5847,
+    5320
+   ],
+   "m3": [
+    8893,
+    13728,
+    4749
+   ],
+   "note": "a dev server was still running"
+  },
+  "pairM2VsM3": {
+   "m2": [
+    6902,
+    6552,
+    6810
+   ],
+   "m3": [
+    7729,
+    7286,
+    6917
+   ]
+  }
+ },
+ "tour": {
+  "desktop": {
+   "trisM2": 4055119,
+   "trisM3": 4522987,
+   "callsM2": 2421,
+   "callsM3": 2569,
+   "minFps": 56.1
+  },
+  "phone": {
+   "trisM2": 1745409,
+   "trisM3": 1777935,
+   "callsM2": 868,
+   "callsM3": 868,
+   "minFps": 59.8
+  }
+ }
+}

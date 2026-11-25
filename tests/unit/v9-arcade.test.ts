@@ -27,9 +27,12 @@ const INNER = process.env.V9_INNER === '1';
 // context below (terrain 2 + 0.003 x + 0.002 z, high detail, no landmarks): sha256 of every mesh's
 // material name, position, normal, colour, uv and index arrays.
 // These constants were independently re-derived from a pristine export of 1e16c25 by the orchestrator on 2026-11-20.
-const V86_CHUNK_0_1 = { hash: 'f24d6a9202476d42991c485ec44d9ed695b8a70c54bfb1ef34c800a4977effd3', tris: 55179 };
+// N1-M3 (typed buildings) re-pinned all three on 2026-11-25: every generic building's walls and roof changed on purpose
+// (was f24d6a92..., 55179 tris, 0615b4ef...). The shophouse-row (arch) and heritage buffers did not change: the scope
+// tests below still compare them mesh by mesh.
+const V86_CHUNK_0_1 = { hash: '9fb34e18eda13c32c8edd8200fee52be857b3efa20a2af1cb391b464694ba408', tris: 55667 };
 /** sha256 over (chunk key + chunk hash), keys sorted, of all 503 chunks that contain buildings. */
-const V86_ALL_CHUNKS = '0615b4efb0c006e22aae79f8d9bfe0b95ba80be72516d8c6bde6decae3d9bec1';
+const V86_ALL_CHUNKS = '74136e2480ce9cd003ec95e9be4a8644d07f50537e5704cd75d940056f9da1f5';
 
 test('v9flag: false when location is undefined, true only for ?v9=1, read once', () => {
   assert.equal(typeof (globalThis as { location?: unknown }).location, 'undefined');
