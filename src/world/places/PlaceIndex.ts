@@ -13,6 +13,7 @@ import { edgeOutward, hash3, ringArea2, unitsAlong } from '../arch/frontage.ts';
 import { geoToWorld } from '../GeoProjection.ts';
 import { heritageFascia } from '../arch/HeritageRow.ts';
 import { indiaSign } from '../district/indiaStreet.ts';
+import { plazaSign } from '../district/plazaMerdeka.ts';
 import { isDistrictRow, pinPosition, PIN_DUPLICATES } from '../district/mainBazaar.ts';
 
 /**
@@ -217,6 +218,10 @@ export function buildChunkLabels(data: ChunkData, ctx: BuildContext): THREE.Obje
       specs.push({ text: p.name, style, x, y, z, ex: (bx - ax) / len, ez: (bz - az) / len, nx, nz, maxW: Math.min(4.2, u.w - 0.5), h: 0.6 });
     }
   }
+
+  // N1-M5 place 4: the mapped name of Plaza Merdeka over its entrance.
+  const plaza = plazaSign(data);
+  if (plaza) specs.push({ text: plaza.text, style: 0, x: plaza.x - ox, y: ctx.height.sample(plaza.x, plaza.z) + plaza.up, z: plaza.z - oz, ex: plaza.ex, ez: plaza.ez, nx: plaza.nx, nz: plaza.nz, maxW: plaza.maxW, h: plaza.h });
 
   // Street-name plates.
   const furn = data.furn ?? [];

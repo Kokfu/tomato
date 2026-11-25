@@ -1,0 +1,10 @@
+[
+  {"name":"pm-01-plaza-merdeka-corner","x":-91.4,"z":40.5,"eye":1.7,"yaw":-0.824,"pitch":0.05,"fov":70},
+  {"name":"pm-02-entrance","x":-79.0,"z":32.2,"eye":1.7,"yaw":-0.421,"pitch":0.12,"fov":70},
+  {"name":"sq-01-square-tower-south","x":113,"z":-168,"eye":1.7,"yaw":0,"pitch":0.16,"fov":70},
+  {"name":"sq-02-square-tower-east","x":137,"z":-192,"eye":1.7,"yaw":1.571,"pitch":0.16,"fov":70},
+  {"name":"sq-03-square-tower-river","x":119,"z":-221,"eye":1.7,"yaw":2.937,"pitch":0.1,"fov":70},
+  {"name":"ch-01-courthouse-aerial","x":30,"z":-50,"eye":45,"yaw":0,"pitch":-0.6,"fov":70},
+  {"name":"ch-02-clock-tower","x":78.6,"z":-105.0,"eye":1.7,"yaw":1.094,"pitch":0.4,"fov":70},
+  {"name":"ch-03-courthouse-range","x":97,"z":-112,"eye":1.7,"yaw":1.571,"pitch":0.12,"fov":70}
+]

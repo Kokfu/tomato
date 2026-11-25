@@ -136,6 +136,20 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   car or a walker; the mapped centre line stays clear by 1.5 m.
 - Details and the lot table: `docs/night/m5-india-street-gambier.md`.
 
+## Hero places (N1-M5, place 4: Plaza Merdeka, Old Courthouse, Square Tower)
+- **Square Tower:** rebuilt to its photographed form (corner turret, three shuttered bays per face, door). The earlier
+  model's central tower was wrong and is drawn only with `?m5=0`. Two of its four faces are in no licensed photograph
+  and are built like the photographed side; which mapped face is the front is inferred; every dimension is estimated.
+- **Old Courthouse:** the clock tower has its photographed form, but it is not mapped separately: it stands at the
+  middle of the longest outer wall. Verandah columns stand against every wall of the outline at a 3.3 m spacing (a
+  rule). Roofs are truncated hips with a flat top. Collision is still the mapped outline: the tower's porch is not
+  walkable.
+- **Plaza Merdeka's entrance is invented in form** (no licensed photograph): a generic portal, canopy and forecourt,
+  placed on the face a mapped drop-off lane and footway lead to. The name over the door is the mapped name. The mall
+  itself is still a generic block; the hotel tower above it is not built.
+- The General Post Office, the Round Tower, The Pavilion and the Brooke Memorial are still generic buildings.
+- Details: `docs/night/m5-plaza-merdeka-courthouse.md`.
+
 ## Gameplay
 
 - Collision uses building footprints as infinitely tall walls up to the roof line; interiors are

@@ -93,6 +93,42 @@
       "source": "https://commons.wikimedia.org/wiki/File:India_Street,_Kuching,_Sarawak_2.jpg",
       "note": "Same position as the first. Jalan Gambier has no licensed photograph: everything there is approximate.",
       "approx": true
+    },
+    {
+      "file": "square-tower-front.jpg",
+      "title": "[M5-4] Square Tower, the front: white two-storey block, crenellated parapet, a turret at one corner, three shuttered windows with shields, the door",
+      "author": "Horatio Wong",
+      "license": "CC BY-SA 4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Square_Tower,_Kuching.jpg",
+      "note": "Front garden, 1.6 m. The turret is at the left end of the front. Which mapped face is the front is inferred from the background (DUN on the right).",
+      "approx": true
+    },
+    {
+      "file": "square-tower-side.jpg",
+      "title": "[M5-4] Square Tower, a side: three shuttered windows under hoods, three small round-headed windows below, the turret at the far corner",
+      "author": "Yeo Jiun Tzen",
+      "license": "CC BY-SA 4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Square_Tower_03.jpg",
+      "note": "Street level, 1.6 m. The other two faces are in no licensed photograph found.",
+      "approx": true
+    },
+    {
+      "file": "old-courthouse-clock-tower.jpg",
+      "title": "[M5-4] Old Courthouse: the clock tower (1883) on six round columns, lattice windows, balcony, clock, louvred cupola; shingle roofs and verandah columns behind",
+      "author": "Mattun0211",
+      "license": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File:KuchingOldCourtHouse.JPG",
+      "note": "Forecourt, 1.6 m. The tower is not mapped separately: in the game it stands at the middle of the longest outer wall.",
+      "approx": true
+    },
+    {
+      "file": "old-courthouse-courtyard.jpg",
+      "title": "[M5-4] Old Courthouse: a courtyard with single-storey ranges under hipped shingle roofs",
+      "author": "Yeo Jiun Tzen",
+      "license": "CC BY-SA 4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Old_Court_House_Complex,_Kuching_01.jpg",
+      "note": "Verandah, 1.5 m, a panorama. Plaza Merdeka has no licensed photograph: its entrance is approximate.",
+      "approx": true
     }
   ],
   "consulted": [

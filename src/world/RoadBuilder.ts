@@ -10,6 +10,7 @@ import { m5Enabled } from './district/m5.ts';
 import { stationOfChunk } from './district/props.ts';
 import { buildPromenadePaving, ringRailing, ringRailingAt } from './district/PromenadeMesh.ts';
 import { buildIndiaStreet } from './district/IndiaStreetMesh.ts';
+import { buildPlazaEntrance } from './district/PlazaMesh.ts';
 
 const UP = [0, 1, 0] as const;
 const tmpColor = new THREE.Color();
@@ -275,6 +276,8 @@ export function* buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBu
   if (high && m5Enabled() && stationOfChunk(data)) buildPromenadePaving(data, ctx, bufs[1]);
   // N1-M5 place 3: India Street's paving, canopy, stalls and flags, and Jalan Gambier's parked cars (district/IndiaStreetMesh.ts).
   if (high) buildIndiaStreet(data, ctx, bufs[1], marks, structure);
+  // N1-M5 place 4: the entrance of Plaza Merdeka (district/PlazaMesh.ts).
+  if (high) buildPlazaEntrance(data, ctx, bufs[1], structure);
   // Polygon decks (piers mapped as areas)
   for (const d of data.pdecks) {
     const y = d.h / QUANT;
