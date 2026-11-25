@@ -1,0 +1,19 @@
+01-waterfront {"fps":60,"calls":77,"tris":112655,"geo":262,"tex":51,"chunks":26,"pos":[-188.9,1.8,-202]}
+02-main-bazaar {"fps":60.1,"calls":75,"tris":408452,"geo":264,"tex":49,"chunks":25,"pos":[285.5,2.1,-8.9]}
+03-carpenter-street {"fps":60,"calls":101,"tris":458075,"geo":314,"tex":57,"chunks":29,"pos":[166.4,8.3,28.4]}
+04-india-street {"fps":60,"calls":39,"tris":48923,"geo":301,"tex":55,"chunks":27,"pos":[-134.1,5.4,-110.1]}
+05-jalan-gambier {"fps":60.1,"calls":106,"tris":116292,"geo":301,"tex":55,"chunks":27,"pos":[-45.8,1.8,-222.4]}
+06-plaza-merdeka {"fps":60.1,"calls":89,"tris":384288,"geo":314,"tex":58,"chunks":29,"pos":[-91.4,3,40.5]}
+07-padungan-cat-statue {"fps":60,"calls":73,"tris":76391,"geo":244,"tex":52,"chunks":25,"pos":[1074.8,6,239.2]}
+08-kuching-mosque {"fps":59.9,"calls":39,"tris":45520,"geo":246,"tex":51,"chunks":24,"pos":[-406.2,4.9,26.2]}
+09-satok {"fps":60.3,"calls":45,"tris":45980,"geo":209,"tex":47,"chunks":21,"pos":[-2533.1,1.8,492.1]}
+10-the-spring {"fps":60,"calls":30,"tris":43037,"geo":139,"tex":38,"chunks":13,"pos":[1622.9,20.1,2536.8]}
+11-residential-overture {"fps":60,"calls":51,"tris":61253,"geo":209,"tex":49,"chunks":21,"pos":[-1610,5.2,1003]}
+12-trunk-road-openg {"fps":59.9,"calls":65,"tris":78983,"geo":219,"tex":51,"chunks":24,"pos":[-321,10.9,1290]}
+13-river-to-dun {"fps":60,"calls":80,"tris":372620,"geo":225,"tex":44,"chunks":21,"pos":[274.4,1.8,-38.7]}
+14-jalan-china-control {"fps":60,"calls":97,"tris":399225,"geo":312,"tex":55,"chunks":27,"pos":[156.6,8,17.2]}
+CONSOLE: [error] WebSocket connection to 'ws://localhost:3000/?token=xi5udqGHkQCo' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED
+[error] [vite] failed to connect to websocket (Error: WebSocket closed without opened.). 
+[error] Failed to send error to Vite server: Error: WebSocket closed without opened.
+    at WebSocket.<anonymous> (http://localhost:5175/@vite/client:234:30)
+[pageerror] WebSocket closed without opened.

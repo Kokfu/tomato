@@ -167,6 +167,19 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   the mapped frontage is far enough from the mapped carriageway.
 - Details: `docs/night/m5-padungan-cat-statue.md`.
 
+## Hero places (N1-M5, place 6: Kuching City Mosque, floating mosque)
+- **City Mosque:** photographed forms (pink walls, gold onion domes, round minarets, windows under gold bonnets,
+  entrance canopy), but its layout is a guess: where the domes, the four minarets and the turrets stand on the mapped
+  outline, that the outline's round projection is the entrance, and every height. The glass annex, the fence and the
+  car park are not built. Two machine-detected footprints still stand in front of the entrance as small houses.
+- **The graves are placed by rule** (332 of them, in rows across the direction of Mecca): none is a real grave's
+  position. They have no collision, and the Low preset draws only their stones.
+- **Floating mosque:** its form follows one photograph taken at night, so the colours are a guess (white walls,
+  slate domes, nothing gold). The earlier model's gold domes and two minarets were not photographed anywhere and are
+  drawn only with `?m5=0`. The place of the minaret and the small dome along the water side is estimated.
+- Chunk -2_-1 grew 65 % in triangles (mosque model and graves), far over the per-place guide.
+- Details: `docs/night/m5-city-mosque-floating-mosque.md`.
+
 ## Gameplay
 
 - Collision uses building footprints as infinitely tall walls up to the roof line; interiors are
