@@ -1,5 +1,5 @@
 {
-  "note": "Reference photographs for the OP-mode comparison panel. Each file is redistributed under its own licence with attribution; downscaled copies (1280 px for Jalan China, 960 px for the N1-M5 places), otherwise unmodified. Loaded only when the panel is opened. `consulted` lists photographs that informed a place and are not shipped.",
+  "note": "Reference photographs for the OP-mode comparison panel. Each file is redistributed under its own licence with attribution; downscaled copies (1280 px for Jalan China, 960 px or 640 px for the N1-M5 places), otherwise unmodified. Loaded only when the panel is opened. `consulted` lists photographs that informed a place and are not shipped.",
   "images": [
     {
       "file": "jalan-china-a-17155538163.jpg",
@@ -128,6 +128,42 @@
       "license": "CC BY-SA 4.0",
       "source": "https://commons.wikimedia.org/wiki/File:Old_Court_House_Complex,_Kuching_01.jpg",
       "note": "Verandah, 1.5 m, a panorama. Plaza Merdeka has no licensed photograph: its entrance is approximate.",
+      "approx": true
+    },
+    {
+      "file": "padungan-cat-column.jpg",
+      "title": "[M5-5] The Cat Column, Jalan Padungan: grey column with leaves and hibiscus, gold crown ring, blue crenellated block, four white cats on the plinth",
+      "author": "Medelam",
+      "license": "CC BY-SA 4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Cat_Monument_Kuching.jpg",
+      "note": "Pavement across the road, looking up. The Everrise store behind the column is mapped 30 m from OSM node 2404396149: that identifies the node as this column.",
+      "approx": true
+    },
+    {
+      "file": "padungan-gate-great-cat.jpg",
+      "title": "[M5-5] The Chinatown gate and the Great Cat of Kuching, east end of Jalan Padungan",
+      "author": "Stefan Krasowski",
+      "license": "CC BY 2.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Chinatown_welcome_gate_at_Jalan_Padungan,_Kuching,_Sarawak,_Malaysia.jpg",
+      "note": "Roadside east of the island, 1.6 m, looking west. Only this face of the gate is photographed; the Chinese inscriptions are not reproduced in the model.",
+      "approx": true
+    },
+    {
+      "file": "padungan-1928-shophouse.jpg",
+      "title": "[M5-5] Jalan Padungan: a shophouse dated 1928 (crimson stucco, green and gold fascia board, air-conditioner units)",
+      "author": "Esther Siaw",
+      "license": "CC BY 4.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Jalan_Padungan_1928_shophouse_architecture,_Kuching,_Sarawak,_Malaysia.jpg",
+      "note": "Opposite pavement, 1.6 m. Which lot this is, is not known: used for colour and detail only.",
+      "approx": true
+    },
+    {
+      "file": "padungan-shophouse-block.jpg",
+      "title": "[M5-5] Jalan Padungan: red, yellow and white shophouse blocks, black and white kerbs",
+      "author": "StormChase",
+      "license": "CC BY-SA 3.0",
+      "source": "https://commons.wikimedia.org/wiki/File:Kuching,_Sarawak,_Malaysia_04.jpg",
+      "note": "Across the road, 1.6 m. The block is not located: used for colour and street character only.",
       "approx": true
     }
   ],

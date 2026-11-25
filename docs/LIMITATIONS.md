@@ -150,6 +150,23 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - The General Post Office, the Round Tower, The Pavilion and the Brooke Memorial are still generic buildings.
 - Details: `docs/night/m5-plaza-merdeka-courthouse.md`.
 
+## Hero places (N1-M5, place 5: Jalan Padungan, the cat statues, the Chinatown gate)
+- **Which statue:** the landmark `cat-statue` (OSM node 2404396149, tour view 07) is the Cat Column, not the large
+  white cat: the mapped Everrise store beside the node stands behind the column in its photograph. The white Great
+  Cat (node 4332185093) stands at the east end with the gate. A third mapped cat statue has no photograph and is not built.
+- **Cat Column, Great Cat, gate:** photographed forms, estimated sizes (column 8.2 m, cat 2.5 m, gate 11.9 m). The
+  column's four cats all sit alike; the gate's west face is built like its photographed east face; its piers are
+  placed from where the mapped carriageways cross the mapped outline. The gate's Chinese inscriptions and the
+  column's lettering are not reproduced; "SELAMAT DATANG" is legible in the photograph and is shown.
+- **The gate is open now.** Its mapped outline lies across both carriageways and used to be a solid building. Only
+  the four piers block.
+- **Every lot of the rows is Approximate** (197 lots): paint, fascia board, awning and air-conditioner by rule. The
+  data gives every block two storeys; the real street has three-storey blocks too. The 1928 shophouse of the
+  photograph is not located.
+- No parked cars (the carriageways are mapped 6 m wide), no grass median, no median lamps. Kapcai stand only where
+  the mapped frontage is far enough from the mapped carriageway.
+- Details: `docs/night/m5-padungan-cat-statue.md`.
+
 ## Gameplay
 
 - Collision uses building footprints as infinitely tall walls up to the roof line; interiors are

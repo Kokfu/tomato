@@ -8,6 +8,9 @@ import { buildBorneoCulturesMuseum, BORNEO_CULTURES_MUSEUM_BUILDING } from './bo
 import { buildSquareTower, SQUARE_TOWER_BUILDING } from './squareTower.ts';
 import { buildOldCourthouse, OLD_COURTHOUSE_BUILDING } from './oldCourthouse.ts';
 import { buildFloatingMosque, FLOATING_MOSQUE_BUILDING } from './floatingMosque.ts';
+import { buildCatColumn, buildPaifang } from './padungan.ts';
+import { CAT_COLUMN, PAIFANG_ID } from '../district/padungan.ts';
+import { m5Enabled } from '../district/m5.ts';
 
 /**
  * Register custom landmark models (overrides for generic generated buildings).
@@ -25,4 +28,9 @@ export function registerLandmarks(manager: LandmarkManager): void {
   manager.register({ buildingIds: [SQUARE_TOWER_BUILDING], landmarkId: 'square-tower', build: buildSquareTower });
   manager.register({ buildingIds: [OLD_COURTHOUSE_BUILDING], landmarkId: 'old-courthouse', build: buildOldCourthouse });
   manager.register({ buildingIds: [FLOATING_MOSQUE_BUILDING], landmarkId: 'floating-mosque', build: buildFloatingMosque });
+  // N1-M5 hero places 5 and 6: registered only with the flag on, so that `?m5=0` keeps the generic buildings.
+  if (m5Enabled()) {
+    manager.register({ buildingIds: [], chunks: [CAT_COLUMN.key], landmarkId: 'cat-statue', build: buildCatColumn });
+    manager.register({ buildingIds: [PAIFANG_ID], build: buildPaifang });
+  }
 }

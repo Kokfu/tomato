@@ -10,6 +10,7 @@ import { frontFloors, frontObstacles } from './district/frontLayout.ts';
 import { districtFloors, propObstacles } from './district/props.ts';
 import { heroObstacles } from './district/indiaStreet.ts';
 import { plazaObstacles } from './district/plazaMerdeka.ts';
+import { isOpenGate, padunganObstacles } from './district/padungan.ts';
 import type { LandmarkSite } from './landmarks/LandmarkModels.ts';
 
 interface Wall {
@@ -118,6 +119,7 @@ export class CollisionWorld {
     for (const b of data.buildings) {
       if (b.k === roofKind) continue; // open-sided roofs do not block movement
       if (b.lm !== undefined) continue; // landmark site: collision comes from its model (below), never both
+      if (isOpenGate(b.id)) continue; // N1-M5: the Padungan paifang spans the road; only its piers block (below)
       const rings = b.r.map((r) => toWorld(r, ox, oz));
       // Shophouse rows: the five-foot way behind the street frontage is walkable, so the blocking
       // outline is the recessed shopfront line (same geometry the facade builder draws).
@@ -148,7 +150,7 @@ export class CollisionWorld {
       walls.push({ ...bbox(ring), rings: [ring], top: this.height.sample(ring[0], ring[1]) + o.h });
     }
     // N1-M5 place 3: canopy columns and stalls of India Street, parked cars of Jalan Gambier.
-    for (const o of [...heroObstacles(data), ...plazaObstacles(data)]) {
+    for (const o of [...heroObstacles(data), ...plazaObstacles(data), ...padunganObstacles(data)]) {
       const ring = Float32Array.from(o.ring);
       walls.push({ ...bbox(ring), rings: [ring], top: this.height.sample(ring[0], ring[1]) + o.h });
     }

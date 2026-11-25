@@ -1,0 +1,9 @@
+[
+  {"name":"pd-01-cat-column-tour-07","x":1074.8,"z":239.2,"eye":1.7,"yaw":-1.722,"pitch":0.05,"fov":70},
+  {"name":"pd-02-cat-column-close","x":1094,"z":252,"eye":1.7,"yaw":-0.883,"pitch":0.3,"fov":70},
+  {"name":"pd-03-padungan-row-west","x":1150,"z":259,"eye":1.7,"yaw":-1.73,"pitch":0.08,"fov":70},
+  {"name":"pd-04-padungan-row-middle","x":1330,"z":385,"eye":1.7,"yaw":-2.278,"pitch":0.08,"fov":70},
+  {"name":"pd-05-great-cat-and-gate","x":1597,"z":556,"eye":1.7,"yaw":1.317,"pitch":0.14,"fov":70},
+  {"name":"pd-06-paifang-from-the-west","x":1530,"z":523.6,"eye":1.7,"yaw":-2.177,"pitch":0.16,"fov":70},
+  {"name":"pd-07-east-end-aerial","x":1565,"z":600,"eye":45,"yaw":0,"pitch":-0.6,"fov":70}
+]

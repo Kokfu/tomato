@@ -7,6 +7,7 @@ import type { BuildContext } from '../ChunkManager.ts';
 import { ARCADE_DEPTH, edgeOutward, hash3, insetEdges, pointInRingFlat, ringArea2, unitsAlong } from './frontage.ts';
 import { TILE, tileUV, WHITE_UV } from './FacadeAtlas.ts';
 import { heroLotStyle } from '../district/indiaStreet.ts';
+import { padunganLotStyle } from '../district/padungan.ts';
 
 // Kuching old-town shophouse rows, generated on the mapped building outline.
 //
@@ -89,7 +90,7 @@ export function unitStyle(id: number, edge: number, unit: number): { wall: numbe
   const h = hash3(id, edge, unit), hc = hash3(id, edge, u);
   const g = (h >>> 8) % 100;
   // N1-M5 hero frontages (India Street, Jalan Gambier) choose their own paint, blinds and air-conditioners.
-  const hero = heroLotStyle(id, edge, unit);
+  const hero: { wall?: number; blind: number; ac: boolean } | null = heroLotStyle(id, edge, unit) ?? padunganLotStyle(id, edge, unit);
   return {
     wall: hero?.wall ?? WALL_COLOURS[hc % WALL_COLOURS.length],
     upper: UPPER_TILES[(hc >>> 6) % UPPER_TILES.length],

@@ -14,6 +14,7 @@ import { geoToWorld } from '../GeoProjection.ts';
 import { heritageFascia } from '../arch/HeritageRow.ts';
 import { indiaSign } from '../district/indiaStreet.ts';
 import { plazaSign } from '../district/plazaMerdeka.ts';
+import { paifangSign } from '../district/padungan.ts';
 import { isDistrictRow, pinPosition, PIN_DUPLICATES } from '../district/mainBazaar.ts';
 
 /**
@@ -222,6 +223,10 @@ export function buildChunkLabels(data: ChunkData, ctx: BuildContext): THREE.Obje
   // N1-M5 place 4: the mapped name of Plaza Merdeka over its entrance.
   const plaza = plazaSign(data);
   if (plaza) specs.push({ text: plaza.text, style: 0, x: plaza.x - ox, y: ctx.height.sample(plaza.x, plaza.z) + plaza.up, z: plaza.z - oz, ex: plaza.ex, ez: plaza.ez, nx: plaza.nx, nz: plaza.nz, maxW: plaza.maxW, h: plaza.h });
+
+  // N1-M5 place 5: the lintel of the Padungan paifang (the words are legible in the photograph).
+  const gate = paifangSign(data);
+  if (gate) specs.push({ text: gate.text, style: 6, x: gate.x - ox, y: ctx.height.sample(gate.x, gate.z) + gate.up, z: gate.z - oz, ex: gate.ex, ez: gate.ez, nx: gate.nx, nz: gate.nz, maxW: gate.maxW, h: gate.h });
 
   // Street-name plates.
   const furn = data.furn ?? [];

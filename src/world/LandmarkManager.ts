@@ -21,6 +21,8 @@ export interface LandmarkOverride {
    * surface and its collision decks are still generated from the mapped geometry.
    */
   roadIds?: number[];
+  /** Chunk keys ("cx_cz") that trigger the builder: for structures that are mapped as a point, not a footprint. */
+  chunks?: string[];
   /** Id in landmarks.json, passed to the builder for convenience. */
   landmarkId?: string;
   build: LandmarkBuilder;
@@ -61,7 +63,7 @@ export class LandmarkManager {
   *buildForChunk(data: ChunkData, ctx: BuildContext): Generator<void, THREE.Object3D[]> {
     const out: THREE.Object3D[] = [];
     for (const o of this.overrides) {
-      const hit = data.buildings.some((b) => o.buildingIds.includes(b.id)) || (!!o.roadIds && data.roads.some((r) => o.roadIds!.includes(r.id)));
+      const hit = data.buildings.some((b) => o.buildingIds.includes(b.id)) || (!!o.roadIds && data.roads.some((r) => o.roadIds!.includes(r.id))) || !!o.chunks?.includes(`${data.cx}_${data.cz}`);
       if (!hit) continue;
       const obj = o.build({ data, ctx, landmark: this.landmarks.find((l) => l.id === o.landmarkId) });
       if (obj) out.push(obj);

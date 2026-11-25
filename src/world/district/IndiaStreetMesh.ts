@@ -26,8 +26,11 @@ const KAPCAI_PAINT = [0xb3262b, 0x1f3f8f, 0x202226, 0xe8e6df, 0x1d6b4a];
 
 export function isIndiaChunk(data: { cx: number; cz: number }): boolean { return m5Enabled() && `${data.cx}_${data.cz}` === INDIA_KEY; }
 
+/** Sets the colour that `box` and `quad` write (for the other N1-M5 mesh builders that reuse them). */
+export function paint(hex: number, k = 1): void { c.setHex(hex).multiplyScalar(k); }
+
 /** Box on the ground frame (tx, tz): half length ha along it, half width hb across; sides and a top. Chunk-local. */
-function box(buf: GeoBuf, x: number, z: number, tx: number, tz: number, ha: number, hb: number, y0: number, y1: number, top = true): void {
+export function box(buf: GeoBuf, x: number, z: number, tx: number, tz: number, ha: number, hb: number, y0: number, y1: number, top = true): void {
   const p = (a: number, b: number): [number, number] => [x + tx * ha * a - tz * hb * b, z + tz * ha * a + tx * hb * b];
   const side = (a: [number, number], b: [number, number], nx: number, nz: number) => {
     const i0 = buf.vert(a[0], y0, a[1], nx, 0, nz, c), i1 = buf.vert(b[0], y0, b[1], nx, 0, nz, c), i2 = buf.vert(b[0], y1, b[1], nx, 0, nz, c), i3 = buf.vert(a[0], y1, a[1], nx, 0, nz, c);
@@ -40,7 +43,7 @@ function box(buf: GeoBuf, x: number, z: number, tx: number, tz: number, ha: numb
   buf.tri(i0, i2, i1); buf.tri(i0, i3, i2);
 }
 /** Free quad a-b-d-e with one normal (the structure mesh is double sided). */
-function quad(buf: GeoBuf, a: number[], b: number[], d: number[], e: number[], n: number[]): void {
+export function quad(buf: GeoBuf, a: number[], b: number[], d: number[], e: number[], n: number[]): void {
   const i0 = buf.vert(a[0], a[1], a[2], n[0], n[1], n[2], c), i1 = buf.vert(b[0], b[1], b[2], n[0], n[1], n[2], c);
   const i2 = buf.vert(d[0], d[1], d[2], n[0], n[1], n[2], c), i3 = buf.vert(e[0], e[1], e[2], n[0], n[1], n[2], c);
   buf.tri(i0, i1, i2); buf.tri(i0, i2, i3);
@@ -241,7 +244,7 @@ function car(buf: GeoBuf, p: Parked, ox: number, oz: number, ctx: BuildContext):
 }
 
 /** Three kapcai (underbone motorbikes) nose to the kerb. */
-function kapcai(buf: GeoBuf, p: Parked, ox: number, oz: number, ctx: BuildContext): void {
+export function kapcai(buf: GeoBuf, p: Parked, ox: number, oz: number, ctx: BuildContext): void {
   const y = ctx.height.sample(p.x, p.z) + 0.09, x = p.x - ox, z = p.z - oz;
   // bikes stand across the road's direction
   const tx = -p.tz, tz = p.tx;

@@ -7,6 +7,7 @@ import type { BuildContext } from './ChunkManager.ts';
 import type { GeoBuf } from './Materials.ts';
 import { pointInRing } from './CollisionWorld.ts';
 import { inDistrict } from './district/mainBazaar.ts';
+import { statueKeepOut } from './district/padungan.ts';
 import { v5Exclusion } from '../v5/geo.ts';
 
 /** Tree forms (N1-M2). Species are not mapped anywhere: the mix stands in for Kuching's planting (inferred appearance). */
@@ -161,7 +162,7 @@ export function treeSites(data: ChunkData, ctx: BuildContext): TreeSite[] {
   const free = (x: number, z: number, clear: number): boolean => {
     if (x < 1 || z < 1 || x > CHUNK_SIZE - 1 || z > CHUNK_SIZE - 1) return false;
     const wx = ox + x, wz = oz + z;
-    if (inDistrict(wx, wz) || (v5Exclusion.active && v5Exclusion.inCorridor(wx, wz))) return false;
+    if (inDistrict(wx, wz) || (v5Exclusion.active && v5Exclusion.inCorridor(wx, wz)) || statueKeepOut(wx, wz)) return false;
     for (const r of roads) {
       const m = r.hw + clear;
       if (x < r.x0 - m || x > r.x1 + m || z < r.z0 - m || z > r.z1 + m) continue;
