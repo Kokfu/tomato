@@ -1,9 +1,7 @@
 # M5b handoff: hero places 3 and 4 (not started)
-
 From the worker that did places 1-2; its context was heavy and had been compacted. **No code for places 3-4 exists.**
 Branch `night/city-realism-1`, tree clean. Done: `a07fa37` Main Bazaar + Waterfront, `2145982` Carpenter Street,
 `d2365c8` close-out; mean realism 3.5/5 (3.54). Templates: `docs/night/m5a/NOTES.md` (last section is for you), `docs/night/m5-*.md`.
-
 ## Next steps
 1. Read PLAN.md (rules, M5), `docs/night/refs/PLACES.md` sections 3-4, load the `kuching-district` skill.
 2. **India Street + Jalan Gambier** (commit "N1-M5: India Street + Jalan Gambier"). India Street = OSM way 69928034, landmark at
@@ -27,9 +25,8 @@ Branch `night/city-realism-1`, tree clean. Done: `a07fa37` Main Bazaar + Waterfr
 - Chunk-mesh pattern, no new draw call: `src/world/district/promenade.ts` + `PromenadeMesh.ts` (hooked in `RoadBuilder`), props
   in `district/props.ts` + `Dressing.ts`.
 - Before/after: `node tools/dev/street-shots.ts <dir> --url=http://localhost:5175/[?m5=0] --views=<json> --jpeg --stats`.
-- Triangles per chunk: sum mesh index counts under `__k3d.world.chunks.chunks.get('<key>').group` in the page.
-- Bench: `node tools/dev/drive-bench.ts --dist=<dir> --mobile --quality=low --cpu=4 --scenarios=A,B,C --runs=2`; baseline
-  `C:/Kuching3D-night-builds/baseline`, candidate `C:/Kuching3D-night-builds/m5b`.
+- Triangles per chunk: sum mesh index counts under `__k3d.world.chunks.chunks.get('<key>').group` in the page. Bench and
+  baseline build: see the `kuching-verify` skill (`C:/Kuching3D-night-builds/baseline`, candidate into `.../m5b`).
 
 ## Gotchas
 - **Do not add these places to the hand-built V5 section** (`src/v5`): one mesh per material, always drawn whole (315 k
@@ -40,5 +37,5 @@ Branch `night/city-realism-1`, tree clean. Done: `a07fa37` Main Bazaar + Waterfr
   `tests/unit/m5-waterfront.test.ts` passing; `tests/e2e/landmarks.spec.ts` checks one copy per landmark site.
 - Terrain falls up to 8 % across old-town streets: level geometry from one height sample sinks or floats.
 - No new downloads without the owner; no Google imagery. Heredocs with TypeScript break: write patch scripts with Write.
-- e2e: `PUBLIC_PORT=5174`; do not save `src/` or `public/` while it runs; restore `docs/screenshots` afterwards.
-- Stop this session's dev/preview servers (by PID) before the bench and `load-probe`. Port 4174 is someone else's.
+- e2e: `PUBLIC_PORT=5174`, no saves to `src/` or `public/` while it runs. Stop your dev/preview servers (by PID) before the
+  bench and `load-probe`; port 4174 is someone else's.
