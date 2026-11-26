@@ -1,13 +1,26 @@
 # Kuching 3D
 
-A lightweight, browser-based third-person walking simulator of the real city of
-**Kuching, Sarawak, Malaysia**. Roads, building footprints, the Sarawak River, bridges, parks and
-landmark positions are generated from OpenStreetMap; where OpenStreetMap has no building,
-machine-detected footprints from Overture Maps (Microsoft, Google) are added and shown as plain
-grey buildings; terrain comes from the Copernicus 30 m DEM.
-You walk a human character through the actual street network, starting on the Kuching Waterfront.
+A browser open world of the real city of **Kuching, Sarawak, Malaysia**. Roads, building footprints, the Sarawak
+River, bridges, parks and landmark positions are generated from OpenStreetMap; where OpenStreetMap has no building,
+machine-detected footprints from Overture Maps (Microsoft, Google) are added; terrain comes from the Copernicus 30 m DEM.
 
-It is a static site (HTML5 + TypeScript + Three.js). There is no backend and no map API at runtime.
+It is a static site (TypeScript + Three.js + Vite). There is no backend and no map API at runtime.
+
+## What you can do
+
+- **Walk** the real street network as one of six characters, starting on the Kuching Waterfront.
+- **Drive:** take the car by Jalan China, or any parked car, kapcai motorbike, taxi or pickup placed round the city.
+- **Work:** open the phone (T) for food deliveries and taxi fares between mapped places, follow the GPS, get paid,
+  repair your vehicle. Progress is saved in this browser.
+- **See the city live:** a passing day with lit streets at night, occasional tropical rain, traffic keeping left and
+  waiting at signals, and walkers.
+- **Visit hand-built places:** Jalan China, Carpenter Street, Main Bazaar and the Waterfront, India Street,
+  Jalan Gambier, the Square Tower and Old Courthouse, Plaza Merdeka's entrance, Jalan Padungan with its cat statues
+  and gate, the City Mosque and the floating mosque.
+- **Everywhere else:** typed generic Kuching buildings, kerbs, drains, lane markings, lamps, trees and humid haze.
+  Most of that detail is inferred, not mapped: see [Limitations](docs/LIMITATIONS.md).
+
+Night 1 (what changed, measurements, known issues): [docs/night/REPORT.md](docs/night/REPORT.md).
 
 ## Quick start
 
@@ -30,29 +43,50 @@ under `public/data/kuching/`, so the app runs without fetching anything.
 | Mouse (click the view to capture, or drag) | Look around |
 | Mouse wheel | Camera distance |
 | V | First / third person |
-| M | Map |
+| M | Map (set a GPS destination) |
+| T | Phone: jobs, wallet, garage, save (since N1-M7) |
 | Esc | Pause / release the mouse |
 
-### Driving (V8 prototype)
+### Driving
 
-One car waits at the mouth of Jalan China, just off Jalan Main Bazaar (yellow, with a marker above it).
-Walk up to it and press **E**.
+A yellow car waits at the mouth of Jalan China, just off Jalan Main Bazaar. Other vehicles stand parked beside service
+roads (three kinds more 30 m from that car). Walk up to one and press **E**.
 
 | Desktop | Action |
 |---|---|
-| E | Get in / get out (the car must be stopped) |
+| E | Get in / get out (the vehicle must be stopped) |
 | W | Accelerate |
 | S | Brake, then reverse |
 | A / D | Steer |
 | Space | Handbrake |
+| H | Horn |
 | Mouse / wheel | Rotate the chase camera / camera distance |
-| R | Put the car back on the last valid road position |
-| P | OP fly mode (unchanged; the car brakes to a stop while it is on) |
+| R | Put the vehicle back on the last valid road position |
+| P | OP fly mode (the vehicle brakes to a stop while it is on) |
 
-See `docs/V8_REPORT.md`.
+On touch devices: left joystick to move, drag anywhere else to look, pinch to zoom, **RUN** toggles running, **JUMP**
+jumps; on-screen buttons drive, sound the horn and open the phone. Key bindings live in `KEY_BINDINGS` in
+`src/player/Input.ts`.
 
-On touch devices: left joystick to move, drag anywhere else to look, pinch to zoom, **RUN** toggles
-running, **JUMP** jumps. Key bindings live in `KEY_BINDINGS` in `src/player/Input.ts`.
+## Address-bar switches
+
+Everything below is **on by default**; add the parameter to turn it off or to fix the time and weather
+(combine with `&`, for example `?life=0&time=night`). Details: [docs/FLAGS.md](docs/FLAGS.md).
+
+| Parameter | Effect |
+|---|---|
+| `?m7=0` | No play loop (vehicles to take, jobs, money, phone, collisions, save) |
+| `?life=0` | No traffic or walkers (also removes the parked vehicles) |
+| `?m5=0` | No hero places from night 1 |
+| `?c1=0` | Earlier Upper China Street corner |
+| `?v9=0` | Earlier Main Bazaar arcade |
+| `?ux1=0` | No controls quick guide |
+| `?char=0` | Single earlier character, no picker |
+| `?time=day` / `evening` / `night` / `auto` / `0`..`24` | Time of day |
+| `?rain=off` / `on` / `auto` | Weather |
+| `?render=v4` | The older rendering |
+
+The night-1 atmosphere, ground, building and street work (M2 to M4) has no switch.
 
 ## Scripts
 
@@ -62,7 +96,7 @@ running, **JUMP** jumps. Key bindings live in `KEY_BINDINGS` in `src/player/Inpu
 | `npm run build` | Static production build in `dist/` |
 | `npm run preview` | Serve the production build on 0.0.0.0:3000 |
 | `npm run typecheck` | TypeScript check |
-| `npm test` | Unit tests (projection, routing) |
+| `npm test` | Unit tests (Node) |
 | `npm run test:e2e` | Playwright browser tests (gameplay, layouts, touch, production build) |
 | `npm run data:fetch` | Download the OSM extract, the Overture buildings extract and the DEM tile into `data-src/` (cached) |
 | `npm run data:build` | Regenerate `public/data/kuching/` from the cache |
@@ -134,8 +168,8 @@ Earlier documents:
   2014-2018, provided under COPERNICUS by the European Union and ESA; all rights reserved.
 - Three.js (MIT).
 
-Building heights are estimates unless tagged in the source, plain grey buildings are
-machine-detected outlines of lower accuracy, and landmark models are approximations. See the limitations document before relying on any dimension.
+Building heights are estimates unless tagged in the source, many buildings are
+machine-detected outlines of lower accuracy, their types guessed, and landmark models are approximations. See the limitations document before relying on any dimension.
 
 ## V3: Main Bazaar test district
 

@@ -35,7 +35,8 @@ async function boot(page: Page, query: string, saved: string | null, opts: { pre
       }
     } catch { /* ignore */ }
   }, saved);
-  await page.goto(`./${query}`);
+  // N1-M8: life=0 keeps the walkers (N1-M6), who share the default character model, out of the request checks
+  await page.goto(`./${query}${query ? '&' : '?'}life=0`);
   if (opts.press !== false) await start(page, { navigate: false });
   return run;
 }

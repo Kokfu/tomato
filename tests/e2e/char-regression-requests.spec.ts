@@ -21,7 +21,8 @@ test('regression: no flag requests the same scripts and the same single characte
     if (/\.glb(\?|$)/.test(u) || r.resourceType() === 'script') seen.push(norm(u, baseURL ?? ''));
   });
   await page.addInitScript(() => { try { localStorage.setItem('k3d.quality', 'low'); } catch { /* ignore */ } });
-  await page.goto('./?char=0');
+  // N1-M8: life=0 keeps the walkers (N1-M6), who share the default character model, out of the request counts
+  await page.goto('./?char=0&life=0');
   await start(page, { navigate: false });
   await waitChunks(page);
   // The GLB model replaces the procedural stand-in.

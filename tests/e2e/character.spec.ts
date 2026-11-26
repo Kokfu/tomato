@@ -33,7 +33,8 @@ async function boot(page: Page, query = '', opts: { init?: () => void; delayGlb?
   if (opts.gate) {
     await page.route(`**/${DEFAULT_GLB}`, async (route) => { await opts.gate; await route.continue(); });
   }
-  await page.goto(`./${query}`);
+  // N1-M8: life=0 keeps the walkers (N1-M6), who share the default character model, out of the request counts
+  await page.goto(`./${query}${query ? '&' : '?'}life=0`);
   await start(page, { navigate: false });
   await waitChunks(page);
   return run;

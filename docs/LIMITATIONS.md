@@ -9,7 +9,7 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   Overture Maps (Microsoft ML Buildings, Google Open Buildings): outlines detected automatically
   in aerial / satellite imagery. Expect regularised or rounded outlines, merged neighbours, offsets
   of a few metres, occasional false positives (canopies, containers, bright ground), buildings that
-  no longer exist and missing new ones. They have no type, name or height. See `DATA_COVERAGE.md`.
+  no longer exist and missing new ones. They have no type, name or height (what is drawn is guessed, see below). See `DATA_COVERAGE.md`.
   The map (M, and OP mode) still draws them in their own lighter tone so they can be told apart.
 - **The type of almost every building is a guess (N1-M3).** Each footprint is drawn as one of
   eleven generic Kuching building types (kampung stilt house, house, terrace, concrete shophouse
@@ -37,8 +37,8 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - **Roof shapes, facades, colours and window patterns are procedural**, not observed.
 - **Road widths are inferred** from class or lane count except for 6 tagged ways. Kerbs,
   medians, lane counts and markings are not mapped; the centre dashes are decorative.
-- **No sidewalks are mapped as such** in this area, so none are drawn. Pedestrian movement is not
-  restricted to paths: the character may walk on any dry ground and on roads.
+- **No sidewalks are mapped as such** in this area; the footpaths drawn since N1-M4 are inferred (see "Streets").
+  Pedestrian movement is not restricted to paths: the character may walk on any dry ground and on roads.
 - **Terrain is an estimate.** It comes from a 30 m radar surface model that includes roofs and
   trees, filtered to approximate bare ground and flattened near the river. Small relief, steps,
   embankments and retaining walls are absent. The river bank is a uniform 1.8 m quay.
@@ -57,11 +57,11 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   styles, shopfront types, two-storey height and roof form are estimates (`STREETSCAPE.md`).
 - Shop signs exist only where open data has a named business that can be tied to a wall; most
   lots are blank. Records can be years old (`SHOP_IDENTITY.md`).
-- Lamp posts are procedurally spaced, not mapped. Zebra crossings, bus stops, vendors and parked
-  vehicles are not drawn.
+- Lamp posts are procedurally spaced, not mapped. Crossings, bus stops and parked vehicles came with night 1
+  (see "Streets" and "The play loop"); vendors exist only as stalls on the hand-built places.
 - The correction editor stores edits in the browser and exports a file; there is no hosted
   database or login.
-- Driving is not implemented (`VEHICLES.md`).
+- `VEHICLES.md` describes the earlier plan; driving exists since V8 and N1-M7.
 
 ## Ground, trees and atmosphere (N1-M2, all inferred)
 
@@ -197,8 +197,8 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   machine), one per frame. A worker-based builder would remove these small hitches.
 - Distant chunks omit trees and minor roads, so far silhouettes are simplified.
 - Ground textures are low resolution (0.5-1 m per pixel) by design; land-use edges are soft.
-- No texture compression is used because the app ships almost no textures (one 128 px facade
-  tile plus per-chunk canvas ground textures generated at runtime).
+- No GPU texture compression (KTX2) is used: the shipped textures are a few small WebP files, painted canvases
+  (building atlas, sign atlas, per-chunk ground maps) and the character models' own textures.
 
 ## Day, night and rain (N1-M6 part A, all invented)
 
@@ -289,6 +289,20 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - **Saved progress** is one value in the browser's local storage on this device (money, jobs done, the vehicle and
   where it stood): it is written when a job is paid, a repair is made, or "Save game" is tapped on the phone, and is
   lost with the site data. Parked vehicles taken, the job in hand and the player's position are not saved.
+
+## Characters, quick guide and night-1 merges (N1-M1)
+
+- A first visit shows a picker of six generic characters before entering the world; they have no facial animation.
+  `?char=0` starts with the earlier single character and no picker.
+- The two MIT-licensed Rocketbox animation sources need their notice on a credits page of the game; the notice file
+  ships (`public/models/characters/LICENSE-rocketbox.txt`) but **no in-game credits page is built**.
+- Upper China Street (`?c1=0` to turn off) and the Main Bazaar arcade (`?v9=0`) are approximations; lots are not verified.
+
+## Performance as measured in night 1
+
+- All phone figures are Chromium emulation on a desktop PC whose speed drifted up to two- to three-fold between runs;
+  several bench pairs were inconclusive. See `docs/night/REPORT.md`.
+- The phone benchmark runs only round Jalan China.
 
 ## Testing
 

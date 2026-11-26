@@ -1,0 +1,6 @@
+{"dist":"baseline","run":1,"loadMs":5739,"interactiveMs":11719,"progsReady":100,"pan":{"worst":324,"over50":3,"over200":2,"slowMs":814,"progs":100}}
+{"dist":"m8","run":1,"loadMs":6565,"interactiveMs":6640,"progsReady":72,"pan":{"worst":136,"over50":6,"over200":0,"slowMs":504,"progs":76}}
+{"dist":"baseline","run":2,"loadMs":6644,"interactiveMs":12901,"progsReady":100,"pan":{"worst":470,"over50":3,"over200":1,"slowMs":757,"progs":100}}
+{"dist":"m8","run":2,"loadMs":7556,"interactiveMs":7999,"progsReady":73,"pan":{"worst":273,"over50":6,"over200":2,"slowMs":912,"progs":76}}
+{"dist":"baseline","run":3,"loadMs":5820,"interactiveMs":12118,"progsReady":100,"pan":{"worst":464,"over50":5,"over200":1,"slowMs":915,"progs":100}}
+{"dist":"m8","run":3,"loadMs":9076,"interactiveMs":9315,"progsReady":76,"pan":{"worst":241,"over50":5,"over200":1,"slowMs":706,"progs":79}}

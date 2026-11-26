@@ -40,6 +40,8 @@ test.describe('production', () => {
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
     page.on('response', (r) => { urls.push(r.url()); if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
+    // N1-M8: a saved choice skips the first-launch character picker (on by default since N1-M1)
+    await page.addInitScript(() => { try { localStorage.setItem('k3d.character', 'man'); } catch { /* ignore */ } });
     await page.goto(`http://127.0.0.1:${port}${PREFIX}`);
     await page.waitForFunction(() => (window as any).__k3d?.ready === true, null, { timeout: 90_000 });
     await page.locator('#btn-start').click();

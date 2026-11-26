@@ -198,3 +198,56 @@ map (or the road's vertex colour) supplies the hue. If a file fails to load, a f
 
 Considered and not shipped: Poly Haven "Leafy Grass" (too many dead leaves for a mown tropical verge) and "Concrete Pavement"
 (its slab pattern cannot be aligned with streets in a world-space lay).
+
+## Night 1 (2026-11-25/26): summary of what was added
+
+New files under `public/` since the night's baseline (`2232f94`), 9.4 MB in all: character models 5.7 MB (above; a player
+downloads only the chosen one), reference photographs 3.3 MB (fetched only when the OP comparison panel is opened),
+ground textures 233 KB (above), picker portraits 168 KB, `jobs.json` 19 kB. The plan's guide of 8 MB of new downloads is
+exceeded by the files in the repository, not by what a normal visit downloads.
+
+### Character picker portraits: `public/ui/portraits/*.webp` (merged in N1-M1)
+
+Twelve images (1x and 2x of `man`, `woman`, `teen-boy`, `teen-girl`, `young-boy`, `young-girl`): pictures of the six
+MakeHuman / MPFB characters above, delivered with CHAR-P5 G2 (commit `338a043`). They show only those models, so they
+are recorded under the same terms (CC0 1.0 assets). No other source image is recorded for them.
+
+### Reference photographs: `public/reference/*.jpg` (N1-M5)
+
+Wikimedia Commons files, downscaled copies, otherwise unmodified. Each stays under its own licence; CC BY-SA files are
+share-alike. They are shown beside the game for comparison and are not used as textures. `public/reference/manifest.json`
+holds the same data.
+
+| File | Author | Licence | Source |
+|---|---|---|---|
+| `main-bazaar-five-foot-way.jpg` (178,082 B) | chipmunk_1 | CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:A_five_foot_way_in_Kuching,_Sarawak.jpg |
+| `main-bazaar-arcade.jpg` (235,520 B) | Matthias Bethke | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:010984_Kuching_(Borneo).jpg |
+| `waterfront-east-end.jpg` (209,295 B) | Bernard DUPONT | CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:Kuching_Waterfront_(15811151426).jpg |
+| `carpenter-street-gate.jpg` (164,460 B) | Travelust from Southeast Asia | CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Chinese-style_Gate.jpg |
+| `india-street-1.jpg` (191,659 B) | Fabio Achilli | CC BY 2.0 | https://commons.wikimedia.org/wiki/File:India_Street,_Kuching,_Sarawak.jpg |
+| `india-street-2.jpg` (203,603 B) | Fabio Achilli | CC BY 2.0 | https://commons.wikimedia.org/wiki/File:India_Street,_Kuching,_Sarawak_2.jpg |
+| `square-tower-front.jpg` (213,744 B) | Horatio Wong | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Square_Tower,_Kuching.jpg |
+| `square-tower-side.jpg` (153,224 B) | Yeo Jiun Tzen | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Square_Tower_03.jpg |
+| `old-courthouse-clock-tower.jpg` (145,733 B) | Mattun0211 | CC0 | https://commons.wikimedia.org/wiki/File:KuchingOldCourtHouse.JPG |
+| `old-courthouse-courtyard.jpg` (74,694 B) | Yeo Jiun Tzen | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Old_Court_House_Complex,_Kuching_01.jpg |
+| `padungan-cat-column.jpg` (387,291 B) | Medelam | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Cat_Monument_Kuching.jpg |
+| `padungan-gate-great-cat.jpg` (200,356 B) | Stefan Krasowski | CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Chinatown_welcome_gate_at_Jalan_Padungan,_Kuching,_Sarawak,_Malaysia.jpg |
+| `padungan-1928-shophouse.jpg` (367,947 B) | Esther Siaw | CC BY 4.0 | https://commons.wikimedia.org/wiki/File:Jalan_Padungan_1928_shophouse_architecture,_Kuching,_Sarawak,_Malaysia.jpg |
+| `padungan-shophouse-block.jpg` (119,900 B) | StormChase | CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Kuching,_Sarawak,_Malaysia_04.jpg |
+| `city-mosque-front.jpg` (126,853 B) | Mx. Granger | CC0 | https://commons.wikimedia.org/wiki/File:Kuching_Town_Mosque.jpg |
+| `city-mosque-from-the-cemetery.jpg` (227,826 B) | Wee Hong | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Masjid_Bandaraya_Kuching.jpg |
+| `floating-mosque-night.jpg` (67,427 B) | Cerevisae | CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Floating_mosque_near_Kuching_river.jpg |
+
+### Research photographs: `docs/night/refs/img/` (not shipped in the app)
+
+24 downscaled Wikimedia Commons copies used for modelling reference only. Author, licence and source of each:
+`docs/night/refs/img/LICENSES.md`.
+
+### Map-derived data added tonight
+
+| File | From | Licence |
+|---|---|---|
+| `public/data/kuching/jobs.json` (N1-M7: positions and group numbers, no names) | OpenStreetMap places and Overture Maps Places | ODbL 1.0 (OSM); CDLA-Permissive-2.0 (Overture Places) |
+| Zebra crossings, bus stops, signals in the chunk files (N1-M4; bus stops fetched once, 2026-11-25, `tools/extract-map-data/fetch-street.ts`) | OpenStreetMap | ODbL 1.0 |
+
+No audio file was added in any milestone.
