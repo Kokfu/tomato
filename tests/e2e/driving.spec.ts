@@ -30,9 +30,15 @@ const k3d = <T>(page: Page, fn: (k: any) => T): Promise<T> => page.evaluate(`(${
  * place the car on Jalan China's mapped centre line (steering, handbrake, R, collisions) pin ?render=v4: in V7 that
  * line runs through the east row of parked cars (docs/V8_REPORT.md, data finding 1). They are the V4 regressions.
  */
-const ready = async (page: Page, render: 'default' | 'v4' = 'default') => {
+/**
+ * N1-M7: `quiet` leaves out the ambient traffic and the parked vehicles (`?life=0`). The driven car collides with
+ * them now, and the route driver of these tests follows a line blind: it cannot give way, overtake or wait its turn.
+ * The tests that drive a route to test the road surface or the streaming use it; tests/e2e/m7-play.spec.ts drives its
+ * jobs through the traffic.
+ */
+const ready = async (page: Page, render: 'default' | 'v4' = 'default', quiet = false) => {
   await seedCharacter(page);
-  await page.goto(render === 'v4' ? './?render=v4' : './');
+  await page.goto(`./${render === 'v4' ? '?render=v4' : ''}${quiet ? (render === 'v4' ? '&' : '?') + 'life=0' : ''}`);
   await start(page, { navigate: false });
   await page.waitForFunction(() => (window as any).__k3d.driving.placed, null, { timeout: 60_000 });
   expect(await k3d(page, (k) => k.v5.mode)).toBe(render === 'v4' ? 'v4' : 'c');
@@ -360,7 +366,7 @@ test.describe('V8 driving prototype', () => {
 
   for (const render of ['default', 'v4'] as const) test(`${render === 'v4' ? 'V4' : 'default V7'}: drives round a real block through four junctions, on the road surface all the way`, async ({ page }) => {
     const issues = watch(page);
-    await ready(page, render);
+    await ready(page, render, true);
     await getIn(page);
     const r = await driveRoute(page, render === 'v4' ? BLOCK_LOOP : BLOCK_LOOP_V7, { speed: 9, speedup: 2, maxSeconds: 200 });
     expect(r.reached).toBe(true);
@@ -725,7 +731,10 @@ test.describe('V8 driving prototype', () => {
   test('high-speed run: chunks stream ahead of the car, nothing is driven on before it is loaded, memory stays bounded', async ({ page }) => {
     test.setTimeout(420_000);
     const issues = watch(page);
-    await start(page);
+    // (N1-M7: without the ambient traffic, which a car at 90 km/h on a fixed line would run into: see `ready`)
+    await seedCharacter(page);
+    await page.goto('./?life=0');
+    await start(page, { navigate: false });
     await page.waitForFunction(() => (window as any).__k3d.driving.placed, null, { timeout: 60_000 });
     // Jalan Tun Abang Haji Openg, northbound carriageway: 2.2 km of one mapped road toward the old town.
     const { pts } = chainOfWays(waysNamed('Jalan Tun Abang Haji Openg'), [-411, 2475]);

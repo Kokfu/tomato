@@ -22,10 +22,10 @@ export function carWhere(dx: number, dz: number): string {
 export function guideFor(touch: boolean): string[] {
   return touch
     ? ['Walk with the left stick. Drag the view to look, pinch to zoom.',
-       'Walking is slow on purpose: tap RUN to run, JUMP to jump.',
+       'Walking is slow on purpose: tap RUN to run, JUMP to jump. The phone button has delivery and taxi jobs.',
        'Your car is parked a few minutes away: tap Pause > Drive Car to stand beside it, then tap Enter Car.']
     : ['Walk with WASD. Hold Shift to run (walking is slow on purpose), Space to jump, mouse to look.',
-       'M map, V camera, Esc pause. Click the game to capture the mouse.',
+       'M map, V camera, T phone (delivery and taxi jobs), Esc pause. Click the game to capture the mouse.',
        'Your car is parked a few minutes away: Esc > Drive Car stands you beside it, then press E to get in.'];
 }
 

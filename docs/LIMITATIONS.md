@@ -240,9 +240,9 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   2 s amber, in two directions by bearing) and the drawn signal heads do not change colour.
 - **Ambient traffic keeps out of** service roads, covered ways, streets that only lead to a dead end, and Jalan China
   (the hand-built street where the player's car waits in the one free lane).
-- **Vehicles brake for the player, the player's car and walkers, but nothing collides with them.** The player's car
-  drives through ambient vehicles (collisions are planned for the play loop, N1-M7); a walking player is pushed aside
-  by the three nearest vehicles. A vehicle held up for 12 s by something that will not move edges through it.
+- **Vehicles brake for the player, the player's vehicle and walkers.** Since N1-M7 the driven vehicle collides with
+  them (see "The play loop" below); a walking player is pushed aside by the three nearest vehicles. A vehicle held up
+  for 12 s by something that will not move edges through it.
 - **Walkers follow fixed short routes**, to and fro: the footpath beside a carriageway, a mapped footway or pedestrian
   street, or the five-foot way behind a shophouse front. They do not cross a street on purpose (a footpath route may
   pass the mouth of a side street), do not enter buildings, avoid nobody but the player, and may walk through each
@@ -254,6 +254,41 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   nothing else, so the bodies of cars and walkers are dark away from daylight.
 - **The phone benchmark** still runs round Jalan China, where there is little ambient traffic (the old town is one-way
   and Jalan China itself is closed to it).
+
+## The play loop (N1-M7, all invented)
+
+- **No parked vehicle is mapped.** The vehicles that stand for the player to take are placed by a rule: beside service
+  roads (parking aisles, back lanes, driveways), just off the carriageway and parallel to it, where the place is clear of
+  walls, water and other roads; a kapcai also at the edge of some residential streets. Which kind stands where, and in
+  what paint, is random but fixed. Three stand at the riverside kerb of Jalan Main Bazaar so that a new player meets
+  every kind near the start. They stand on verges and kerbs that are not checked against inferred trees, drains or
+  walkers' routes, so one may stand in a tree or be walked through.
+- **The parked cars of the hand-built streets cannot be taken** (Jalan China, Carpenter Street, Jalan Gambier, the
+  Main Bazaar frontage): they are part of the street's one mesh. Only the rule-placed vehicles and the player's own can.
+- **Four generic kinds**, none a real make or model: the hatchback, a kapcai (underbone motorbike), a taxi and a
+  pickup. The taxi is the saloon in one plain red with a blank roof sign: Kuching's real taxi liveries and operators
+  are not reproduced. How each kind handles (pull, top speed, steering, grip off the road) is made up.
+- **The kapcai's rider is a generic figure in a helmet**, not the character the player chose. The bike leans into a
+  turn but cannot fall, wheelie or filter between cars.
+- **Jobs go to real mapped places, described by kind and street only** ("a restaurant, Jalan Padungan"): 1,708 places
+  from the OpenStreetMap and Overture place data that lie within 60 m of a public road, grouped by their mapped
+  category (`public/data/kuching/jobs.json` holds positions and groups, no names), plus the game's landmarks by their
+  mapped names. The label is the group's, so a café, a kopitiam and a food court are all "a restaurant", and a pharmacy
+  is "a clinic or hospital". **The customers, the passengers, the orders, the fares and the tips are invented**: nobody
+  is drawn at the pick-up or the drop-off (a marker stands there), and nothing is carried.
+- **Fares are a formula** (a flag-fall plus a rate per road kilometre; a tip for arriving inside a par time, less for
+  every collision), not Kuching's taxi or delivery rates. Money buys repairs only.
+- **A job's place is "reached" at the point on a public road where the GPS route ends**, within 14 m and nearly at
+  rest; the walk from there to the door is not played. Taxi fares need the taxi; deliveries any vehicle, or none.
+- **Collisions are boxes.** The driven vehicle is pushed out of ambient and parked vehicles and loses speed; damage is
+  one number that dulls the paint toward soot and, past half, takes engine power. Nothing deforms, breaks off, burns
+  or flips; walkers are not hit (they stop for the player and the car passes through them); ambient vehicles do not
+  collide with each other or with parked ones, and a struck one only stops, hoots and drives on.
+- **The horn** makes waiting drivers edge past and nearby walkers pause. Ambient drivers hoot when held up for five
+  seconds or run into. All sounds are synthesised.
+- **Saved progress** is one value in the browser's local storage on this device (money, jobs done, the vehicle and
+  where it stood): it is written when a job is paid, a repair is made, or "Save game" is tapped on the phone, and is
+  lost with the site data. Parked vehicles taken, the job in hand and the player's position are not saved.
 
 ## Testing
 

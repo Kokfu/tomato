@@ -102,6 +102,24 @@ relative to the chunk corner, which bounds the generation error at 7 mm (verifie
 Offline: `tools/generate-world/build-streetscape.ts` annotates chunks (`a`, `furn`, `rail`),
 `build-places.ts` writes `places/<chunk>.json`. See `STREETSCAPE.md` and `SHOP_IDENTITY.md`.
 
+### Play loop modules (N1-M7)
+
+| Module | Responsibility |
+|---|---|
+| `play/Play` | Glue: wallet HUD, job in hand, parked vehicles (which exist, are drawn, block the walker, can be taken), vehicle-to-vehicle collisions, horn, phone callbacks, saving |
+| `play/missions` | Pure: job offers on the road graph, the two stages of a job, fares, tips |
+| `play/sites` | Pure: groups of mapped place categories and how a job names a place (never a business name) |
+| `play/parked` | Pure: parking places from chunk data (beside service roads), the starters near the first car |
+| `play/crash` | Pure: oriented-box overlap, closing speed, damage, engine power left, repair cost |
+| `play/save` | Pure: the saved value (validated on reading, every storage call wrapped) |
+| `play/Sfx` | Synthesised horn, collision and money sounds |
+| `ui/Phone` | The phone menu (DOM): jobs, garage, save, shortcuts |
+| `vehicle/VehiclePhysics` | `VehicleSpec` per kind (`VEHICLE_SPECS`), `VehicleBody.setSpec`, `shove`, `power` |
+| `vehicle/CarModel`, `vehicle/Driving` | One model per kind, painted by its material colour (damage tint); `Driving.setVehicle` / `adopt` swap the player's vehicle |
+
+Parked vehicles are extra instances in the traffic's meshes (`life/LifeRender`, `ParkedDraw`): no draw call of their
+own. Offline: `tools/generate-world/build-jobs.ts` (`npm run data:jobs`) writes `jobs.json` from the place files.
+
 ### Streaming
 
 - Chunks within `lowRadius` of the player are wanted; those within `highRadius` at full detail.

@@ -6,8 +6,8 @@ export type ControlsContext = 'walk' | 'walk-car' | 'walk-shop' | 'drive' | 'dri
 const k = (key: string, what: string) => `<b>${key}</b> ${what}`;
 const line = (...items: string[]) => items.join(' &middot; ');
 
-const WALK = [k('WASD', 'move'), k('Shift', 'run'), k('Space', 'jump'), k('Mouse', 'look'), k('Wheel', 'zoom'), k('M', 'map'), k('V', 'view'), k('P', 'OP mode'), k('Esc', 'pause')];
-const DRIVE = [k('W', 'accelerate'), k('S', 'brake / reverse'), k('A D', 'steer'), k('Space', 'handbrake'), k('Mouse', 'look'), k('Wheel', 'zoom'), k('V', 'camera'), k('R', 'back to road'), k('G', 'GPS'), k('P', 'OP mode'), k('Esc', 'pause')];
+const WALK = [k('WASD', 'move'), k('Shift', 'run'), k('Space', 'jump'), k('Mouse', 'look'), k('Wheel', 'zoom'), k('M', 'map'), k('V', 'view'), k('T', 'phone'), k('P', 'OP mode'), k('Esc', 'pause')];
+const DRIVE = [k('W', 'accelerate'), k('S', 'brake / reverse'), k('A D', 'steer'), k('Space', 'handbrake'), k('Mouse', 'look'), k('Wheel', 'zoom'), k('V', 'camera'), k('H', 'horn'), k('R', 'back to road'), k('G', 'GPS'), k('T', 'phone'), k('P', 'OP mode'), k('Esc', 'pause')];
 /** The E action of the moment comes first and is highlighted. */
 const action = (what: string) => `<b class="ctx-action">E</b> ${what}`;
 

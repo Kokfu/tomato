@@ -38,7 +38,7 @@ const metres = (s: string): number | null => {
 };
 
 /** HUD pieces that must never overlap each other while driving on touch. */
-const DRIVE_HUD = ['location', 'minimap-wrap', 'topbar', 'minimap-ctl', 'nav-hint', 'speedo', 'gps-btn', 'steer-pad', 'btn-gas', 'btn-brake', 'btn-hb', 'btn-exit', 'btn-cam', 'btn-reset', 'attribution', 'toast', 'chunk-loading'];
+const DRIVE_HUD = ['location', 'minimap-wrap', 'topbar', 'minimap-ctl', 'nav-hint', 'speedo', 'gps-btn', 'steer-pad', 'btn-gas', 'btn-brake', 'btn-hb', 'btn-exit', 'btn-cam', 'btn-reset', 'btn-horn', 'wallet', 'attribution', 'toast', 'chunk-loading'];
 const SIZES: [number, number][] = [[360, 800], [390, 844], [430, 932], [768, 1024], [800, 360], [844, 390], [932, 430]];
 
 async function layoutIssues(page: Page, withPanel: boolean): Promise<string[]> {

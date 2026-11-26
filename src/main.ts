@@ -37,6 +37,7 @@ import type { RainMode, TimeMode } from './world/dayCycle.ts';
 import { RainSound } from './world/Rain.ts';
 import { headlightGeometry } from './world/StreetFurniture.ts';
 import { Life } from './life/Life.ts';
+import { Play } from './play/Play.ts';
 import { getFlags } from './flags.ts';
 
 /** Rendering at start: V7 Jalan China (its detailed section, the normal geographic rendering elsewhere). The legacy
@@ -79,6 +80,7 @@ async function boot(): Promise<void> {
   let mapOpen = false;
   let placeOpen = false;
   let pickerOpen = false; // CHAR-P5 G2 (only with ?char): the character picker is open
+  let phoneOpen = false; // N1-M7: the phone is open (the game runs on, the controls are let go)
   const steps = new Footsteps();
   // N1-M6: the day passes and it rains now and then, unless the settings (or ?time= / ?rain=) say otherwise. An
   // automated browser gets a frozen dry day, so tests, screenshots and benchmarks are repeatable (dayCycle.ts).
@@ -86,7 +88,7 @@ async function boot(): Promise<void> {
   const modes = startModes(location.search, { time: saved('k3d.time'), rain: saved('k3d.rain') }, navigator.webdriver === true);
   const rainSound = new RainSound();
   const syncInput = () => {
-    input.enabled = started && !paused && !mapOpen && !placeOpen && !pickerOpen;
+    input.enabled = started && !paused && !mapOpen && !placeOpen && !pickerOpen && !phoneOpen;
     if (!input.enabled) input.releasePointer();
   };
 
@@ -104,6 +106,7 @@ async function boot(): Promise<void> {
         started = true;
         steps.unlock();
         rainSound.unlock();
+        play?.unlock();
         if (charStart.needsPick) void openPicker('first'); // CHAR-P5 G2: first launch: choose before entering the world
         else if (charStart.flag && !charStart.persist) menu.toast(`Playing as ${getProfile(charStart.id)?.picker?.name ?? 'your character'}. Change character is in the pause menu.`, 3.5);
         syncInput();
@@ -116,7 +119,7 @@ async function boot(): Promise<void> {
       // N1-M6: every rendering follows the hour (the world scales each one's own daylight): nothing is switched or recompiled.
       onTimeOfDay: (t) => world.setTime(t),
       onRain: (r) => world.setRain(r),
-      onSound: (on) => { steps.enabled = on; rainSound.enabled = on; v5?.ambience.setEnabled(on); if (on && v5 && v5.mode !== 'v4') v5.ambience.start(); },
+      onSound: (on) => { steps.enabled = on; rainSound.enabled = on; play?.setSound(on); v5?.ambience.setEnabled(on); if (on && v5 && v5.mode !== 'v4') v5.ambience.start(); },
       onResume: () => {
         endCarTrip(); // leaving the pause menu cancels a "Drive Car" that is still loading
         if (charStart.flag) { cancelPickerWarm(); swapper.cancelPendingWarm(); } // CHAR-P5: no model building while the game runs
@@ -390,7 +393,10 @@ async function boot(): Promise<void> {
         tpc.snap();
         minimap.setDriving(false);
       }
-    } else if (driving.enter(player)) {
+    } else {
+      // N1-M7: a parked vehicle within reach becomes the player's (their own, when it is in reach too, comes first)
+      if (!driving.canEnter(player)) play?.take();
+      if (!driving.enter(player)) return;
       if (tpc.firstPerson) tpc.firstPerson = false;
       syncBody();
       minimap.setDriving(true);
@@ -423,6 +429,7 @@ async function boot(): Promise<void> {
   world.chunks.onBuilt = (o) => { if (startHold && v5?.usesPipeline) prepareObject(o); };
   // N1-M6: ambient traffic and walkers. Loaded and compiled after `ready`, so they add nothing to start-up.
   const life = getFlags().life ? new Life({ world, baseUrl: import.meta.env.BASE_URL, prepare: (o) => whenCompiled(renderer, prepareObject(o)) }, quality) : null;
+  if (life) life.noParked = !getFlags().m7;
   const applyInitialMode = () => {
     const done = () => { startHold = false; world.chunks.holdWarm = false; world.chunks.onBuilt = null; renderReady = true; menu.setLoading(1, 'Ready', true); void life?.start(); };
     // (N1-M6: this rendering draws from the first frame, so only what is not drawn by day, the rain and the pools of
@@ -521,6 +528,21 @@ async function boot(): Promise<void> {
     available: () => started && !paused && !mapOpen && driving.active && !fly.active,
   });
 
+  // N1-M7: the play loop (vehicles to take, jobs, money, the phone, collisions, saved progress). `?m7=0` = the N1-M6 game.
+  const play = getFlags().m7 ? new Play({
+    world, player, driving, minimap, life,
+    baseUrl: import.meta.env.BASE_URL,
+    touch: isTouchDevice(),
+    toast: (t, s) => menu.toast(t, s),
+    playing: () => started && !paused && spawnReady,
+    canOpenPhone: () => started && spawnReady && !paused && !mapOpen && !placeOpen && !pickerOpen && !fly.active && !carTrip,
+    onPhone: (open) => { phoneOpen = open; if (open) gps.toggle(false); syncInput(); },
+    openGps: () => { if (driving.active) gps.toggle(true); else menu.toast('GPS works at the wheel: get into a vehicle first.', 2.5); },
+    openMap: () => { if (!mapOpen) minimap.toggleFullMap(); },
+    pause: () => menu.pause(),
+    prepare: (o) => { prepareObject(o); },
+  }) : null;
+
   const placePanel = new PlacePanel({
     places: world.places,
     nearby: () => world.places.near(player.position.x, player.position.z, 7, (cx, cz) => world.chunks.dataAt(cx, cz)),
@@ -578,7 +600,8 @@ async function boot(): Promise<void> {
   input.on('interact', () => {
     if (!started || paused || mapOpen) return;
     // E gets in and out of the car; everywhere else (and in OP mode) it inspects the nearest place as before.
-    if (!placeOpen && !fly.active && spawnReady && (driving.active || driving.canEnter(player))) toggleCar();
+    if (phoneOpen) return;
+    if (!placeOpen && !fly.active && spawnReady && (driving.active || driving.canEnter(player) || play?.canTake())) toggleCar();
     else if (!driving.active) {
       if (!placePanel.nearShop) guide?.hint('noCar');
       placePanel.toggle();
@@ -590,12 +613,13 @@ async function boot(): Promise<void> {
   for (const id of ['car-prompt', 'speedo-exit']) {
     document.getElementById(id)!.addEventListener('click', (e) => {
       (e.currentTarget as HTMLElement).blur();
-      if (started && !paused && !mapOpen && !placeOpen && !fly.active) toggleCar();
+      if (started && !paused && !mapOpen && !placeOpen && !phoneOpen && !fly.active) toggleCar();
     });
   }
 
   input.on('pause', () => {
     if (pickerOpen) return;
+    if (phoneOpen) { play?.phone.toggle(false); return; }
     if (placeOpen) placePanel.close();
     else if (mapOpen) minimap.toggleFullMap();
     else if (started) menu.togglePause();
@@ -680,6 +704,7 @@ async function boot(): Promise<void> {
     if (spawnReady) driving.tryPlace();
     // CHAR-P5 N9 (only with ?char): player.update (the only visual.update) is skipped in the car and in OP fly mode, so a jump entered
     // mid-air left the air pose in the hidden body until ~30 frames after leaving. Settle it once on entry.
+    play?.update(dt * stepsPerFrame, started && !paused && spawnReady && !flying, input.enabled);
     const away = flying || driving.active;
     if (charStart.flag && away && !wasAway) player.visual.update(0, { speed: 0, grounded: true, vy: 0 });
     wasAway = away;
@@ -689,7 +714,7 @@ async function boot(): Promise<void> {
         driving.coast(dt);
       }
     } else if (driving.active) {
-      if (!paused) for (let i = 0; i < stepsPerFrame; i++) driving.drive(dt, input);
+      if (!paused) for (let i = 0; i < stepsPerFrame; i++) { driving.drive(dt, input); play?.afterDrive(); }
       driving.drivingPrompt(input.enabled);
       driving.camera.update(dt, driving.car, input);
       // The walking camera keeps the same bearing, so the heading-up minimap and getting out are seamless.
@@ -811,7 +836,7 @@ async function boot(): Promise<void> {
 
   // Debug / automated-test hook.
   (window as any).__k3d = {
-    world, player, camera, tpc, input, renderer, minimap, gps, menu, placePanel, steps, v5, fly, refPanel, driving, mobile, life,
+    world, player, camera, tpc, input, renderer, minimap, gps, menu, placePanel, steps, v5, fly, refPanel, driving, mobile, life, play,
     geoToWorld, worldToGeo,
     /** Protected landmarks that reached a generic building generator (must stay empty). */
     landmarkGuard: guardViolations,

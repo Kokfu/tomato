@@ -46,7 +46,7 @@ a { color: inherit; }
 #help b.ctx-action { color: var(--accent); }
 #toast { position: absolute; left: 50%; bottom: calc(132px + var(--safe-b)); transform: translateX(-50%); padding: 8px 14px; font-weight: 500; white-space: nowrap; pointer-events: none; }
 #chunk-loading { position: absolute; left: 50%; top: calc(14px + var(--safe-t)); transform: translateX(-50%); padding: 6px 12px; font-size: 12px; color: var(--muted); pointer-events: none; }
-#stats { position: absolute; left: 12px; top: calc(74px + var(--safe-t)); font: 11px/1.5 ui-monospace, Consolas, monospace; color: #d7f5df; text-shadow: 0 1px 2px #000; white-space: pre; pointer-events: none; }
+#stats { position: absolute; left: 12px; top: calc(126px + var(--safe-t)); font: 11px/1.5 ui-monospace, Consolas, monospace; color: #d7f5df; text-shadow: 0 1px 2px #000; white-space: pre; pointer-events: none; }
 #attribution { position: absolute; right: 8px; bottom: calc(6px + var(--safe-b)); font-size: 11px; color: #e8eef1; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); background: rgba(13, 27, 36, 0.45); padding: 2px 7px; border-radius: 6px; }
 
 /* Touch controls */
@@ -257,7 +257,7 @@ body.touch #car-prompt kbd { display: none; }
 body.touch-drive #attribution { font-size: 9px; line-height: 1.25; }
 @media (max-width: 720px), (max-height: 520px) {
   /* Small screens: the loading note goes below the right-hand buttons instead of over the place name. */
-  body.touch #chunk-loading { left: auto; right: calc(8px + var(--safe-r)); transform: none; top: calc(302px + var(--safe-t)); }
+  body.touch #chunk-loading { left: auto; right: calc(8px + var(--safe-r)); transform: none; top: calc(346px + var(--safe-t)); }
 }
 /* Landscape phones: little height, plenty of width. */
 @media (orientation: landscape) and (max-height: 520px) {
@@ -404,3 +404,58 @@ body.char-ui #pause .pause-why { margin: -6px 0 0; padding: 7px 10px; border-rad
   body.char-ui #pause .pause-why { grid-column: 1 / -1; margin: 0; padding: 5px 10px; font-size: 12.5px; }
   body.char-ui #pause .note { grid-column: 1 / -1; font-size: 11px; line-height: 1.4; margin-top: 2px; }
 }
+
+/* --- N1-M7 play: wallet, phone, horn --------------------------------------------------------------------------
+   The wallet sits under the place name (under the next-turn hint where that is on the left). The phone is a
+   panel in the middle of the screen, above the touch controls; the game runs on behind it with the controls let go. */
+#wallet { position: absolute; left: 12px; top: calc(70px + var(--safe-t)); padding: 6px 11px; max-width: min(60vw, 340px); display: flex; flex-direction: column; gap: 1px; pointer-events: none; }
+#wallet-money { font-size: 15px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+#wallet-job { display: none; color: var(--text); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#wallet.has-job #wallet-job { display: block; }
+#wallet.flash { animation: wallet-flash 1.1s ease-out; }
+@keyframes wallet-flash { 0% { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(242, 193, 78, 0.55); } 100% { border-color: var(--line); box-shadow: 0 0 0 0 rgba(242, 193, 78, 0); } }
+@media (prefers-reduced-motion: reduce) { #wallet.flash { animation: none; } }
+@media (min-width: 721px) and (max-width: 1100px) and (min-height: 521px) { #wallet { top: calc(140px + var(--safe-t)); } }
+@media (max-width: 720px), (max-height: 520px) {
+  #wallet { left: 8px; top: calc(134px + var(--safe-t)); padding: 4px 9px; max-width: calc(100vw - 136px); }
+  #wallet-money { font-size: 13px; }
+  #wallet-job { font-size: 11px; }
+}
+/* Landscape phones: the left edge belongs to the driving buttons, so the wallet goes under the map buttons on the right. */
+@media (orientation: landscape) and (max-height: 520px) { body.touch #wallet { left: auto; right: calc(128px + var(--safe-r)); top: calc(92px + var(--safe-t)); max-width: min(250px, calc(100vw - 420px)); } }
+/* The GPS list of the touch layout fills the left of a small screen: the wallet steps aside while it is open. */
+body.touch-drive #hud:has(#gps-panel:not(.hidden)) #wallet { display: none; }
+#btn-phone.on { border-color: var(--accent); }
+#phone {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 14; width: min(330px, calc(100vw - 24px));
+  max-height: min(580px, calc(100vh - 32px - var(--safe-t) - var(--safe-b))); display: flex; flex-direction: column;
+  background: rgba(10, 20, 27, 0.94); border: 2px solid rgba(255, 255, 255, 0.22); border-radius: 26px; padding: 10px 10px 14px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+#phone .ph-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 8px; border-bottom: 1px solid var(--line); }
+#phone .ph-title { flex: 1; font-size: 15px; }
+#phone .ph-money { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+#phone .ph-back, #phone .ph-close { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); padding: 0; font-size: 17px; line-height: 1; }
+#phone .ph-body { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; overflow-y: auto; touch-action: pan-y; }
+#phone .ph-row, #phone .ph-offer {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; min-height: 44px; padding: 8px 11px;
+  border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); touch-action: manipulation;
+}
+#phone .ph-row:hover, #phone .ph-offer:hover { border-color: var(--accent); }
+#phone .ph-row.primary { background: rgba(63, 167, 181, 0.22); border-color: rgba(63, 167, 181, 0.7); }
+#phone .ph-row:disabled { opacity: 0.5; cursor: default; }
+#phone .ph-label, #phone .ph-from { font-weight: 600; font-size: 14px; }
+#phone .ph-to { font-size: 13px; }
+#phone .ph-sub { color: var(--muted); font-size: 11.5px; line-height: 1.3; }
+#phone .ph-fare { color: var(--accent); font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
+#phone .ph-job { display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; border-radius: 12px; border: 1px solid rgba(242, 193, 78, 0.5); background: rgba(242, 193, 78, 0.1); }
+#phone .ph-step { font-size: 13px; }
+#phone .ph-place { font-weight: 700; font-size: 14px; }
+#phone .ph-btns { display: flex; gap: 6px; margin-top: 5px; }
+#phone .ph-btns .ph-row { flex: 1; min-height: 38px; padding: 6px 8px; align-items: center; text-align: center; }
+#phone .ph-btns .ph-label { font-size: 12.5px; }
+#phone .ph-note { color: var(--muted); font-size: 12px; line-height: 1.35; padding: 4px 4px 0; }
+@media (max-height: 520px) { #phone { padding: 6px 8px 8px; border-radius: 18px; } #phone .ph-row, #phone .ph-offer { min-height: 38px; padding: 5px 10px; } }
+/* Touch driving: HORN joins GPS and RESET in the upper row above the steering pad (the lower row ends at the handbrake). */
+#btn-horn { left: calc(152px + var(--safe-l)); bottom: calc(192px + var(--safe-b)); }
+#btn-horn:active { background: rgba(242, 193, 78, 0.85); color: var(--accent-ink); }
