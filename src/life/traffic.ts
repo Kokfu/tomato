@@ -12,10 +12,14 @@
 import { EDGE_BRIDGE, EDGE_TUNNEL } from '../ui/Router.ts';
 import type { RouteGraph } from '../ui/Router.ts';
 
-/** Vehicle kinds: three cars of the parked-car kit and the kapcai (underbone motorbike) with its rider. */
-export const KIND = { hatch: 0, saloon: 1, suv: 2, kapcai: 3 } as const;
+/**
+ * Vehicle kinds: three cars of the parked-car kit and the kapcai (underbone motorbike) with its rider; N1-M7 adds the
+ * taxi (the saloon with a roof sign) and the pickup.
+ */
+export const KIND = { hatch: 0, saloon: 1, suv: 2, kapcai: 3, taxi: 4, pickup: 5 } as const;
+export const KINDS = 6;
 /** Half length and half width by kind, metres. */
-export const SIZE: readonly { half: number; hw: number }[] = [{ half: 1.95, hw: 0.87 }, { half: 2.2, hw: 0.86 }, { half: 2.15, hw: 0.91 }, { half: 0.95, hw: 0.36 }];
+export const SIZE: readonly { half: number; hw: number }[] = [{ half: 1.95, hw: 0.87 }, { half: 2.2, hw: 0.86 }, { half: 2.15, hw: 0.91 }, { half: 0.95, hw: 0.36 }, { half: 2.2, hw: 0.86 }, { half: 2.65, hw: 0.93 }];
 
 export interface TrafficHost {
   /** Height of the surface under a vehicle whose wheels are at height y (bridge decks included). */
@@ -74,6 +78,9 @@ export interface Vehicle {
   /** The junction it has been let into, until it is 6 m beyond it. */
   holds: number;
   dead: boolean;
+  /** N1-M7: seconds left of standing still after the player ran into it; seconds until its driver sounds the horn (-1 = no). */
+  halt: number;
+  horn: number;
 }
 
 const SPEED: Record<string, number> = { motorway: 13, trunk: 12.5, primary: 12, secondary: 11, tertiary: 10, residential: 7.5 };
@@ -482,7 +489,10 @@ export class Traffic {
       if (g < gap) { gap = g; v.blocker = 0; other = true; lead = Math.max(0, o.vx * hx + o.vz * hz); }
     }
     // (something left standing in the road, a parked car or a player who will not move: after 12 s the driver edges past)
+    const before = v.held;
     v.held = other && v.v < 0.15 ? v.held + this.step : 0;
+    // (N1-M7: a driver kept waiting by the player sounds the horn after five seconds)
+    if (before <= 5 && v.held > 5 && this.onHorn) this.onHorn(v);
     if (v.held > 12) { v.held = 0; v.past = 5; }
     if (gap === Infinity) return v.past > 0 ? Math.min(limit, 3) : limit;
     return Math.min(limit, gap <= 0 ? 0 : Math.sqrt(lead * lead + 2 * B_FOLLOW * gap));
@@ -533,7 +543,7 @@ export class Traffic {
       if (this.vehicles.some((w) => Math.hypot(w.x - x, w.z - z) < 16)) continue;
       const v: Vehicle = {
         id: this.nextId++, kind, tint: Math.floor(this.rand() * o.tints), prev: null, cur, next: this.choose(cur, kind), s,
-        v: 0, pace: 0.82 + this.rand() * 0.3, x, y: -1e6, z, heading: 0, pitch: 0, gy: 0, gp: 0, braking: false, why: '', stuck: 0, ghost: 0, blocker: 0, waited: 0, held: 0, past: 0, holds: -1, dead: false, cap: 0, since: this.rand() * THINK,
+        v: 0, pace: 0.82 + this.rand() * 0.3, x, y: -1e6, z, heading: 0, pitch: 0, gy: 0, gp: 0, braking: false, why: '', stuck: 0, ghost: 0, blocker: 0, waited: 0, held: 0, past: 0, holds: -1, dead: false, cap: 0, since: this.rand() * THINK, halt: 0, horn: -1,
       };
       // (it appears already moving, but never too fast to stop at the junction ahead)
       v.v = v.cap = Math.min((SPEED[g.typeOf(e)] ?? 8) * v.pace * 0.7, Math.sqrt(2 * B_EASY * Math.max(0, len - s - Math.min(7, len * 0.4) - 1)));
@@ -582,7 +592,13 @@ export class Traffic {
         }
         if (ring) { v.stuck += this.step; if (v.stuck > 8) { v.stuck = 0; v.ghost = 3.5; } } else v.stuck = 0;
       }
-      const cap = v.cap;
+      // N1-M7: run into by the player: it stands for a moment, its driver hoots, then it drives on past whatever is in the way
+      if (v.halt > 0) {
+        v.halt -= dt;
+        if (v.horn >= 0 && (v.horn -= dt) < 0) { v.horn = -1; this.onHorn?.(v); }
+        if (v.halt <= 0) { v.past = Math.max(v.past, 6); v.held = 0; }
+      }
+      const cap = v.halt > 0 ? 0 : v.cap;
       v.braking = cap < v.v - 0.25 || (cap < 0.3 && v.v < 0.3);
       if (cap > v.v) v.v = Math.min(cap, v.v + ACCEL * (v.kind === KIND.kapcai ? 1.35 : 1) * dt);
       else v.v = Math.max(cap, v.v - B_MAX * dt);
@@ -606,6 +622,34 @@ export class Traffic {
     }
     const tries = fresh ? o.want * 3 : 2;
     for (let i = 0; i < tries && list.length < o.want; i++) this.spawn(fx, fz, o, fresh ? Math.min(o.rMin, 24) : o.rMin);
+  }
+
+  /** N1-M7: called when an ambient driver sounds the horn (the game plays it from where the vehicle is). */
+  onHorn: ((v: Vehicle) => void) | null = null;
+
+  /**
+   * N1-M7: the player's vehicle ran into this one at `speed` m/s (closing). It stops and stands for a few seconds, its
+   * driver hoots after a moment, and then it drives on.
+   */
+  bump(v: Vehicle, speed: number): void {
+    if (v.halt > 0) return;
+    v.halt = 2 + Math.min(3, speed * 0.4);
+    v.horn = 0.35;
+    v.v = 0;
+  }
+
+  /**
+   * N1-M7: the player sounds the horn at (x, z), facing (hx, hz). Drivers standing behind the player's vehicle or person
+   * within 30 m ahead stop waiting and edge past. Returns how many reacted.
+   */
+  honk(x: number, z: number, hx: number, hz: number): number {
+    let n = 0;
+    for (const v of this.vehicles) {
+      const dx = v.x - x, dz = v.z - z, d = Math.hypot(dx, dz);
+      if (d > 30 || d < 0.5 || (dx * hx + dz * hz) / d < 0.5) continue;
+      if (v.v < 0.5 && v.held > 0.5 && v.past <= 0) { v.past = 5; v.held = 0; n++; }
+    }
+    return n;
   }
 
   /** A new budget: remove the kinds that are no longer drawn and whatever is over the number wanted. */

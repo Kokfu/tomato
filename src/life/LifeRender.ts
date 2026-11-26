@@ -10,11 +10,11 @@
 import * as THREE from 'three';
 import { Kit, hex } from '../v5/kit.ts';
 import type { Col } from '../v5/kit.ts';
-import { vehicle } from '../v5/vehicles.ts';
+import { vehicle, kapcai } from '../v5/vehicles.ts';
 import type { VehicleKind } from '../v5/vehicles.ts';
 import { ENV } from '../world/env.ts';
 import { headlightGeometry } from '../world/StreetFurniture.ts';
-import { KIND, SIZE } from './traffic.ts';
+import { KIND, KINDS, SIZE } from './traffic.ts';
 import type { Vehicle } from './traffic.ts';
 import type { Walker } from './walkers.ts';
 
@@ -24,8 +24,19 @@ const TOPS = [0xf2f0ea, 0xd9e4ee, 0x2f5f8a, 0x8a2f3a, 0xe0b23a, 0x2e6b4f, 0x1f2a
 const BOTTOMS = [0x1f2433, 0x17181c, 0x8d7b5c, 0x55585e, 0x3d5a80, 0x2a2c33, 0x6a6258, 0x23262b];
 const SKINS = [0xc79a72, 0xb07a52, 0x95653f, 0xd9b08c, 0x7a5236, 0xbd8d68];
 
-const CAR_KINDS: VehicleKind[] = ['hatch', 'saloon', 'suv'];
+/** Body style of each kind of src/life/traffic.ts (KIND order); the kapcai has its own builder. */
+const CAR_KINDS: VehicleKind[] = ['hatch', 'saloon', 'suv', 'hatch', 'saloon', 'pickup'];
 const LAMP_RED = hex(0x9a100c), LAMP_CLEAR = hex(0xdfe3e6);
+/** N1-M7: the one plain paint of the generic taxi (ambient and parked alike). */
+export const TAXI_PAINT = 0xa8241c;
+/** N1-M7: what a wrecked body's paint turns toward (the damage tint). */
+export const SOOT = 0x2b2622;
+/** N1-M7: kinds that stand parked for the player to take, so they get a mesh on every preset. */
+export const PARKED_KINDS: readonly number[] = [KIND.hatch, KIND.kapcai, KIND.taxi, KIND.pickup];
+
+/** N1-M7: a vehicle standing parked (src/play/parked.ts), drawn with the traffic's meshes. */
+export interface ParkedDraw { id: number; kind: number; x: number; y: number; z: number; heading: number; pitch: number; paint: number; damage: number }
+
 const near = (c: ArrayLike<number>, i: number, k: Col) => Math.abs(c[i] - k[0]) + Math.abs(c[i + 1] - k[1]) + Math.abs(c[i + 2] - k[2]) < 1e-4;
 
 interface Raw { pos: number[]; nor: number[]; col: number[]; idx: number[] }
@@ -43,55 +54,29 @@ function merge(kit: Kit): Raw {
   return out;
 }
 
-/** The kapcai (underbone motorbike) and its rider, +x forward. Generic form; `paint` colours the fairing and the helmet. */
-function kapcai(k: Kit, paint: Col): void {
-  const RUBBER = hex(0x151517), DARK = hex(0x1b1b1d), METAL = hex(0x6f7377), SHIRT = hex(0x3b4a5c), TROUSERS = hex(0x23262b), SKIN = hex(0xb07a52);
-  k.use('wire');
-  // (each wheel is two half-width discs, so that both faces are closed)
-  for (const x of [-0.62, 0.62]) for (const s of [-1, 1]) k.at({ x, y: 0.27, rx: (s * Math.PI) / 2 }, () => { k.cyl(0, 0, 0, 0.045, 0.27, 0.27, 10, RUBBER); k.cyl(0, 0, 0.045, 0.05, 0.12, 0.12, 8, METAL); });
-  k.box(-0.2, 0.22, 0.18, 0.34, -0.1, 0.1, METAL);            // engine
-  k.box(0.52, 0.6, 0.27, 0.92, -0.035, 0.035, DARK);           // fork
-  k.box(0.38, 0.44, 1.0, 1.04, -0.3, 0.3, DARK);               // handlebar
-  k.box(-0.62, 0.0, 0.62, 0.74, -0.14, 0.14, DARK);            // seat
-  k.use('carpaint');
-  k.box(-0.6, 0.36, 0.32, 0.6, -0.12, 0.12, paint);            // body under the seat
-  k.box(0.3, 0.42, 0.3, 0.96, -0.18, 0.18, paint);             // leg shield
-  k.box(0.42, 0.52, 0.86, 1.02, -0.11, 0.11, paint);           // headlamp cowl
-  k.box(-0.78, -0.6, 0.56, 0.7, -0.09, 0.09, paint);           // tail
-  k.use('glass');
-  k.box(0.52, 0.535, 0.89, 0.99, -0.075, 0.075, LAMP_CLEAR);   // headlamp
-  k.box(-0.795, -0.78, 0.6, 0.67, -0.06, 0.06, LAMP_RED);      // tail lamp
-  // rider
-  k.use('wire');
-  k.box(-0.42, -0.1, 0.74, 0.94, -0.17, 0.17, TROUSERS);
-  for (const s of [-1, 1]) {
-    const z = (a: number, b: number): [number, number] => (s > 0 ? [a, b] : [-b, -a]);
-    k.box(-0.16, 0.24, 0.72, 0.86, ...z(0.07, 0.21), TROUSERS);
-    k.box(0.12, 0.25, 0.34, 0.74, ...z(0.09, 0.21), TROUSERS);
-    k.box(0.1, 0.34, 0.28, 0.36, ...z(0.09, 0.21), DARK);
-    k.at({ x: -0.2, y: 1.34, z: s * 0.24, rz: -0.43 }, () => k.box(0, 0.62, -0.05, 0.05, -0.05, 0.05, SHIRT));
-    k.at({ x: 0.37, y: 1.07 }, () => k.box(-0.04, 0.05, -0.04, 0.04, ...z(0.2, 0.3), SKIN));
-  }
-  k.at({ x: -0.26, y: 0.92, rz: -0.14 }, () => k.box(-0.13, 0.13, 0, 0.5, -0.2, 0.2, SHIRT));
-  k.box(-0.3, -0.16, 1.4, 1.5, -0.06, 0.06, SKIN);
-  k.use('carpaint');
-  k.sphere(-0.2, 1.6, 0, 0.14, 8, 5, paint);
-  k.use('wire');
-  k.box(-0.085, -0.06, 1.55, 1.64, -0.1, 0.1, DARK);           // visor
-}
-
 /**
  * Geometry of one vehicle kind with +Z forward: `color` is the vehicle with black paint, `tintK` what white paint adds
  * (so colour = color + tintK * paint), `glow` the lamps (rgb, w: 1 = also lit by the brakes, 2 = always lit).
+ * N1-M7: `rider` is 1 on the kapcai's rider, who is folded away on a parked bike (iPaint.w >= 2).
  */
 export function vehicleGeometry(kind: number): THREE.BufferGeometry {
-  const build = (paint: Col): Raw => {
+  const build = (paint: Col, rider = true): Raw => {
     const k = new Kit(1);
-    if (kind === KIND.kapcai) kapcai(k, paint); else vehicle(k, CAR_KINDS[kind], paint, null, '', false);
+    if (kind === KIND.kapcai) kapcai(k, paint, rider); else vehicle(k, CAR_KINDS[kind], paint, null, '', false, kind === KIND.taxi);
     return merge(k);
   };
   const dark = build([0, 0, 0]), light = build([1, 1, 1]), marked = build(hex(0x808080)), n = dark.pos.length / 3;
-  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3), tint = new Float32Array(n * 3), glow = new Float32Array(n * 4);
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3), tint = new Float32Array(n * 3), glow = new Float32Array(n * 4), rider = new Float32Array(n);
+  if (kind === KIND.kapcai) {
+    // (the rider is built last: whatever comes after the counts taken before him is his)
+    const k = new Kit(1), start = kapcai(k, [0, 0, 0], true);
+    let base = 0;
+    for (const [name, b] of k.bufs) {
+      if (name === 'contact' || !b.idx.length) continue;
+      for (let i = start.get(name) ?? 0; i < b.count; i++) rider[base + i] = 1;
+      base += b.count;
+    }
+  }
   for (let i = 0; i < n; i++) {
     const x = dark.pos[i * 3], z = dark.pos[i * 3 + 2];
     pos[i * 3] = -z; pos[i * 3 + 1] = dark.pos[i * 3 + 1]; pos[i * 3 + 2] = x;
@@ -106,6 +91,7 @@ export function vehicleGeometry(kind: number): THREE.BufferGeometry {
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   g.setAttribute('tintK', new THREE.BufferAttribute(tint, 3));
   g.setAttribute('glow', new THREE.BufferAttribute(glow, 4));
+  g.setAttribute('rider', new THREE.BufferAttribute(rider, 1));
   g.setIndex(dark.idx);
   return g;
 }
@@ -115,13 +101,27 @@ function vehicleMaterial(): THREE.MeshLambertMaterial {
   m.onBeforeCompile = (s) => {
     s.uniforms.uNight = ENV.uNight;
     s.vertexShader = s.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec3 tintK;\nattribute vec4 glow;\nattribute vec4 iPaint;\nuniform float uNight;\nvarying vec3 vGlow;')
-      .replace('#include <color_vertex>', '#include <color_vertex>\nvColor.rgb = color + tintK * iPaint.rgb;\nvGlow = glow.rgb * max(smoothstep(0.25, 0.6, uNight), glow.w > 1.5 ? 0.8 : glow.w * iPaint.w);');
+      .replace('#include <common>', '#include <common>\nattribute vec3 tintK;\nattribute vec4 glow;\nattribute vec4 iPaint;\nattribute float rider;\nuniform float uNight;\nvarying vec3 vGlow;')
+      // (iPaint.w: 0 = driving, 1 = braking, 2 = parked: no lamps, and the kapcai's rider is folded away)
+      .replace('#include <color_vertex>', '#include <color_vertex>\nvColor.rgb = color + tintK * iPaint.rgb;\nvGlow = iPaint.w > 1.5 ? vec3(0.0) : glow.rgb * max(smoothstep(0.25, 0.6, uNight), glow.w > 1.5 ? 0.8 : glow.w * iPaint.w);')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nif (rider > 0.5 && iPaint.w > 1.5) transformed = vec3(0.0, 0.4, 0.0);');
     s.fragmentShader = s.fragmentShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vGlow;')
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vGlow;');
   };
   m.customProgramCacheKey = () => 'life-vehicle';
+  return m;
+}
+
+/** Shadow pass of the kapcai: the same folding of the rider, so a parked bike casts no rider's shadow. */
+function kapcaiDepthMaterial(): THREE.MeshDepthMaterial {
+  const m = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+  m.onBeforeCompile = (s) => {
+    s.vertexShader = s.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec4 iPaint;\nattribute float rider;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nif (rider > 0.5 && iPaint.w > 1.5) transformed = vec3(0.0, 0.4, 0.0);');
+  };
+  m.customProgramCacheKey = () => 'life-kapcai-depth';
   return m;
 }
 
@@ -271,12 +271,14 @@ else { float f = fract(iAnim.x) * ${WALK_FRAMES}.0; int f0 = int(f) % ${WALK_FRA
 
 // ---- the scene objects ---------------------------------------------------------------------------------------------
 
-export interface RenderBudget { vehicles: number; walkers: number; kinds: readonly number[]; shadows: boolean }
+export interface RenderBudget { vehicles: number; walkers: number; kinds: readonly number[]; shadows: boolean; /** N1-M7: parked vehicles drawn besides the traffic. */ parked?: number }
 
 export class LifeRender {
   readonly group = new THREE.Group();
-  private cars: (THREE.InstancedMesh | null)[] = [null, null, null, null];
-  private paint: (THREE.InstancedBufferAttribute | null)[] = [null, null, null, null];
+  private cars: (THREE.InstancedMesh | null)[] = new Array(KINDS).fill(null);
+  private paint: (THREE.InstancedBufferAttribute | null)[] = new Array(KINDS).fill(null);
+  private depthMat: THREE.Material | null = null;
+  private soot = new THREE.Color(SOOT);
   private people: THREE.InstancedMesh | null = null;
   private vat: THREE.Texture | null = null;
   private pAttr: { top: THREE.InstancedBufferAttribute; bottom: THREE.InstancedBufferAttribute; skin: THREE.InstancedBufferAttribute; anim: THREE.InstancedBufferAttribute } | null = null;
@@ -291,8 +293,9 @@ export class LifeRender {
   private s = new THREE.Vector3();
   private c = new THREE.Color();
   private dressed = 0;
-  private sig = [0, 0, 0, 0];
-  private sent = [0, 0, 0, 0];
+  private sig = new Array<number>(KINDS).fill(0);
+  private sent = new Array<number>(KINDS).fill(0);
+  private counts = new Array<number>(KINDS).fill(0);
   private maxVehicles: number;
   private maxWalkers: number;
   /** Triangles of one walker (after the bake). */
@@ -301,18 +304,20 @@ export class LifeRender {
   /** `budget.kinds`: which vehicle kinds get a mesh (weight > 0). `pools` is the world's lamp-pool material: the beams follow it. */
   constructor(budget: RenderBudget, private pools: THREE.MeshBasicMaterial) {
     this.group.name = 'life';
-    this.maxVehicles = budget.vehicles + 4; this.maxWalkers = budget.walkers + 4;
-    budget.kinds.forEach((w, kind) => {
-      if (w <= 0) return;
+    const parked = budget.parked ?? 0;
+    this.maxVehicles = budget.vehicles + 4 + parked; this.maxWalkers = budget.walkers + 4;
+    for (let kind = 0; kind < KINDS; kind++) {
+      if (!((budget.kinds[kind] ?? 0) > 0) && !(parked > 0 && PARKED_KINDS.includes(kind))) continue;
       const g = vehicleGeometry(kind), a = new THREE.InstancedBufferAttribute(new Float32Array(this.maxVehicles * 4), 4);
       a.setUsage(THREE.DynamicDrawUsage);
       g.setAttribute('iPaint', a);
       const mesh = new THREE.InstancedMesh(g, this.carMat, this.maxVehicles);
       mesh.count = 0; mesh.frustumCulled = false; mesh.receiveShadow = true; mesh.castShadow = budget.shadows; mesh.userData.noAO = true; mesh.name = `life-vehicles-${kind}`;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      if (kind === KIND.kapcai && budget.shadows) mesh.customDepthMaterial = this.depthMat = kapcaiDepthMaterial();
       this.cars[kind] = mesh; this.paint[kind] = a;
       this.group.add(mesh);
-    });
+    }
     const n = this.maxVehicles + this.maxWalkers;
     this.blobs = new THREE.InstancedMesh(
       new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
@@ -351,23 +356,23 @@ export class LifeRender {
    */
   warm(x: number, y: number, z: number): void {
     this.m.compose(this.p.set(x, y - 40, z), this.q.identity(), this.s.set(1, 1, 1));
-    for (const mesh of this.cars) if (mesh) { mesh.setMatrixAt(0, this.m); mesh.count = 1; mesh.instanceMatrix.needsUpdate = true; }
+    for (const mesh of this.cars) if (mesh) { mesh.setMatrixAt(0, this.m); mesh.count = 1; mesh.visible = true; mesh.instanceMatrix.needsUpdate = true; }
   }
 
   /**
    * Copy the simulation onto the instances. `age`: seconds since the simulation last ran (the Low preset runs it every
-   * second frame): everything is drawn that much further along its way.
+   * second frame): everything is drawn that much further along its way. `parked` (N1-M7): vehicles standing parked.
    */
-  sync(vehicles: readonly Vehicle[], walkers: readonly Walker[], age = 0): void {
+  sync(vehicles: readonly Vehicle[], walkers: readonly Walker[], age = 0, parked: readonly ParkedDraw[] = []): void {
     const { m, q, e, p, s, c } = this;
-    const counts = [0, 0, 0, 0];
+    const counts = this.counts.fill(0);
     let blobs = 0, beams = 0;
     const night = this.pools.visible;
     this.beams.visible = night;
     if (night) this.beamMat.color.copy(this.pools.color);
     // (paint and brake lamps are sent to the GPU only when they changed)
     const sig = this.sig;
-    sig[0] = sig[1] = sig[2] = sig[3] = 7;
+    sig.fill(7);
     let drawn = 0;
     for (const v of vehicles) {
       const mesh = this.cars[v.kind];
@@ -379,7 +384,7 @@ export class LifeRender {
       m.compose(p.set(vx, v.y, vz), q, s.set(1, 1, 1));
       const i = counts[v.kind]++;
       mesh.setMatrixAt(i, m);
-      c.setHex(PAINTS[v.tint % PAINTS.length]);
+      c.setHex(v.kind === KIND.taxi ? TAXI_PAINT : PAINTS[v.tint % PAINTS.length]);
       this.paint[v.kind]!.setXYZW(i, c.r, c.g, c.b, v.braking ? 1 : 0);
       sig[v.kind] = (Math.imul(sig[v.kind], 31) + v.id * 2 + (v.braking ? 1 : 0)) | 0;
       const size = SIZE[v.kind];
@@ -387,9 +392,27 @@ export class LifeRender {
       this.blobs.setMatrixAt(blobs++, m);
       if (night && beams < this.maxVehicles) { m.compose(p.set(vx, v.y, vz), q, s.set(v.kind === KIND.kapcai ? 0.6 : 1, 1, 1)); this.beams.setMatrixAt(beams++, m); }
     }
+    // N1-M7: the parked vehicles, in the same meshes (no lamps, no rider on a kapcai, paint dulled by damage)
+    for (const v of parked) {
+      const mesh = this.cars[v.kind];
+      if (!mesh || drawn >= this.maxVehicles) continue;
+      drawn++;
+      e.set(-v.pitch, v.heading, 0);
+      q.setFromEuler(e);
+      m.compose(p.set(v.x, v.y, v.z), q, s.set(1, 1, 1));
+      const i = counts[v.kind]++;
+      mesh.setMatrixAt(i, m);
+      c.setHex(v.paint).lerp(this.soot, Math.min(1, v.damage) * 0.72);
+      this.paint[v.kind]!.setXYZW(i, c.r, c.g, c.b, 2);
+      sig[v.kind] = (Math.imul(sig[v.kind], 31) + v.id * 64 + Math.round(v.damage * 20) + 3) | 0;
+      const size = SIZE[v.kind];
+      m.compose(p.set(v.x, v.y + 0.03, v.z), q, s.set(size.hw * 2 + 1.1, 1, size.half * 2 + 1.0));
+      this.blobs.setMatrixAt(blobs++, m);
+    }
     this.cars.forEach((mesh, k) => {
       if (!mesh) return;
       mesh.count = counts[k];
+      mesh.visible = counts[k] > 0;
       mesh.instanceMatrix.needsUpdate = true;
       if (sig[k] !== this.sent[k]) { this.sent[k] = sig[k]; this.paint[k]!.needsUpdate = true; }
     });
@@ -440,6 +463,7 @@ export class LifeRender {
       mesh.dispose();
     }
     this.vat?.dispose();
+    this.depthMat?.dispose();
     this.group.clear();
   }
 }

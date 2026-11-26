@@ -367,13 +367,13 @@ async function boot(): Promise<void> {
   // V8: one drivable car on the real road network (see src/vehicle). While it is driven the character rides
   // along (hidden), so the map, the location read-out and the streaming keep following `player.position`.
   const driving = new Driving(world, camera, { toast: (t) => menu.toast(t, 2) });
-  world.scene.add(driving.model.root);
+  world.scene.add(driving.mount);
   // N1-M6: while it is driven at night the car lights the road ahead (the lamp-pool material: additive, not drawn by day).
   const headlights = new THREE.Mesh(headlightGeometry(), world.materials.pools);
   headlights.renderOrder = 7;
   headlights.visible = false;
   headlights.userData.noAO = true;
-  driving.model.root.add(headlights);
+  driving.attach(headlights);
   driving.prepare = (o) => { prepareObject(o); };
   /** Teleports and resets act on the walking character: the car is left where it stands. */
   const leaveCar = () => {

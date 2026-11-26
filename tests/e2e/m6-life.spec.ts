@@ -7,10 +7,10 @@ import { watch, start, frames, waitChunks, teleport, seedCharacter } from './hel
 const k3d = <T>(page: Page, fn: (k: any) => T): Promise<T> => page.evaluate(`(${fn.toString()})(window.__k3d)`) as Promise<T>;
 const lifeReady = (page: Page) => page.waitForFunction(() => {
   const l = (window as any).__k3d.life;
-  return l && l.active && l.render.walkerTriangles > 0 && l.render.group.children.every((o: any) => o.name === 'life-headlights' || o.visible);
+  return l && l.active && l.render.walkerTriangles > 0 && l.render.group.children.every((o: any) => o.name === 'life-headlights' || o.visible || o.count === 0);
 }, null, { timeout: 30_000 });
 interface Seen { id: number; kind: number; x: number; z: number; v: number; dy: number; inside: boolean; stand: boolean; arcade: boolean }
-interface Snapshot { programs: number; vehicles: Seen[]; walkers: Seen[]; drawn: Record<string, number>; player: [number, number] }
+interface Snapshot { programs: number; vehicles: Seen[]; walkers: Seen[]; drawn: Record<string, number>; player: [number, number]; parked: number }
 const snapshot = (page: Page): Promise<Snapshot> => k3d(page, (k) => {
   const l = k.life, c = k.world.collision;
   return {
@@ -19,6 +19,7 @@ const snapshot = (page: Page): Promise<Snapshot> => k3d(page, (k) => {
     walkers: l.walkers.list.map((w: any) => ({ id: w.id, x: w.x, z: w.z, stand: w.stand, arcade: w.arcade, dy: w.y - c.groundAt(w.x, w.z, w.y + 0.4).h, inside: c.insideBuilding(w.x, w.z, w.y + 0.5, false) })),
     drawn: Object.fromEntries(l.render.group.children.map((o: any) => [o.name, o.visible ? o.count : 0])),
     player: [k.player.position.x, k.player.position.z],
+    parked: l.parked.length, // N1-M7: parked vehicles are drawn in the same meshes and get a shadow patch each
   };
 });
 
@@ -37,7 +38,7 @@ test.describe('N1-M6 traffic and walkers', () => {
     for (const w of a.walkers) { expect(Math.abs(w.dy)).toBeLessThan(0.35); expect(w.inside).toBe(false); expect(Math.hypot(w.x - a.player[0], w.z - a.player[1])).toBeLessThan(100); }
     expect(new Set(a.vehicles.map((v) => v.kind)).size).toBeGreaterThanOrEqual(3);
     expect(a.drawn['life-walkers']).toBe(a.walkers.length);
-    expect(a.drawn['life-shadows']).toBe(a.walkers.length + a.vehicles.length);
+    expect(a.drawn['life-shadows']).toBe(a.walkers.length + a.vehicles.length + a.parked);
     expect(a.drawn['life-headlights']).toBe(0); // not drawn by day
 
     // they move
@@ -116,13 +117,14 @@ test.describe('N1-M6 traffic and walkers', () => {
     await lifeReady(page);
     await frames(page, 300);
     const low = await snapshot(page);
-    expect(low.drawn['life-shadows']).toBe(low.walkers.length + low.vehicles.length);
+    expect(low.drawn['life-shadows']).toBe(low.walkers.length + low.vehicles.length + low.parked);
     expect(low.vehicles.length).toBeGreaterThanOrEqual(4);
     expect(low.vehicles.length).toBeLessThanOrEqual(10);
     expect(low.walkers.length).toBeLessThanOrEqual(11);
     expect(low.walkers.length).toBeGreaterThanOrEqual(5);
     for (const v of low.vehicles) expect([0, 3]).toContain(v.kind);
-    expect(Object.keys(low.drawn).sort()).toEqual(['life-headlights', 'life-shadows', 'life-vehicles-0', 'life-vehicles-3', 'life-walkers']);
+    // (N1-M7: the taxi and the pickup have a mesh on Low too, for the parked ones; the traffic itself is still two kinds)
+    expect(Object.keys(low.drawn).sort()).toEqual(['life-headlights', 'life-shadows', 'life-vehicles-0', 'life-vehicles-3', 'life-vehicles-4', 'life-vehicles-5', 'life-walkers']);
     expect(issues.errors).toEqual([]);
 
     await seedCharacter(page);

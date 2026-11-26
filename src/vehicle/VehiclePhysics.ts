@@ -7,7 +7,17 @@
 import type { RoadHit } from './RoadQuery.ts';
 import { onRoad } from './RoadQuery.ts';
 
-export const CAR = {
+/** Size and handling of one kind of vehicle (metres, m/s, m/s^2). */
+export interface VehicleSpec {
+  halfLen: number; halfWid: number; wheelBase: number; track: number; wheelRadius: number; height: number;
+  maxSpeed: number; maxReverse: number; engine: number; brake: number; handbrake: number;
+  rolling: number; drag: number; engineBrake: number; offRoad: number; offRoadV: number;
+  maxSteer: number; steerRate: number; steerReturn: number; steerEaseFast: number;
+  lateralGrip: number; slipGrip: number; slipHandbrake: number;
+  gravity: number; maxDeckDrop: number; roadSurface: number; maxSubstep: number;
+}
+
+export const CAR: VehicleSpec = {
   /** Body footprint (the compact hatchback of src/v5/vehicles.ts), metres. */
   halfLen: 1.95,
   halfWid: 0.865,
@@ -160,9 +170,21 @@ export class VehicleBody {
   set lastRoad(p: Pose | null) { this.recent.length = 0; if (p) this.recent.push(p); }
   private sinceRoad = 0;
   private env: VehicleEnv;
+  /** N1-M7: the body's size and handling. Changed with `setSpec` when the player takes another vehicle. */
+  spec: VehicleSpec;
+  /** N1-M7: share of the engine's pull that is left (a badly damaged vehicle limps). */
+  power = 1;
 
-  constructor(env: VehicleEnv) {
+  constructor(env: VehicleEnv, spec: VehicleSpec = CAR) {
     this.env = env;
+    this.spec = spec;
+  }
+
+  /** Become another kind of vehicle (N1-M7). The pose is kept; the remembered reset poses are not (other clearances). */
+  setSpec(spec: VehicleSpec): void {
+    if (spec === this.spec) return;
+    this.spec = spec;
+    this.recent.length = 0;
   }
 
   get speed(): number { return Math.hypot(this.vf, this.vl); }
@@ -185,9 +207,28 @@ export class VehicleBody {
     this.y = g.y; this.pitch = g.pitch; this.roll = g.roll; this.onDeck = g.deck;
   }
 
+  /**
+   * N1-M7: pushed out of another vehicle by (px, pz) (src/play/crash.ts). The body moves if the place is free (not into
+   * a wall, the river or unloaded ground) and loses the speed it had toward the other vehicle. `keep` is the share of
+   * that speed that comes back as a bounce.
+   */
+  shove(px: number, pz: number, keep = 0.12): void {
+    const l = Math.hypot(px, pz);
+    if (l < 1e-7) return;
+    const s = Math.sin(this.heading), c = Math.cos(this.heading), nx = this.x + px, nz = this.z + pz;
+    if (!this.env.boxContact(nx, nz, s, c, this.spec.halfLen, this.spec.halfWid, this.y) && this.occupancy(nx, nz, s, c, this.y) === '') { this.x = nx; this.z = nz; }
+    const ux = px / l, uz = pz / l;
+    let wx = this.vx, wz = this.vz;
+    const vn = wx * ux + wz * uz;
+    if (vn >= 0) return;
+    wx -= (1 + keep) * vn * ux; wz -= (1 + keep) * vn * uz;
+    this.vf = wx * s + wz * c;
+    this.vl = wx * c - wz * s;
+  }
+
   /** Outline of the body footprint, world metres: [x0, z0, ...] (4 corners), grown by `pad`. */
   footprint(pad = 0): number[] {
-    const s = Math.sin(this.heading), c = Math.cos(this.heading), a = CAR.halfLen + pad, b = CAR.halfWid + pad;
+    const s = Math.sin(this.heading), c = Math.cos(this.heading), a = this.spec.halfLen + pad, b = this.spec.halfWid + pad;
     const out: number[] = [];
     for (const [u, v] of [[a, b], [a, -b], [-a, -b], [-a, b]]) out.push(this.x + s * u + c * v, this.z + c * u - s * v);
     return out;
@@ -196,20 +237,20 @@ export class VehicleBody {
   /** True when the body box at a pose is clear of walls, water and unloaded ground. */
   canOccupy(x: number, z: number, heading: number, y = this.y): boolean {
     const s = Math.sin(heading), c = Math.cos(heading);
-    if (this.env.boxContact(x, z, s, c, CAR.halfLen, CAR.halfWid, y)) return false;
+    if (this.env.boxContact(x, z, s, c, this.spec.halfLen, this.spec.halfWid, y)) return false;
     return this.occupancy(x, z, s, c, y) === '';
   }
 
   /** Why the body cannot stand at this pose ('' = it can). */
   private occupancy(x: number, z: number, s: number, c: number, y: number): CarBlock {
-    const a = CAR.halfLen, b = CAR.halfWid, env = this.env;
+    const a = this.spec.halfLen, b = this.spec.halfWid, env = this.env;
     for (const [u, v] of [[0, 0], [a, b], [a, -b], [-a, -b], [-a, b]]) {
       const px = x + s * u + c * v, pz = z + c * u - s * v;
       if (!env.loaded(px, pz)) return env.hasData(px, pz) ? 'loading' : 'edge';
       const g = env.ground(px, pz, y);
       if (!g.deck && env.water(px, pz)) return 'water';
       // Railing rule: a car on a bridge deck does not leave it sideways.
-      if (this.onDeck && g.h < y - CAR.maxDeckDrop) return 'deck';
+      if (this.onDeck && g.h < y - this.spec.maxDeckDrop) return 'deck';
       // Decks are for cars only where a mapped carriageway crosses them: no footbridges, jetties or piers.
       // Checked where the body first reaches a deck; once the wheels are on a road bridge it is not asked again.
       if (g.deck && !this.onDeck) {
@@ -222,14 +263,14 @@ export class VehicleBody {
 
   /** Height, pitch and roll from the ground under the four wheels. */
   private settle(blend: number): { y: number; pitch: number; roll: number; deck: boolean } {
-    const s = Math.sin(this.heading), c = Math.cos(this.heading), a = CAR.wheelBase / 2, b = CAR.track / 2, env = this.env;
+    const s = Math.sin(this.heading), c = Math.cos(this.heading), a = this.spec.wheelBase / 2, b = this.spec.track / 2, env = this.env;
     const at = (u: number, v: number) => env.ground(this.x + s * u + c * v, this.z + c * u - s * v, this.y);
     const fl = at(a, b), fr = at(a, -b), rl = at(-a, b), rr = at(-a, -b);
     const deck = fl.deck || fr.deck || rl.deck || rr.deck;
-    const off = deck ? 0 : this.onRoad ? CAR.roadSurface : 0.02;
+    const off = deck ? 0 : this.onRoad ? this.spec.roadSurface : 0.02;
     const y = (fl.h + fr.h + rl.h + rr.h) / 4 + off;
-    const pitch = Math.atan2((fl.h + fr.h - rl.h - rr.h) / 2, CAR.wheelBase);
-    const roll = Math.atan2((fl.h + rl.h - fr.h - rr.h) / 2, CAR.track);
+    const pitch = Math.atan2((fl.h + fr.h - rl.h - rr.h) / 2, this.spec.wheelBase);
+    const roll = Math.atan2((fl.h + rl.h - fr.h - rr.h) / 2, this.spec.track);
     return { y: this.y + (y - this.y) * blend, pitch: this.pitch + (pitch - this.pitch) * blend, roll: this.roll + (roll - this.roll) * blend, deck };
   }
 
@@ -242,7 +283,7 @@ export class VehicleBody {
     this.onRoad = onRoad(this.road);
     let remaining = Math.min(dt, 0.25);
     while (remaining > 1e-6) {
-      const h = Math.min(remaining, CAR.maxSubstep);
+      const h = Math.min(remaining, this.spec.maxSubstep);
       this.step(h, controls);
       remaining -= h;
     }
@@ -265,7 +306,7 @@ export class VehicleBody {
   }
 
   private step(dt: number, c: Controls): void {
-    const C = CAR;
+    const C = this.spec;
     const vf0 = this.vf;
 
     // --- steering: the lock available falls with speed so that lateral acceleration stays within the tyres' grip
@@ -280,7 +321,7 @@ export class VehicleBody {
     let drive = 0, braking = 0;
     if (th > 0) {
       if (this.vf < -0.3) braking = C.brake * th;
-      else drive = C.engine * th * Math.max(0, 1 - (this.vf / C.maxSpeed) ** 2);
+      else drive = C.engine * this.power * th * Math.max(0, 1 - (this.vf / (C.maxSpeed * (0.45 + 0.55 * this.power))) ** 2);
     } else if (th < 0) {
       if (this.vf > 0.3) braking = C.brake * -th;
       else drive = C.engine * 0.7 * th * Math.max(0, 1 + this.vf / C.maxReverse);
@@ -369,26 +410,26 @@ export class VehicleBody {
    */
   check(x: number, z: number, heading: number): '' | 'loading' | 'blocked' {
     const env = this.env, s = Math.sin(heading), c = Math.cos(heading);
-    const a = CAR.halfLen + RESET.endPad, b = CAR.halfWid + RESET.sidePad;
+    const a = this.spec.halfLen + RESET.endPad, b = this.spec.halfWid + RESET.sidePad;
     const at = (u: number, v: number): [number, number] => [x + s * u + c * v, z + c * u - s * v];
     const probes = [[0, 0], [a, b], [a, -b], [-a, -b], [-a, b], [a, 0], [-a, 0], [0, b], [0, -b]].map(([u, v]) => at(u, v));
     for (const [px, pz] of probes) if (!env.loaded(px, pz) || (env.ready && !env.ready(px, pz))) return 'loading';
     // On a drivable carriageway.
     const r = env.road(x, z);
     if (!r || r.dist > r.width / 2) return 'blocked';
-    for (const [u, v] of [[CAR.halfLen, CAR.halfWid], [CAR.halfLen, -CAR.halfWid], [-CAR.halfLen, -CAR.halfWid], [-CAR.halfLen, CAR.halfWid]]) {
+    for (const [u, v] of [[this.spec.halfLen, this.spec.halfWid], [this.spec.halfLen, -this.spec.halfWid], [-this.spec.halfLen, -this.spec.halfWid], [-this.spec.halfLen, this.spec.halfWid]]) {
       const [px, pz] = at(u, v);
       if (!onRoad(env.road(px, pz))) return 'blocked';
     }
     // Ground: the surface the car would settle on (a road bridge deck where the carriageway is a bridge), gentle slope.
     const g0 = env.ground(x, z, 1e6);
     const y = g0.h;
-    const w = CAR.wheelBase / 2, t = CAR.track / 2;
+    const w = this.spec.wheelBase / 2, t = this.spec.track / 2;
     const wh = [at(w, t), at(w, -t), at(-w, t), at(-w, -t)].map(([px, pz]) => env.ground(px, pz, y + 0.5));
     if ((g0.deck || wh.some((g) => g.deck)) && !r.bridge) return 'blocked';
     const [fl, fr, rl, rr] = wh.map((g) => g.h);
-    if (Math.abs(fl + fr - rl - rr) / 2 / CAR.wheelBase > RESET.maxGrade) return 'blocked';
-    if (Math.abs(fl + rl - fr - rr) / 2 / CAR.track > RESET.maxCross) return 'blocked';
+    if (Math.abs(fl + fr - rl - rr) / 2 / this.spec.wheelBase > RESET.maxGrade) return 'blocked';
+    if (Math.abs(fl + rl - fr - rr) / 2 / this.spec.track > RESET.maxCross) return 'blocked';
     if (Math.abs(fl - fr - rl + rr) > RESET.maxStep || Math.abs((fl + fr + rl + rr) / 4 - y) > RESET.maxStep) return 'blocked';
     // Clear of water, walls and obstacles with the margin; and not wholly inside an outline (no edge to touch then).
     for (const [px, pz] of probes) {
@@ -456,3 +497,18 @@ export class VehicleBody {
     return { ok: false, reason: loading || here ? 'loading' : 'none', tried };
   }
 }
+
+/** N1-M7: the vehicles a player can drive. `hatch` is the car that has waited in Jalan China since V8. */
+export type DriveKind = 'hatch' | 'kapcai' | 'taxi' | 'pickup';
+export const DRIVE_KINDS: readonly DriveKind[] = ['hatch', 'kapcai', 'taxi', 'pickup'];
+
+/**
+ * Handling by kind. All invented, to feel different: the kapcai (underbone motorbike) is narrow, quick off the mark and
+ * slower flat out; the taxi is the four-door saloon; the pickup is long, heavy and at home off the carriageway.
+ */
+export const VEHICLE_SPECS: Record<DriveKind, VehicleSpec> = {
+  hatch: CAR,
+  kapcai: { ...CAR, halfLen: 0.95, halfWid: 0.36, wheelBase: 1.24, track: 0.5, wheelRadius: 0.27, height: 1.7, maxSpeed: 25, maxReverse: 2.5, engine: 6.4, brake: 9, handbrake: 6, maxSteer: 0.7, steerRate: 3.0, lateralGrip: 9.5, offRoad: 1.2, offRoadV: 0.28 },
+  taxi: { ...CAR, halfLen: 2.2, halfWid: 0.86, wheelBase: 2.57, wheelRadius: 0.3, height: 1.45, engine: 4.9 },
+  pickup: { ...CAR, halfLen: 2.65, halfWid: 0.93, wheelBase: 3.1, track: 1.56, wheelRadius: 0.37, height: 1.8, maxSpeed: 28, engine: 4.4, brake: 9.5, maxSteer: 0.56, steerRate: 2.1, lateralGrip: 7.8, offRoad: 0.7, offRoadV: 0.16 },
+};

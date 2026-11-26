@@ -269,6 +269,21 @@ export class Walkers {
     for (let i = 0; i < tries && list.length < o.want && this.built < limit; i++) this.spawn(fx, fz, o, fresh ? Math.min(o.rMin, 6) : o.rMin);
   }
 
+  /**
+   * N1-M7: a horn sounds at (x, z) from something facing (hx, hz): walkers within 10 m ahead of it stop for a moment.
+   * Returns how many did.
+   */
+  startle(x: number, z: number, hx: number, hz: number): number {
+    let n = 0;
+    for (const w of this.list) {
+      const dx = w.x - x, dz = w.z - z, d = Math.hypot(dx, dz);
+      if (w.stand || d > 10 || d < 0.2 || (dx * hx + dz * hz) / d < 0.3) continue;
+      w.wait = Math.max(w.wait, 1.4);
+      n++;
+    }
+    return n;
+  }
+
   /** A new budget: no more than `max` walkers. */
   trim(max: number): void { if (this.list.length > max) this.list.length = max; }
 

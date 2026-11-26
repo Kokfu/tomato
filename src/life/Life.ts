@@ -15,11 +15,14 @@ import type { FillOptions, Obstacle } from './traffic.ts';
 import { Walkers } from './walkers.ts';
 import type { WalkOptions } from './walkers.ts';
 import { LifeRender, PAINTS, bakeWalker } from './LifeRender.ts';
+import type { ParkedDraw } from './LifeRender.ts';
 
 interface Budget {
   vehicles: number; walkers: number;
-  /** Share of hatchback, saloon, SUV, kapcai. A kind with 0 is not built (one draw call less). */
+  /** Share of hatchback, saloon, SUV, kapcai, taxi, pickup. A kind with 0 is not built (one draw call less). */
   kinds: readonly number[];
+  /** N1-M7: parked vehicles drawn (the nearest ones), in the same meshes. */
+  parked: number;
   /** Vehicles appear between these distances and are removed beyond `far`. */
   vMin: number; vMax: number; vFar: number;
   wMin: number; wMax: number; wFar: number;
@@ -29,9 +32,9 @@ interface Budget {
 
 /** What each preset can afford. Low is the phone: two vehicle kinds, a coarse walker, a short ring. */
 export const LIFE_BUDGET: Record<QualityName, Budget> = {
-  low: { vehicles: 8, walkers: 9, kinds: [3, 0, 0, 2], vMin: 45, vMax: 130, vFar: 175, wMin: 12, wMax: 55, wFar: 72, cell: 0.05 },
-  medium: { vehicles: 18, walkers: 22, kinds: [3, 3, 2, 4], vMin: 55, vMax: 190, vFar: 245, wMin: 14, wMax: 75, wFar: 95, cell: 0.03 },
-  high: { vehicles: 26, walkers: 34, kinds: [3, 3, 2, 4], vMin: 55, vMax: 230, vFar: 290, wMin: 14, wMax: 90, wFar: 112, cell: 0 },
+  low: { vehicles: 8, walkers: 9, kinds: [3, 0, 0, 2, 0, 0], parked: 6, vMin: 45, vMax: 130, vFar: 175, wMin: 12, wMax: 55, wFar: 72, cell: 0.05 },
+  medium: { vehicles: 18, walkers: 22, kinds: [6, 6, 4, 8, 1, 3], parked: 12, vMin: 55, vMax: 190, vFar: 245, wMin: 14, wMax: 75, wFar: 95, cell: 0.03 },
+  high: { vehicles: 26, walkers: 34, kinds: [6, 6, 4, 8, 1, 3], parked: 16, vMin: 55, vMax: 230, vFar: 290, wMin: 14, wMax: 90, wFar: 112, cell: 0 },
 };
 
 export interface LifeHost {
@@ -77,6 +80,11 @@ export class Life {
   costMax = 0;
   /** Frames left of drawing the vehicle meshes once, out of sight (LifeRender.warm). */
   private warm = 0;
+  /** N1-M7 (set by src/play/Play.ts each frame): the parked vehicles to draw, and what else stands in the traffic's way. */
+  parked: readonly ParkedDraw[] = [];
+  extraObstacles: readonly Obstacle[] = [];
+  /** N1-M7: no parked vehicles are drawn (`?m7=0`). */
+  noParked = false;
 
   constructor(host: LifeHost, quality: Quality) { this.host = host; this.quality = quality.name; }
 
@@ -120,7 +128,7 @@ export class Life {
           return Math.abs(rx - x) + Math.abs(rz - z) < 0.02;
         },
       }, rng(20261127));
-      const b = this.budget, render = new LifeRender({ vehicles: b.vehicles, walkers: b.walkers, kinds: b.kinds, shadows: this.quality !== 'low' }, world.materials.pools);
+      const b = this.budget, render = new LifeRender({ vehicles: b.vehicles, walkers: b.walkers, kinds: b.kinds, shadows: this.quality !== 'low', parked: this.noParked ? 0 : b.parked }, world.materials.pools);
       this.traffic.pitch = this.quality !== 'low';
       // (whatever the new preset does not draw must not stay in the simulation, unseen)
       this.traffic.trim(b.kinds, b.vehicles);
@@ -206,6 +214,7 @@ export class Life {
         put(car.x - hx, car.z - hz, 1.0, vx, vz);
       }
       for (const p of w.list) put(p.x, p.z, 0.3, Math.sin(p.heading) * p.v, Math.cos(p.heading) * p.v);
+      for (const o of this.extraObstacles) put(o.x, o.z, o.r, 0, 0);
       obs.length = n;
       t.update(dt, fx, fz, fill, obs, this.fresh > 0 && t.vehicles.length < fill.want * 0.7);
       w.update(dt, fx, fz, walk, player.x, player.z, this.fresh > 0 && w.list.length < walk.want * 0.7);
@@ -223,7 +232,7 @@ export class Life {
       for (let i = k; i < this.walled; i++) c.setDynamicWall(`life${i}`, null);
       this.walled = k;
     }
-    r.sync(t.vehicles, w.list, this.age);
+    r.sync(t.vehicles, w.list, this.age, this.parked);
     const ms = performance.now() - t0;
     this.cost += (ms - this.cost) * 0.02; this.costMax = Math.max(this.costMax * 0.999, ms);
   }

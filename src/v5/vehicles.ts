@@ -7,7 +7,7 @@
 import { Kit, hex, shade, rnd } from './kit.ts';
 import type { Col, V3 } from './kit.ts';
 
-export type VehicleKind = 'hatch' | 'saloon' | 'suv';
+export type VehicleKind = 'hatch' | 'saloon' | 'suv' | 'pickup';
 
 interface Spec {
   /** Body stations from tail to nose: [x, half width, underside y, deck (bonnet / belt / boot) y]. */
@@ -37,6 +37,13 @@ const SPECS: Record<VehicleKind, Spec> = {
     cab: { xr0: -2.06, xr1: -1.76, xf1: 0.25, xf0: 0.87, roof: 1.68, xb: -0.25, quarter: true },
     axles: [-1.3, 1.32], rw: 0.35,
   },
+  // N1-M7: a double-cab pickup (generic). The load bed is the long rear deck behind the cab (see `vehicle`).
+  pickup: {
+    body: [[-2.65, 0.72, 0.5, 1.06], [-2.58, 0.86, 0.44, 1.1], [-2.4, 0.915, 0.4, 1.12], [-1.6, 0.925, 0.36, 1.12], [-0.3, 0.93, 0.35, 1.12], [0.9, 0.925, 0.35, 1.1],
+      [1.6, 0.92, 0.36, 1.06], [2.15, 0.9, 0.38, 1.0], [2.45, 0.86, 0.41, 0.94], [2.6, 0.79, 0.43, 0.89], [2.65, 0.66, 0.44, 0.86]],
+    cab: { xr0: -0.62, xr1: -0.5, xf1: 0.72, xf0: 1.36, roof: 1.8, xb: 0.1, quarter: false },
+    axles: [-1.55, 1.55], rw: 0.37,
+  },
 };
 
 /** Footprint half length and half width (collision outline, spacing checks). */
@@ -49,6 +56,8 @@ export interface PlateSource { rect(text: string, fg: string, bg: string, aspect
 
 const BLACK = hex(0x151617), RUBBER = hex(0x17181a), GLASS = hex(0x10181c), ALLOY = hex(0xb4b7ba);
 const CROWN = 0.035;
+/** Colour of the taxi roof sign (fixed: it is not part of the body paint). */
+export const TAXI_SIGN = hex(0xf2c230);
 
 /** Convex polygon facing roughly `out` (winding fixed here so callers need not think about it). */
 function face(k: Kit, pts: V3[], out: V3, col: Col, uvs?: [number, number][]): void {
@@ -105,8 +114,9 @@ export function wheel(k: Kit, rw: number): void {
 /**
  * Build one parked car at the current kit transform. `plate` supplies number-plate text (optional).
  * `bare` leaves out the wheels and the baked contact shadow (the drivable car adds its own, moving ones).
+ * `taxi` (N1-M7) adds a roof sign: with a saloon in one plain paint that is the whole of the generic taxi.
  */
-export function vehicle(k: Kit, kind: VehicleKind, body: Col, plate?: PlateSource | null, plateText = '', bare = false): void {
+export function vehicle(k: Kit, kind: VehicleKind, body: Col, plate?: PlateSource | null, plateText = '', bare = false, taxi = false): void {
   const S = SPECS[kind], st = S.body, n = st.length, half = st[n - 1][0], cab = S.cab;
   const at = (x: number): { hw: number; bot: number; deck: number } => {
     let i = 1;
@@ -217,6 +227,23 @@ export function vehicle(k: Kit, kind: VehicleKind, body: Col, plate?: PlateSourc
   const xm = (cab.xr1 + cab.xf1) / 2;
   k.grid([cab.xr1, xm, cab.xf1].map((x, i) => [-wt, -wt * 0.5, 0, wt * 0.5, wt].map((z, j) => [x, roof + (i === 1 ? 0.012 : 0) + CROWN * (1 - (Math.abs(j - 2) / 2) ** 2), z] as V3)), body);
   if (kind === 'suv') { k.use('wire'); for (const s of [1, -1]) k.box(cab.xr1 + 0.15, cab.xf1 - 0.15, roof + 0.015, roof + 0.05, s * (wt - 0.08) - 0.02, s * (wt - 0.08) + 0.02, BLACK); }
+  if (kind === 'pickup') {
+    // the open load bed, drawn as a dark floor let into the rear deck, with a painted rail round it and a roll bar
+    const x0 = -half + 0.2, x1 = cab.xr0 - 0.1, bw = at(-1.6).hw - 0.13, y = at(-1.6).deck + CROWN + 0.004;
+    k.use('wire');
+    face(k, [[x0, y, -bw], [x1, y, -bw], [x1, y, bw], [x0, y, bw]], [0, 1, 0], hex(0x101112));
+    k.use('carpaint');
+    for (const s of [1, -1]) k.box(x0 - 0.06, x1 + 0.04, y - 0.01, y + 0.07, s * bw - 0.035, s * bw + 0.035, shade(body, 0.9));
+    k.box(x0 - 0.06, x0 + 0.01, y - 0.01, y + 0.07, -bw, bw, shade(body, 0.9));
+    k.use('wire');
+    for (const s of [1, -1]) k.box(x1 - 0.14, x1 - 0.08, y, roof - 0.12, s * (bw - 0.03) - 0.03, s * (bw - 0.03) + 0.03, BLACK);
+    k.box(x1 - 0.14, x1 - 0.08, roof - 0.18, roof - 0.12, -bw, bw, BLACK);
+  }
+  if (taxi) {
+    // roof sign: a plain lit box (no lettering, no operator)
+    k.use('carpaint');
+    k.box(xm - 0.09, xm + 0.09, roof + CROWN, roof + CROWN + 0.13, -0.3, 0.3, TAXI_SIGN);
+  }
 
   // --- soft contact shadow on the road under the car -------------------------------------------------------
   if (bare) return;
@@ -229,4 +256,60 @@ export function vehicle(k: Kit, kind: VehicleKind, body: Col, plate?: PlateSourc
 export function plateFor(seed: number): string {
   const L = 'ABCDEFGHJKLMNPRSTUVWXY';
   return `QA${L[Math.floor(rnd(seed, 1) * L.length)]} ${1000 + Math.floor(rnd(seed, 2) * 8999)}`;
+}
+
+/**
+ * N1-M7 (moved here from the traffic renderer): the kapcai, an underbone motorbike, +x forward. Generic form; `paint`
+ * colours the fairing and the rider's helmet. `rider` adds the seated rider (ambient traffic and the ridden bike; a
+ * parked one stands empty); `bare` leaves out the two wheels (the ridden bike adds its own, turning ones).
+ * Returns the vertex count of each material before the rider was added (his vertices are the ones after it).
+ */
+export function kapcai(k: Kit, paint: Col, rider = true, bare = false): Map<string, number> {
+  const DARK = hex(0x1b1b1d), METAL = hex(0x6f7377), SHIRT = hex(0x3b4a5c), TROUSERS = hex(0x23262b), SKIN = hex(0xb07a52);
+  const lampRed = hex(0x9a100c), lampClear = hex(0xdfe3e6);
+  k.use('wire');
+  if (!bare) for (const x of KAPCAI_AXLES) for (const s of [-1, 1]) k.at({ x, y: KAPCAI_WHEEL, rx: (s * Math.PI) / 2 }, () => kapcaiWheel(k));
+  k.box(-0.2, 0.22, 0.18, 0.34, -0.1, 0.1, METAL);            // engine
+  k.box(0.52, 0.6, 0.27, 0.92, -0.035, 0.035, DARK);           // fork
+  k.box(0.38, 0.44, 1.0, 1.04, -0.3, 0.3, DARK);               // handlebar
+  k.box(-0.62, 0.0, 0.62, 0.74, -0.14, 0.14, DARK);            // seat
+  if (!rider) k.box(-0.08, -0.02, 0.05, 0.3, 0.1, 0.16, METAL); // side stand
+  k.use('carpaint');
+  k.box(-0.6, 0.36, 0.32, 0.6, -0.12, 0.12, paint);            // body under the seat
+  k.box(0.3, 0.42, 0.3, 0.96, -0.18, 0.18, paint);             // leg shield
+  k.box(0.42, 0.52, 0.86, 1.02, -0.11, 0.11, paint);           // headlamp cowl
+  k.box(-0.78, -0.6, 0.56, 0.7, -0.09, 0.09, paint);           // tail
+  k.use('glass');
+  k.box(0.52, 0.535, 0.89, 0.99, -0.075, 0.075, lampClear);    // headlamp
+  k.box(-0.795, -0.78, 0.6, 0.67, -0.06, 0.06, lampRed);       // tail lamp
+  const start = new Map<string, number>();
+  for (const [name, b] of k.bufs) start.set(name, b.count);
+  if (!rider) return start;
+  k.use('wire');
+  k.box(-0.42, -0.1, 0.74, 0.94, -0.17, 0.17, TROUSERS);
+  for (const s of [-1, 1]) {
+    const z = (a: number, b: number): [number, number] => (s > 0 ? [a, b] : [-b, -a]);
+    k.box(-0.16, 0.24, 0.72, 0.86, ...z(0.07, 0.21), TROUSERS);
+    k.box(0.12, 0.25, 0.34, 0.74, ...z(0.09, 0.21), TROUSERS);
+    k.box(0.1, 0.34, 0.28, 0.36, ...z(0.09, 0.21), DARK);
+    k.at({ x: -0.2, y: 1.34, z: s * 0.24, rz: -0.43 }, () => k.box(0, 0.62, -0.05, 0.05, -0.05, 0.05, SHIRT));
+    k.at({ x: 0.37, y: 1.07 }, () => k.box(-0.04, 0.05, -0.04, 0.04, ...z(0.2, 0.3), SKIN));
+  }
+  k.at({ x: -0.26, y: 0.92, rz: -0.14 }, () => k.box(-0.13, 0.13, 0, 0.5, -0.2, 0.2, SHIRT));
+  k.box(-0.3, -0.16, 1.4, 1.5, -0.06, 0.06, SKIN);
+  k.use('carpaint');
+  k.sphere(-0.2, 1.6, 0, 0.14, 8, 5, paint);
+  k.use('wire');
+  k.box(-0.085, -0.06, 1.55, 1.64, -0.1, 0.1, DARK);           // visor
+  return start;
+}
+
+/** Axle positions (x) and wheel radius of the kapcai. */
+export const KAPCAI_AXLES: readonly [number, number] = [-0.62, 0.62];
+export const KAPCAI_WHEEL = 0.27;
+
+/** Half of a kapcai wheel: local +y is the axle, y = 0 the middle of the tyre (two of them, back to back, close it). */
+export function kapcaiWheel(k: Kit): void {
+  k.cyl(0, 0, 0, 0.045, KAPCAI_WHEEL, KAPCAI_WHEEL, 10, hex(0x151517));
+  k.cyl(0, 0, 0.045, 0.05, 0.12, 0.12, 8, hex(0x6f7377));
 }

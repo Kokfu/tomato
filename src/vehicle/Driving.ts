@@ -5,14 +5,17 @@ import * as THREE from 'three';
 import type { WorldManager } from '../world/WorldManager.ts';
 import type { Input } from '../player/Input.ts';
 import type { PlayerController } from '../player/PlayerController.ts';
-import { CAR, CAR_START, NEUTRAL, VehicleBody } from './VehiclePhysics.ts';
-import type { VehicleEnv, ResetResult } from './VehiclePhysics.ts';
+import { CAR_START, NEUTRAL, VEHICLE_SPECS, VehicleBody } from './VehiclePhysics.ts';
+import type { DriveKind, Pose, VehicleEnv, ResetResult } from './VehiclePhysics.ts';
 import { nearestDrivable } from './RoadQuery.ts';
-import { CarModel } from './CarModel.ts';
+import { CarModel, START_PAINT } from './CarModel.ts';
+import { powerAt } from '../play/crash.ts';
 import { ChaseCamera } from './ChaseCamera.ts';
 
 /** Walking distance from the car body within which E gets in (metres). */
-const ENTER_RANGE = 2.6;
+export const ENTER_RANGE = 2.6;
+/** N1-M7: what each kind is called in the prompts. */
+export const KIND_NAME: Record<DriveKind, string> = { hatch: 'Car', kapcai: 'Kapcai', taxi: 'Taxi', pickup: 'Pickup' };
 /** The car must be slower than this to get out (m/s). */
 const EXIT_SPEED = 1.5;
 const WALL_ID = 'drivable-car';
@@ -24,8 +27,22 @@ export interface DrivingHost {
 
 export class Driving {
   readonly car: VehicleBody;
-  readonly model: CarModel;
+  /** The model of the vehicle in use (N1-M7: it changes when the player takes another vehicle). */
+  model: CarModel;
+  /** Holds the model; added to the scene once. */
+  readonly mount = new THREE.Group();
   readonly camera: ChaseCamera;
+  /** N1-M7: what the player's vehicle is, its paint (sRGB hex) and how wrecked it is (0..1). */
+  kind: DriveKind = 'hatch';
+  paint = START_PAINT;
+  damage = 0;
+  /** Where the vehicle stands when the game starts (N1-M7: a saved game puts it where it was left). */
+  start: Pose = { ...CAR_START };
+  private models = new Map<DriveKind, CarModel>();
+  /** Objects that ride on whichever model is in use (the headlight patch). */
+  private riders: THREE.Object3D[] = [];
+  /** What E would get into, for the prompt: the player's own vehicle or a parked one within reach (set by Play). */
+  nearKind: DriveKind | null = null;
   /** True while the player is in the car. */
   active = false;
   /** True once the car stands on loaded ground at its starting place. */
@@ -69,20 +86,84 @@ export class Driving {
       hasData: (x, z) => chunks.hasData(x, z),
       water: (x, z) => c.inWater(x, z),
       boxContact: (x, z, fx, fz, a, b, y) => c.boxContact(x, z, fx, fz, a, b, y),
-      road: (x, z) => nearestDrivable((cx, cz) => chunks.dataAt(cx, cz), x, z, CAR.halfWid * 2),
+      road: (x, z) => nearestDrivable((cx, cz) => chunks.dataAt(cx, cz), x, z, this.car.spec.halfWid * 2),
       // Reset key only: the road must be drawn, and the body must not stand wholly inside a building or parked car.
       ready: (x, z) => chunks.isReady(x, z),
       solid: (x, z, y) => c.insideBuilding(x, z, y, false),
     };
     this.car = new VehicleBody(env);
-    this.model = new CarModel();
+    this.model = new CarModel('hatch', this.paint);
+    this.models.set('hatch', this.model);
+    this.mount.add(this.model.root);
     this.model.root.visible = false;
     this.camera = new ChaseCamera(camera, c);
   }
 
   /** Where the car is, or will stand once its area has loaded. */
   get whereabouts(): { x: number; z: number } {
-    return this.placed ? { x: this.car.x, z: this.car.z } : { x: CAR_START.x, z: CAR_START.z };
+    return this.placed ? { x: this.car.x, z: this.car.z } : { x: this.start.x, z: this.start.z };
+  }
+
+  /** Something that rides on the vehicle whichever model is shown (main.ts: the headlight patch). */
+  attach(o: THREE.Object3D): void {
+    this.riders.push(o);
+    this.model.root.add(o);
+  }
+
+  /**
+   * N1-M7: the player's vehicle becomes one of another kind, paint and state (it takes a parked vehicle, or a saved game
+   * is loaded). The pose is not changed here: see `adopt`.
+   */
+  setVehicle(kind: DriveKind, paint: number, damage = 0): void {
+    if (kind !== this.kind) {
+      const old = this.model;
+      let next = this.models.get(kind);
+      if (!next) { next = new CarModel(kind, paint); this.models.set(kind, next); }
+      next.root.visible = old.root.visible;
+      next.marker.visible = old.marker.visible;
+      next.lightsOn = old.lightsOn;
+      old.lightsOn = false;
+      this.mount.remove(old.root);
+      this.mount.add(next.root);
+      for (const o of this.riders) next.root.add(o);
+      this.model = next;
+      this.kind = kind;
+      this.car.setSpec(VEHICLE_SPECS[kind]);
+      this.prepare?.(next.root);
+    }
+    this.paint = paint;
+    this.damage = Math.min(1, Math.max(0, damage));
+    this.car.power = powerAt(this.damage);
+    this.model.setPaint(paint, this.damage);
+    this.model.setRidden(this.active);
+    this.shownNote = '?';
+  }
+
+  /** N1-M7: stand the player's vehicle at a pose, at rest (the place of the parked vehicle it has just become). */
+  adopt(x: number, z: number, heading: number): void {
+    this.car.place(x, z, heading);
+    this.placed = true;
+    this.model.root.visible = true;
+    this.model.sync(this.car, 0);
+    this.position.set(this.car.x, this.car.y, this.car.z);
+    this.velocity.set(0, 0, 0);
+    if (!this.active) this.setParked(true);
+  }
+
+  /** N1-M7: a blow (0..1 of a whole vehicle). Returns the new damage. */
+  hurt(amount: number): number {
+    if (amount <= 0) return this.damage;
+    this.damage = Math.min(1, this.damage + amount);
+    this.car.power = powerAt(this.damage);
+    this.model.setPaint(this.paint, this.damage);
+    return this.damage;
+  }
+
+  /** N1-M7: repaired (the phone's garage). */
+  repair(): void {
+    this.damage = 0;
+    this.car.power = 1;
+    this.model.setPaint(this.paint, 0);
   }
 
   /** True on foot within reach of the car (the "Enter Car" prompt is up; E gets in, ahead of shop inspection). */
@@ -94,7 +175,7 @@ export class Driving {
   /** Stand the car at its starting place as soon as the ground there is loaded. Cheap to call every frame. */
   tryPlace(): void {
     if (this.placed) return;
-    const s = CAR_START;
+    const s = this.start;
     if (!this.world.collision.isLoaded(s.x, s.z) || !this.world.chunks.isReady(s.x, s.z)) return;
     this.car.place(s.x, s.z, s.heading);
     // If something stands in the bay (data changed), slide along the kerb to the nearest free spot.
@@ -113,14 +194,14 @@ export class Driving {
 
   /** The parked car is an obstacle for the walking character (and its camera); a driven car is not. */
   private setParked(parked: boolean): void {
-    this.world.collision.setDynamicWall(WALL_ID, parked ? this.car.footprint(0.02) : null, this.car.y + CAR.height);
+    this.world.collision.setDynamicWall(WALL_ID, parked ? this.car.footprint(0.02) : null, this.car.y + Math.min(1.5, this.car.spec.height));
   }
 
   /** Distance from a point to the car body outline (0 inside). */
   private distanceTo(x: number, z: number): number {
     const s = Math.sin(this.car.heading), c = Math.cos(this.car.heading);
     const dx = x - this.car.x, dz = z - this.car.z;
-    const u = Math.abs(dx * s + dz * c) - CAR.halfLen, v = Math.abs(dx * c - dz * s) - CAR.halfWid;
+    const u = Math.abs(dx * s + dz * c) - this.car.spec.halfLen, v = Math.abs(dx * c - dz * s) - this.car.spec.halfWid;
     return Math.hypot(Math.max(0, u), Math.max(0, v));
   }
 
@@ -137,6 +218,7 @@ export class Driving {
     this.camera.snap(this.car);
     this.model.marker.visible = false;
     this.model.lightsOn = true;
+    this.model.setRidden(true);
     this.prepare?.(this.model.lamps);
     this.setPrompt(null);
     this.hud.classList.add('driving');
@@ -168,6 +250,7 @@ export class Driving {
     player.velocity.set(0, 0, 0);
     this.model.marker.visible = true;
     this.model.lightsOn = false;
+    this.model.setRidden(false);
     this.model.sync(this.car, 0);
     this.hud.classList.remove('driving');
     this.speedo.classList.add('hidden');
@@ -190,7 +273,7 @@ export class Driving {
   private exitSpot(): [number, number] | null {
     const car = this.car, c = this.world.collision;
     const s = Math.sin(car.heading), co = Math.cos(car.heading);
-    const side = CAR.halfWid + PLAYER_RADIUS + 0.3, end = CAR.halfLen + PLAYER_RADIUS + 0.3;
+    const side = car.spec.halfWid + PLAYER_RADIUS + 0.3, end = car.spec.halfLen + PLAYER_RADIUS + 0.3;
     // (u along forward, v toward the left)
     for (const [u, v] of [[0.2, -side], [0.2, side], [-0.8, -side], [-0.8, side], [-end, 0], [end, 0]]) {
       const x = car.x + s * u + co * v, z = car.z + co * u - s * v;
@@ -255,7 +338,9 @@ export class Driving {
     const far = Math.hypot(p.x - this.car.x, p.z - this.car.z);
     this.model.root.visible = far < this.world.viewDistance;
     this.model.marker.visible = far < 260;
-    this.setPrompt(promptAllowed && this.canEnter(player) ? 'enter' : null);
+    // (the player's own vehicle comes first; `nearKind` is a parked one within reach, set by Play)
+    const what = this.canEnter(player) ? this.kind : this.nearKind;
+    this.setPrompt(promptAllowed && what ? 'enter' : null, what ?? this.kind);
   }
 
   /** At the wheel, once per frame: "Exit Car" while the car is nearly stopped. */
@@ -263,12 +348,16 @@ export class Driving {
     this.setPrompt(promptAllowed && this.canExit ? 'exit' : null);
   }
 
-  private setPrompt(kind: 'enter' | 'exit' | null): void {
-    if (kind === this.promptKind) return;
+  private promptWhat: DriveKind = 'hatch';
+  private setPrompt(kind: 'enter' | 'exit' | null, what: DriveKind = this.kind): void {
+    if (kind === this.promptKind && (!kind || what === this.promptWhat)) return;
     this.promptKind = kind;
+    this.promptWhat = what;
     this.prompt.classList.toggle('hidden', !kind);
     if (kind) {
-      const text = kind === 'enter' ? 'Enter Car' : 'Exit Car';
+      // (the car keeps its V8 wording; the other kinds are named)
+      const bike = what === 'kapcai';
+      const text = kind === 'enter' ? (bike ? 'Ride Kapcai' : `Enter ${KIND_NAME[what]}`) : bike ? 'Get off' : `Exit ${KIND_NAME[what]}`;
       this.prompt.innerHTML = `<kbd>E</kbd>${text}`;
       this.prompt.setAttribute('aria-label', text);
     }
@@ -288,7 +377,9 @@ export class Driving {
     if (force || kmh !== this.shownKmh) { this.shownKmh = kmh; this.speedEl.textContent = String(kmh); }
     const gear = car.vf < -0.3 ? 'R' : car.vf > 0.3 ? 'D' : 'N';
     if (force || gear !== this.shownGear) { this.shownGear = gear; this.gearEl.textContent = gear; this.gearEl.dataset.gear = gear; }
-    const note = car.onRoad || car.onDeck ? '' : 'OFF ROAD';
+    // (one short note at a time: off the road and damaged, the two take turns)
+    const off = !(car.onRoad || car.onDeck), hurt = this.damage >= 0.08 ? `DAMAGE ${Math.round(this.damage * 100)}%` : '';
+    const note = off && hurt ? (Math.floor(performance.now() / 1500) % 2 ? 'OFF ROAD' : hurt) : off ? 'OFF ROAD' : hurt;
     if (force || note !== this.shownNote) { this.shownNote = note; this.noteEl.textContent = note; }
   }
 }
