@@ -423,6 +423,12 @@ because all of them stop at the same kind of `Site`. If night 3 runs first inste
 
 ## Open questions for the owner
 
+**Answered 2026-11-26: "go with defaults".** Each question below takes the plan's default: (1) lifelike small prices and
+compressed big ones, as in the price table; (2) rule-parked vehicles become hired, the Jalan China hatch is owned; (3) category
+labels, mapped names only for landmarks; (4) economy after night 2 and before night 3, so building starts on
+`night/economy-1` from night 2's last commit once `PLAN_N2.md` is DONE; (5) closed-course time trials only; (6) fines for red
+lights and one-way streets only. The questions are kept below for the record.
+
 1. **Prices:** lifelike small prices and compressed big ones (a used kapcai about an hour of play), as above? Or all prices
    lifelike with higher pay, or all compressed?
 2. **Hire instead of taking:** may the rule-parked vehicles become hired by the hour (the hatch stays the player's own)? It
@@ -439,5 +445,10 @@ because all of them stop at the same kind of `Site`. If night 3 runs first inste
   reason: no mapped night market, hunger and paid parking are chores, and the traffic AI cannot race.
 - 2026-11-26 plan: save v2 under a new key `k3d.save2`, v1 read once and never written; reason: an older build or `?econ=0`
   can never overwrite or misread the new progress.
+- 2026-11-26 owner: "go with defaults" for all six open questions (see that section); building waits for night 2's end,
+  as section 5 requires. Night 2 was at N2-M0a (uncommitted) when this was decided.
+- 2026-11-26 plan: section 1's 375x812 fare probe: its rerun hung because the night-2 session started editing source in the
+  same checkout at 23:43, so Vite reloaded the page; the first run's hang (23:28) came before those edits and was the
+  probe's own touch step for leaving the car.
 - 2026-11-26 plan: tuning in `src/play/economy.json` bundled at build time, map places in a generated `services.json`; reason:
   no extra download for numbers, and the place data follows the `jobs.json` pattern (positions and groups, no names).
