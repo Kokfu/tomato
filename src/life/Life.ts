@@ -88,7 +88,17 @@ export class Life {
 
   constructor(host: LifeHost, quality: Quality) { this.host = host; this.quality = quality.name; }
 
-  get budget(): Budget { return LIFE_BUDGET[this.quality]; }
+  /** What the preset can afford. With `noParked` (`?m7=0`) it is the N1-M6 city: no parked vehicles, no taxi or pickup in the traffic. */
+  get budget(): Budget {
+    if (!this.noParked) return LIFE_BUDGET[this.quality];
+    if (!this.m6) {
+      const o = {} as Record<QualityName, Budget>;
+      for (const q of Object.keys(LIFE_BUDGET) as QualityName[]) o[q] = { ...LIFE_BUDGET[q], parked: 0, kinds: LIFE_BUDGET[q].kinds.map((w, i) => (i < 4 ? w : 0)) };
+      this.m6 = o;
+    }
+    return this.m6[this.quality];
+  }
+  private m6: Record<QualityName, Budget> | null = null;
   /** True once vehicles can be drawn. */
   get active(): boolean { return !!this.render && !!this.traffic; }
 
@@ -128,7 +138,7 @@ export class Life {
           return Math.abs(rx - x) + Math.abs(rz - z) < 0.02;
         },
       }, rng(20261127));
-      const b = this.budget, render = new LifeRender({ vehicles: b.vehicles, walkers: b.walkers, kinds: b.kinds, shadows: this.quality !== 'low', parked: this.noParked ? 0 : b.parked }, world.materials.pools);
+      const b = this.budget, render = new LifeRender({ vehicles: b.vehicles, walkers: b.walkers, kinds: b.kinds, shadows: this.quality !== 'low', parked: b.parked }, world.materials.pools);
       this.traffic.pitch = this.quality !== 'low';
       // (whatever the new preset does not draw must not stay in the simulation, unseen)
       this.traffic.trim(b.kinds, b.vehicles);

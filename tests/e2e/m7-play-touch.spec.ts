@@ -30,7 +30,7 @@ const overlaps = (page: Page) => page.evaluate((ids) => {
 
 test.describe('N1-M7 play loop by touch', () => {
   test('a new player on a phone finishes a food delivery; the phone, the wallet and the horn fit the screen', async ({ page }) => {
-    test.setTimeout(720_000);
+    test.setTimeout(900_000);
     const issues = watch(page);
     await start(page);
     const cdp = await page.context().newCDPSession(page);

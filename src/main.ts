@@ -95,6 +95,8 @@ async function boot(): Promise<void> {
   let world: WorldManager;
   // V5 rendering experiment (A/B comparison of the Carpenter Street section); created once the world is loaded.
   let v5: V5Controller | null = null;
+  // N1-M7: the play loop; created once the world, the car and the map exist (the menu's callbacks may run before that).
+  let play: Play | null = null;
   /** Upload textures and start compiling programs of `o` for the render path in use (src/world/prepareDraw.ts). */
   const prepareObject = (o: THREE.Object3D) => (v5?.usesPipeline ? v5.pipeline.prepare(o) : prepareForDraw(renderer, o, camera, world.scene));
   /** True while a preset change's programs compile (the last frame stays on screen); see onQuality. */
@@ -529,7 +531,7 @@ async function boot(): Promise<void> {
   });
 
   // N1-M7: the play loop (vehicles to take, jobs, money, the phone, collisions, saved progress). `?m7=0` = the N1-M6 game.
-  const play = getFlags().m7 ? new Play({
+  play = getFlags().m7 ? new Play({
     world, player, driving, minimap, life,
     baseUrl: import.meta.env.BASE_URL,
     touch: isTouchDevice(),

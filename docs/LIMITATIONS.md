@@ -272,14 +272,14 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   turn but cannot fall, wheelie or filter between cars.
 - **Jobs go to real mapped places, described by kind and street only** ("a restaurant, Jalan Padungan"): 1,708 places
   from the OpenStreetMap and Overture place data that lie within 60 m of a public road, grouped by their mapped
-  category (`public/data/kuching/jobs.json` holds positions and groups, no names), plus the game's landmarks by their
-  mapped names. The label is the group's, so a café, a kopitiam and a food court are all "a restaurant", and a pharmacy
+  category (`public/data/kuching/jobs.json` holds positions and groups, no names), plus the game's public landmarks by their
+  mapped names (not the malls, the market and the food court among them: a job never names a business). The label is the group's, so a café, a kopitiam and a food court are all "a restaurant", and a pharmacy
   is "a clinic or hospital". **The customers, the passengers, the orders, the fares and the tips are invented**: nobody
   is drawn at the pick-up or the drop-off (a marker stands there), and nothing is carried.
 - **Fares are a formula** (a flag-fall plus a rate per road kilometre; a tip for arriving inside a par time, less for
   every collision), not Kuching's taxi or delivery rates. Money buys repairs only.
-- **A job's place is "reached" at the point on a public road where the GPS route ends**, within 14 m and nearly at
-  rest; the walk from there to the door is not played. Taxi fares need the taxi; deliveries any vehicle, or none.
+- **A job's place is "reached" at the roadside**: the point on a public road where the GPS route ends (or the nearest
+  such point to the place), within 14 m and nearly at rest; the walk from there to the door is not played. Taxi fares need the taxi; deliveries any vehicle, or none.
 - **Collisions are boxes.** The driven vehicle is pushed out of ambient and parked vehicles and loses speed; damage is
   one number that dulls the paint toward soot and, past half, takes engine power. Nothing deforms, breaks off, burns
   or flips; walkers are not hit (they stop for the player and the car passes through them); ambient vehicles do not

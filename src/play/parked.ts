@@ -118,15 +118,23 @@ export interface Stand extends Pose { key: string; kind: DriveKind; tint: number
  */
 export function settle(spots: Spot[], cx: number, cz: number, clear: (p: Pose, kind: DriveKind) => boolean, starters: readonly (Pose & { kind: DriveKind })[] = STARTERS): Stand[] {
   const out: Stand[] = [];
-  starters.forEach((s, i) => {
-    if (Math.floor(s.x / CHUNK_SIZE) !== cx || Math.floor(s.z / CHUNK_SIZE) !== cz) return;
-    if (clear(s, s.kind)) out.push({ key: `start:${i}`, kind: s.kind, tint: i, x: s.x, z: s.z, heading: s.heading });
-  });
-  for (const p of spots) {
-    const pose = spotPose(p);
-    // (no two parked vehicles overlap: places on two roads can meet at a corner)
-    if (out.some((o) => Math.hypot(o.x - pose.x, o.z - pose.z) < 5.6)) continue;
-    if (clear(pose, p.kind)) out.push({ key: p.key, kind: p.kind, tint: p.tint, ...pose });
-  }
+  for (const c of candidates(spots, cx, cz, starters)) if (fits(out, c) && clear(c, c.kind)) out.push(c);
   return out;
+}
+
+/** Every vehicle that would stand in a chunk if all its places were clear, in the order they are tried: its starters first. */
+export function candidates(spots: Spot[], cx: number, cz: number, starters: readonly (Pose & { kind: DriveKind })[] = STARTERS): Stand[] {
+  const out: Stand[] = [];
+  starters.forEach((s, i) => {
+    if (Math.floor(s.x / CHUNK_SIZE) === cx && Math.floor(s.z / CHUNK_SIZE) === cz) out.push({ key: `start:${i}`, kind: s.kind, tint: i, x: s.x, z: s.z, heading: s.heading });
+  });
+  for (const p of spots) out.push({ key: p.key, kind: p.kind, tint: p.tint, ...spotPose(p) });
+  return out;
+}
+
+/** No two parked vehicles overlap (places on two roads can meet at a corner): the starters, which stand in a row, excepted. */
+export function fits(standing: readonly Stand[], c: Stand): boolean {
+  if (c.key.startsWith('start:')) return true;
+  for (const o of standing) if (Math.hypot(o.x - c.x, o.z - c.z) < 5.6) return false;
+  return true;
 }

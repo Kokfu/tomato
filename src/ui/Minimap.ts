@@ -622,7 +622,8 @@ export class Minimap {
     const { route } = trimEndConnector(r);
     const stop = { x: r.end.x, z: r.end.z };
     // Re-planning usually keeps the same stopping point: reuse its walk instead of a second A* per re-plan.
-    const key = `${lm.id}|${stop.x.toFixed(1)}|${stop.z.toFixed(1)}`;
+    // (keyed by the place too: N1-M7 job goals share one id)
+    const key = `${lm.id}|${lm.x.toFixed(0)}|${lm.z.toFixed(0)}|${stop.x.toFixed(1)}|${stop.z.toFixed(1)}`;
     let w = this.walkCache.get(key);
     if (!w) {
       const walk = this.graph?.route(stop.x, stop.z, lm.x, lm.z, { blocked: this.connectorBlocked }) ?? null;

@@ -222,7 +222,7 @@ test.describe('N1-M7 play loop', () => {
   });
 
   test('a new player finishes a food delivery: phone, GPS to the pick-up and the drop-off, money, save and load', async ({ page }) => {
-    test.setTimeout(600_000);
+    test.setTimeout(900_000); // (2 to 7 minutes: the route driver is blind and the traffic holds it up more in some runs)
     const issues = watch(page);
     await ready(page);
     await k3d(page, (k) => k.play.seed(20261126));
@@ -321,11 +321,84 @@ test.describe('N1-M7 play loop', () => {
     expect(back.delivery).toBe(1);
     expect(back.kind).toBe('hatch');
     expect(Math.hypot(back.start.x - saved.vehicle.x, back.start.z - saved.vehicle.z)).toBeLessThan(0.01);
+    // saving again before the car's area has loaded (the player stands at the waterfront) keeps the car where it was
+    const again = await k3d(page, (k) => ({ placed: k.driving.placed, ok: k.play.save(), saved: JSON.parse(localStorage.getItem('k3d.save')!) }));
+    expect(again.ok).toBe(true);
+    expect(again.saved.vehicle).toMatchObject({ kind: 'hatch' });
+    expect(Math.hypot(again.saved.vehicle.x - saved.vehicle.x, again.saved.vehicle.z - saved.vehicle.z)).toBeLessThan(again.placed ? 3 : 0.01);
     // a damaged saved value is ignored, not fatal
     await page.evaluate(() => localStorage.setItem('k3d.save', '{"v":1,"money":"lots"'));
     await page.reload();
     await start(page, { navigate: false });
     await expect(page.locator('#wallet-money')).toHaveText('RM 0.00');
+    expect(issues.errors).toEqual([]);
+  });
+  test('taxi fares are driven in the taxi: the way to one, the passenger rule, the fare paid at the drop-off', async ({ page }) => {
+    test.setTimeout(240_000);
+    const issues = watch(page);
+    await ready(page);
+    await k3d(page, (k) => k.play.seed(7));
+    // on foot the phone says why not, and shows the way to the nearest parked taxi
+    await page.keyboard.press('KeyT');
+    await page.locator('#ph-taxi').click();
+    await expect(page.locator('#phone .ph-note').first()).toContainText('get into one first');
+    await page.locator('#ph-find-taxi').click();
+    await expect(page.locator('#phone')).toBeHidden();
+    await page.waitForFunction(() => { const n = (window as any).__k3d.minimap.nav; return n && n.target.id === 'job-taxi' && n.mode === 'walk'; }, null, { timeout: 20_000 });
+    // take it
+    const taxi = await k3d(page, (k) => k.play.parked.find((p: any) => p.key === 'start:0').id);
+    expect(await standBeside(page, taxi)).toBe(true);
+    await frames(page, 4);
+    await page.keyboard.press('KeyE');
+    expect(await k3d(page, (k) => [k.driving.active, k.driving.kind])).toEqual([true, 'taxi']);
+    await page.keyboard.press('KeyT');
+    await page.locator('#ph-taxi').click();
+    await expect(page.locator('.ph-offer').first()).toBeVisible({ timeout: 30_000 });
+    const fare = await k3d(page, (k) => { const o = k.play.offersShown[0]; return { kind: o.kind, fare: o.fare, from: o.from.group, to: o.to.group }; });
+    expect(fare.kind).toBe('taxi');
+    await page.locator('.ph-offer').first().click();
+    await expect(page.locator('#wallet-job')).toContainText('Taxi fare: collect at');
+
+    const navReady = (stage: string) => page.waitForFunction((stage) => { const k = (window as any).__k3d, n = k.minimap.nav; return k.play.job?.stage === stage && n && n.target.id === 'job-goal' && n.mode === 'drive' && !!n.route && n.target.name.startsWith(stage === 'pickup' ? 'pick-up' : 'drop-off'); }, stage, { timeout: 20_000 });
+    /** Where the GPS route ends (the roadside point of the job's place), and the direction of its last stretch. */
+    const routeEnd = () => k3d(page, (k) => { const r = k.minimap.nav.route.points, n = r.length; return [r[n - 2], r[n - 1], Math.atan2(r[n - 2] - r[n - 4], r[n - 1] - r[n - 3])] as [number, number, number]; });
+    const loadAt = async (x: number, z: number) => {
+      await page.evaluate(([x, z]) => { const k = (window as any).__k3d; k.player.teleport(x, z); k.tpc.snap(); }, [x, z]);
+      await page.waitForFunction(([x, z]) => { const k = (window as any).__k3d; return k.world.collision.isLoaded(x, z) && k.world.chunks.isReady(x, z); }, [x, z], { timeout: 60_000 });
+    };
+    // the pick-up: the taxi stands at the roadside point, and the passenger is aboard
+    await navReady('pickup');
+    let end = await routeEnd();
+    await loadAt(end[0], end[1]);
+    await placeCar(page, ...end);
+    await page.waitForFunction(() => (window as any).__k3d.play.job?.stage === 'dropoff', null, { timeout: 10_000 });
+    await expect(page.locator('#toast')).toContainText('Passenger aboard');
+    // at the drop-off on foot, the taxi left behind: the fare is not paid
+    await navReady('dropoff');
+    end = await routeEnd();
+    const roadside = await k3d(page, (k) => [k.play.goalStop.x, k.play.goalStop.z] as [number, number]);
+    await page.keyboard.press('KeyE');
+    await frames(page, 3);
+    expect(await k3d(page, (k) => k.driving.active)).toBe(false);
+    const taxiAt = await k3d(page, (k) => [k.driving.car.x, k.driving.car.z] as [number, number]);
+    await loadAt(roadside[0], roadside[1]);
+    await expect(page.locator('#toast')).toContainText('Passengers ride in the taxi', { timeout: 15_000 });
+    expect(await k3d(page, (k) => [k.play.job?.stage, k.play.paid.length])).toEqual(['dropoff', 0]);
+    // back to the taxi, and there with it
+    await loadAt(taxiAt[0], taxiAt[1]);
+    expect(await standBeside(page, 0)).toBe(true);
+    await frames(page, 4);
+    await page.keyboard.press('KeyE');
+    expect(await k3d(page, (k) => [k.driving.active, k.driving.kind])).toEqual([true, 'taxi']);
+    await loadAt(end[0], end[1]);
+    await placeCar(page, ...end);
+    await page.waitForFunction(() => (window as any).__k3d.play.paid.length === 1, null, { timeout: 10_000 });
+    const done = await k3d(page, (k) => ({ money: k.play.money, taxi: k.play.stats.taxi, paid: k.play.paid[0], job: k.play.job }));
+    expect(done.job).toBeNull();
+    expect(done.taxi).toBe(1);
+    expect(done.paid.kind).toBe('taxi');
+    expect(done.money).toBeGreaterThanOrEqual(fare.fare);
+    await expect(page.locator('#toast')).toContainText('Fare paid');
     expect(issues.errors).toEqual([]);
   });
 });

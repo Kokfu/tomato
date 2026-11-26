@@ -1,6 +1,7 @@
 // N1-M7: look at the play loop. Starts the game, lists the parked vehicles round the start, saves a close-up of the
-// nearest one of each kind, then (with --job) gets into the car, opens the phone and saves its screens.
-// Usage: node tools/dev/play-probe.ts <outDir> [--url=http://localhost:5175/] [--mobile] [--quality=medium] [--job] [--x= --z=]
+// nearest one of each kind, then (with --job) gets into the car, opens the phone and saves its screens, and (with
+// --ride) saves the three starter vehicles, a ride on the kapcai, a drive in the pickup and a wrecked taxi.
+// Usage: node tools/dev/play-probe.ts <outDir> [--url=http://localhost:5175/] [--mobile] [--quality=medium] [--job] [--ride] [--x= --z=]
 import { chromium } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 
@@ -76,6 +77,36 @@ if (rest.includes('--job')) {
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${outDir}/job.jpg`, type: 'jpeg', quality: 85 });
   console.log(JSON.stringify(await page.evaluate(() => { const k = (window as any).__k3d, n = k.minimap.nav; return { job: k.play.job?.stage, nav: n && { name: n.target.name, len: n.route?.length, stop: n.stop, reason: n.reason }, wallet: document.getElementById('wallet')!.textContent }; })));
+}
+if (rest.includes('--ride')) {
+  // the three starters in a row, then a ride on the kapcai, a drive in the pickup and a wrecked taxi
+  const beside = (key: string) => page.evaluate((key) => {
+    const k = (window as any).__k3d, q = k.play.parked.find((p: any) => p.key === key);
+    if (!q) return false;
+    const hw = [0.87, 0.86, 0.91, 0.36, 0.86, 0.93][q.kind];
+    k.player.teleport(q.x + Math.cos(q.heading) * (hw + 1.1), q.z - Math.sin(q.heading) * (hw + 1.1));
+    k.tpc.snap();
+    return true;
+  }, key);
+  await page.evaluate(() => { const k = (window as any).__k3d; if (k.driving.active) k.driving.exit(k.player, true); k.player.teleport(224, -84); k.tpc.yaw = Math.atan2(-(233 - 224), -(-72 + 84)); k.tpc.pitch = 0.3; k.tpc.snap(); });
+  await page.waitForTimeout(2500);
+  await page.screenshot({ path: `${outDir}/starters.jpg`, type: 'jpeg', quality: 85 });
+  for (const [key, name, hurt] of [['start:1', 'ride-kapcai', 0], ['start:2', 'drive-pickup', 0], ['start:0', 'taxi-wrecked', 0.85]] as const) {
+    if (!(await beside(key))) { console.log('no', key); continue; }
+    await page.waitForTimeout(400);
+    if (!mobile) await page.keyboard.press('KeyE'); else await page.locator('#car-prompt').tap();
+    await page.evaluate((hurt) => new Promise<void>((resolve) => {
+      const k = (window as any).__k3d;
+      if (hurt) k.driving.hurt(hurt);
+      let n = 0;
+      const tick = () => { k.input.touchY = n < 50 ? 1 : 0.001; k.input.touchX = n > 20 && n < 50 ? 0.5 : 0; if (n++ > 70) { k.input.touchX = k.input.touchY = 0; return resolve(); } requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+    }), hurt);
+    await page.screenshot({ path: `${outDir}/${name}.jpg`, type: 'jpeg', quality: 85 });
+    console.log(name, JSON.stringify(await page.evaluate(() => { const d = (window as any).__k3d.driving; return { kind: d.kind, damage: +d.damage.toFixed(2), kmh: Math.round(d.car.kmh), note: document.getElementById('speedo-note')!.textContent }; })));
+    await page.evaluate(() => { const k = (window as any).__k3d; k.driving.car.vf = 0; k.driving.exit(k.player, true); });
+    await page.waitForTimeout(300);
+  }
 }
 if (errors.length) console.log('ERRORS\n' + errors.slice(0, 20).join('\n'));
 await browser.close();

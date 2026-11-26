@@ -7,7 +7,7 @@ import { RouteGraph, isStoppingEdge } from '../../src/ui/Router.ts';
 import type { GraphFile } from '../../src/ui/Router.ts';
 import { arrive, arrived, fareFor, formatRM, goalOf, makeOffers, parTime, payout, startJob, FROM, TO } from '../../src/play/missions.ts';
 import type { Offer } from '../../src/play/missions.ts';
-import { GROUPS, GROUP_LABEL, describeSite, groupOf, sitesOf } from '../../src/play/sites.ts';
+import { GROUPS, GROUP_LABEL, describeSite, groupOf, isPublicLandmark, sitesOf } from '../../src/play/sites.ts';
 import type { JobsFile, Site } from '../../src/play/sites.ts';
 import { SAVE_KEY, clearSave, freshSave, loadSave, parseSave, writeSave } from '../../src/play/save.ts';
 import type { Store } from '../../src/play/save.ts';
@@ -37,7 +37,7 @@ test('fares grow with the road distance; a taxi fare is more than a delivery; mo
   assert.equal(fareFor('taxi', 0), 4);
   assert.ok(fareFor('delivery', 2000) > fareFor('delivery', 1000));
   assert.ok(fareFor('taxi', 1500) > fareFor('delivery', 1500));
-  for (const m of [137, 999, 2468]) assert.equal(Math.round(fareFor('taxi', m) * 10), fareFor('taxi', m) * 10 | 0 || Math.round(fareFor('taxi', m) * 10), 'whole ten-sen steps');
+  for (const kind of ['taxi', 'delivery'] as const) for (const m of [137, 999, 1234, 2468, 3001]) { const x = fareFor(kind, m) * 10; assert.ok(Math.abs(x - Math.round(x)) < 1e-9, `${kind} ${m} m: RM ${x / 10} is whole ten sen`); }
   assert.equal(formatRM(4.9), 'RM 4.90');
 });
 
@@ -86,7 +86,10 @@ test('job places: the file holds only job groups, in whole metres, every one nea
   const sites = sitesOf(jobs);
   assert.ok(sites.length > 1000, `${sites.length} places`);
   assert.ok(sites.filter((s) => s.group === 'food').length > 300);
-  assert.ok(!/"name"|[A-Za-z]{4,}\s[A-Za-z]{4,}/.test(JSON.stringify(jobs.sites)), 'numbers only');
+  // nothing but the version, the group list and numbers: no name can be in the file
+  assert.deepEqual(Object.keys(jobs).sort(), ['groups', 'sites', 'v']);
+  assert.ok(jobs.sites.every((n) => typeof n === 'number' && Number.isInteger(n)), 'numbers only');
+  assert.ok(jobs.sites.every((g, i) => i % 3 !== 2 || (g >= 0 && g < GROUPS.length)), 'every third number is a group');
   let checked = 0;
   for (let i = 0; i < sites.length; i += 23) {
     const s = sites[i];
@@ -107,6 +110,11 @@ test('a place is described by its kind and street, never by a business name', ()
   assert.equal(describeSite({ x: 0, z: 0, group: 'stay' }), 'a hotel');
   assert.equal(describeSite({ x: 0, z: 0, group: 'landmark', name: 'Kuching Waterfront' }), 'Kuching Waterfront');
   for (const g of GROUPS) assert.ok(/^an? /.test(GROUP_LABEL[g]), `${g}: a generic label`);
+  // of the game's landmarks only the public ones are named in a job: no mall, market or food court
+  const lms = JSON.parse(readFileSync(`${DATA}/landmarks.json`, 'utf8')) as { id: string; name: string; kind: string }[];
+  const named = lms.filter(isPublicLandmark).map((l) => l.id);
+  assert.ok(named.length >= 20 && named.includes('waterfront') && named.includes('dun') && named.includes('kuching-mosque'));
+  for (const id of ['plaza-merdeka', 'the-spring', 'lau-ya-keng-food-court', 'satok-market', 'kubah-ria']) assert.ok(!named.includes(id), `${id} is a business: never named`);
 });
 
 test('offers from the car in Jalan China: up to three, each drivable on the real road graph, nearest first', () => {

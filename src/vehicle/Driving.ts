@@ -41,6 +41,8 @@ export class Driving {
   private models = new Map<DriveKind, CarModel>();
   /** Objects that ride on whichever model is in use (the headlight patch). */
   private riders: THREE.Object3D[] = [];
+  /** N1-M7 (set by Play): true where a parked vehicle stands, so nobody gets out into one. */
+  spotTaken: ((x: number, z: number) => boolean) | null = null;
   /** What E would get into, for the prompt: the player's own vehicle or a parked one within reach (set by Play). */
   nearKind: DriveKind | null = null;
   /** True while the player is in the car. */
@@ -142,6 +144,8 @@ export class Driving {
   /** N1-M7: stand the player's vehicle at a pose, at rest (the place of the parked vehicle it has just become). */
   adopt(x: number, z: number, heading: number): void {
     this.car.place(x, z, heading);
+    // (the poses remembered for the reset key belong to the vehicle that was left: it stands on one of them now)
+    this.car.recent.length = 0;
     this.placed = true;
     this.model.root.visible = true;
     this.model.sync(this.car, 0);
@@ -285,6 +289,7 @@ export class Driving {
       // The spot must not need pushing out of a wall, pier or parked car (the driven car itself is checked by distance).
       const [rx, rz] = c.resolve(x, z, PLAYER_RADIUS, g.h);
       if (Math.hypot(rx - x, rz - z) > 0.02) continue;
+      if (this.spotTaken?.(x, z)) continue;
       return [x, z];
     }
     return null;

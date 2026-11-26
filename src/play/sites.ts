@@ -30,6 +30,17 @@ export function groupOf(cat: string | undefined | null): Group | null {
   return cat ? BY_CAT[cat] ?? null : null;
 }
 
+/**
+ * Which of the game's landmarks a job may name. A landmark is a public place with a mapped name, already listed in
+ * the GPS and on the map; but some of them are businesses (a mall, a market, a food court), and a job never names a
+ * business. By kind, plus the public monuments among the plain 'landmark' kind.
+ */
+const PUBLIC_KINDS: readonly string[] = ['civic', 'worship', 'museum', 'park', 'street', 'bridge'];
+const PUBLIC_MONUMENTS: readonly string[] = ['waterfront', 'fort-margherita', 'square-tower', 'old-courthouse', 'cat-statue'];
+export function isPublicLandmark(l: { id: string; kind: string }): boolean {
+  return PUBLIC_KINDS.includes(l.kind) || PUBLIC_MONUMENTS.includes(l.id);
+}
+
 /** One place a job can start or end at. `name` only for the game's landmarks; `street` when a mapped street is known. */
 export interface Site { x: number; z: number; group: Group | 'landmark'; name?: string; street?: string }
 

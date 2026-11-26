@@ -1,0 +1,831 @@
+{
+ "commit": "N1-M7",
+ "builds": {
+  "baseline": "C:/Kuching3D-night-builds/baseline",
+  "m6b": "C:/Kuching3D-night-builds/m6b",
+  "candidate": "C:/Kuching3D-night-builds/m7"
+ },
+ "onOff": {
+  "how": "one page of the M7 build on the emulated phone (390x844, Low, 4x CPU), 16 pairs of 3 s windows per place, alternately with and without M7's per-frame work (Play.update and afterDrive skipped, no parked vehicles drawn, the wallet and the phone button hidden). The M6b method (life-probe --ab), applied to M7.",
+  "places": [
+   {
+    "place": "at the wheel, standing, Jalan China",
+    "on": {
+     "mean": 42.4,
+     "median": 44.1,
+     "p95": 69.2
+    },
+    "off": {
+     "mean": 44.1,
+     "median": 44.7,
+     "p95": 71.5
+    },
+    "meanPct": -4.0,
+    "p95Pct": -3.2,
+    "pairMedianPct": -3.6,
+    "calls": 119,
+    "parkedDrawn": 6
+   },
+   {
+    "place": "on foot at the three starter vehicles, Jalan Main Bazaar",
+    "on": {
+     "mean": 23.3,
+     "median": 19.3,
+     "p95": 47.3
+    },
+    "off": {
+     "mean": 23.7,
+     "median": 19.2,
+     "p95": 50.0
+    },
+    "meanPct": -1.8,
+    "p95Pct": -5.4,
+    "pairMedianPct": 24.6,
+    "calls": 88,
+    "parkedDrawn": 6
+   },
+   {
+    "place": "on foot in a suburb, Jalan Nanas Barat",
+    "on": {
+     "mean": 20.5,
+     "median": 19.6,
+     "p95": 36.6
+    },
+    "off": {
+     "mean": 20.0,
+     "median": 19.3,
+     "p95": 34.7
+    },
+    "meanPct": 2.9,
+    "p95Pct": 5.5,
+    "pairMedianPct": 6.3,
+    "calls": 47,
+    "parkedDrawn": 6
+   }
+  ],
+  "note": "Within the noise of the measurement at every place (the pair-median at the second place swings on a median of 19 ms windows). Not covered: the hitch when a chunk's parking places are tested (now three places a frame; 15 ms in one frame before, unthrottled) and when the phone works out offers (5 to 29 ms once, unthrottled)."
+ },
+ "driveBench": {
+  "how": "drive-bench --mobile --quality=low --cpu=4 --scenarios=A,B,C --runs=1 (cold). Pair 1: baseline, m7, m7, baseline. Pair 2: m6b, m7, m7, m6b (taken after the parking places were spread over frames). The machine's speed drifts between and within runs (the same build: C p95 77 and 105 ms), so neither pair is conclusive; M7's own cost is read from the on/off test above.",
+  "pair1": {
+   "runs": [
+    {
+     "run": "1-baseline",
+     "results": [
+      {
+       "s": "A stationary cold",
+       "seconds": 9.7,
+       "avgFps": 18,
+       "medianMs": 58.5,
+       "p95Ms": 90,
+       "p99Ms": 112.3,
+       "worstMs": 119.6,
+       "over100": 5,
+       "over200": 0,
+       "avgCalls": 113,
+       "maxCalls": 113,
+       "maxTrisK": 318,
+       "peakHeapMB": 94.6
+      },
+      {
+       "s": "B Jalan China lane cold",
+       "seconds": 28.1,
+       "avgFps": 24.7,
+       "medianMs": 41.1,
+       "p95Ms": 74.8,
+       "p99Ms": 103,
+       "worstMs": 182.2,
+       "over100": 7,
+       "over200": 0,
+       "avgCalls": 97,
+       "maxCalls": 129,
+       "maxTrisK": 322,
+       "peakHeapMB": 99.4
+      },
+      {
+       "s": "C block loop cold",
+       "seconds": 81.9,
+       "avgFps": 24.4,
+       "medianMs": 39.3,
+       "p95Ms": 76.4,
+       "p99Ms": 101.9,
+       "worstMs": 212.4,
+       "over100": 22,
+       "over200": 1,
+       "avgCalls": 102,
+       "maxCalls": 150,
+       "maxTrisK": 348,
+       "peakHeapMB": 106.8
+      }
+     ]
+    },
+    {
+     "run": "2-m7",
+     "results": [
+      {
+       "s": "A stationary cold",
+       "seconds": 9.9,
+       "avgFps": 23.3,
+       "medianMs": 39,
+       "p95Ms": 82.2,
+       "p99Ms": 108.2,
+       "worstMs": 213.2,
+       "over100": 4,
+       "over200": 1,
+       "avgCalls": 121,
+       "maxCalls": 121,
+       "maxTrisK": 455,
+       "peakHeapMB": 204
+      },
+      {
+       "s": "B Jalan China lane cold",
+       "seconds": 28.4,
+       "avgFps": 18.2,
+       "medianMs": 53,
+       "p95Ms": 98.6,
+       "p99Ms": 144.8,
+       "worstMs": 188.3,
+       "over100": 23,
+       "over200": 0,
+       "avgCalls": 106,
+       "maxCalls": 137,
+       "maxTrisK": 460,
+       "peakHeapMB": 101.4
+      },
+      {
+       "s": "C block loop cold",
+       "seconds": 153.3,
+       "avgFps": 22.4,
+       "medianMs": 44,
+       "p95Ms": 77.6,
+       "p99Ms": 104,
+       "worstMs": 191.4,
+       "over100": 43,
+       "over200": 0,
+       "avgCalls": 98,
+       "maxCalls": 161,
+       "maxTrisK": 510,
+       "peakHeapMB": 119
+      }
+     ]
+    },
+    {
+     "run": "3-m7",
+     "results": [
+      {
+       "s": "A stationary cold",
+       "seconds": 9.8,
+       "avgFps": 19.7,
+       "medianMs": 48,
+       "p95Ms": 98.8,
+       "p99Ms": 143.1,
+       "worstMs": 167.2,
+       "over100": 9,
+       "over200": 0,
+       "avgCalls": 121,
+       "maxCalls": 121,
+       "maxTrisK": 455,
+       "peakHeapMB": 222.7
+      },
+      {
+       "s": "B Jalan China lane cold",
+       "seconds": 28.9,
+       "avgFps": 21.3,
+       "medianMs": 47.6,
+       "p95Ms": 90.2,
+       "p99Ms": 144.5,
+       "worstMs": 252.2,
+       "over100": 20,
+       "over200": 1,
+       "avgCalls": 108,
+       "maxCalls": 137,
+       "maxTrisK": 461,
+       "peakHeapMB": 101.2
+      },
+      {
+       "s": "C block loop cold",
+       "seconds": 82.6,
+       "avgFps": 22.2,
+       "medianMs": 42.5,
+       "p95Ms": 90.7,
+       "p99Ms": 117.9,
+       "worstMs": 161.2,
+       "over100": 61,
+       "over200": 0,
+       "avgCalls": 116,
+       "maxCalls": 162,
+       "maxTrisK": 515,
+       "peakHeapMB": 119
+      }
+     ]
+    },
+    {
+     "run": "4-baseline",
+     "results": [
+      {
+       "s": "A stationary cold",
+       "seconds": 9.9,
+       "avgFps": 20.7,
+       "medianMs": 48.3,
+       "p95Ms": 91.4,
+       "p99Ms": 111.8,
+       "worstMs": 121.7,
+       "over100": 4,
+       "over200": 0,
+       "avgCalls": 113,
+       "maxCalls": 113,
+       "maxTrisK": 318,
+       "peakHeapMB": 92.8
+      },
+      {
+       "s": "B Jalan China lane cold",
+       "seconds": 28.1,
+       "avgFps": 24.3,
+       "medianMs": 41.1,
+       "p95Ms": 75.7,
+       "p99Ms": 100.4,
+       "worstMs": 131.2,
+       "over100": 9,
+       "over200": 0,
+       "avgCalls": 96,
+       "maxCalls": 129,
+       "maxTrisK": 322,
+       "peakHeapMB": 97.4
+      },
+      {
+       "s": "C block loop cold",
+       "seconds": 82.2,
+       "avgFps": 28.1,
+       "medianMs": 33.9,
+       "p95Ms": 70.4,
+       "p99Ms": 89.6,
+       "worstMs": 203.6,
+       "over100": 11,
+       "over200": 1,
+       "avgCalls": 102,
+       "maxCalls": 150,
+       "maxTrisK": 349,
+       "peakHeapMB": 104.3
+      }
+     ]
+    }
+   ],
+   "p95MedianOfTwo": {
+    "A": {
+     "baseline": 90.7,
+     "m7": 90.5,
+     "pct": -0.2
+    },
+    "B": {
+     "baseline": 75.2,
+     "m7": 94.4,
+     "pct": 25.5
+    },
+    "C": {
+     "baseline": 73.4,
+     "m7": 84.2,
+     "pct": 14.7
+    }
+   }
+  },
+  "pair2": {
+   "runs": [
+    {
+     "run": "1-m6b",
+     "results": [
+      {
+       "s": "A stationary cold",
+       "seconds": 9.8,
+       "avgFps": 29.9,
+       "medianMs": 30.7,
+       "p95Ms": 64.7,
+       "p99Ms": 82.6,
+       "worstMs": 96.7,
+       "over100": 0,
+       "over200": 0,
+       "avgCalls": 119,
+       "maxCalls": 119,
+       "maxTrisK": 448,
+       "peakHeapMB": 216
+      },
+      {
+       "s": "B Jalan China lane cold",
+       "seconds": 28,
+       "avgFps": 23.5,
+       "medianMs": 41.4,
+       "p95Ms": 81.1,
+       "p99Ms": 105.8,
+       "worstMs": 144.5,
+       "over100": 8,
+       "over200": 0,
+       "avgCalls": 107,
+       "maxCalls": 135,
+       "maxTrisK": 454,
+       "peakHeapMB": 217.6
+      },
+      {
+       "s": "C block loop cold",
+       "seconds": 82.6,
+       "avgFps": 23.3,
+       "medianMs": 41.2,
+       "p95Ms": 80.2,
+       "p99Ms": 115.6,
+       "worstMs": 186.6,
+       "over100": 37,
+       "over200": 0,
+       "avgCalls": 114,
+       "maxCalls": 160,
+       "maxTrisK": 508,
+       "peakHeapMB": 128.8
+      }
+     ]
+    },
+    {
+     "run": "2-m7",
+     "results": [
+      {
+       "s": "A stationary cold",
+       "seconds": 9.9,
+       "avgFps": 23.9,
+       "medianMs": 37.5,
+       "p95Ms": 87.3,
+       "p99Ms": 112.4,
+       "worstMs": 132.6,
+       "over100": 5,
+       "over200": 0,
+       "avgCalls": 121,
+       "maxCalls": 121,
+       "maxTrisK": 455,
+       "peakHeapMB": 223.5
+      },
+      {
+       "s": "B Jalan China lane cold",
+       "seconds": 28.4,
+       "avgFps": 20.6,
+       "medianMs": 48.6,
+       "p95Ms": 90.5,
+       "p99Ms": 123.5,
+       "worstMs": 159.4,
+       "over100": 19,
+       "over200": 0,
+       "avgCalls": 107,
+       "maxCalls": 137,
+       "maxTrisK": 460,
+       "peakHeapMB": 234.5
+      },
+      {
+       "s": "C block loop cold",
+       "seconds": 82,
+       "avgFps": 26,
+       "medianMs": 34.6,
+       "p95Ms": 77.2,
+       "p99Ms": 108.8,
+       "worstMs": 149.5,
+       "over100": 30,
+       "over200": 0,
+       "avgCalls": 115,
+       "maxCalls": 162,
+       "maxTrisK": 515,
+       "peakHeapMB": 234.3
+      }
+     ]
+    },
+    {
+     "run": "3-m7",
+     "results": [
+      {
+       "s": "A stationary cold",
+       "seconds": 10,
+       "avgFps": 18.8,
+       "medianMs": 54.4,
+       "p95Ms": 97.1,
+       "p99Ms": 108.7,
+       "worstMs": 109.6,
+       "over100": 5,
+       "over200": 0,
+       "avgCalls": 121,
+       "maxCalls": 121,
+       "maxTrisK": 455,
+       "peakHeapMB": 218.7
+      },
+      {
+       "s": "B Jalan China lane cold",
+       "seconds": 28.1,
+       "avgFps": 20.9,
+       "medianMs": 46.8,
+       "p95Ms": 87,
+       "p99Ms": 115.7,
+       "worstMs": 159.4,
+       "over100": 16,
+       "over200": 0,
+       "avgCalls": 107,
+       "maxCalls": 137,
+       "maxTrisK": 461,
+       "peakHeapMB": 224.2
+      },
+      {
+       "s": "C block loop cold",
+       "seconds": 83.4,
+       "avgFps": 19.7,
+       "medianMs": 47.4,
+       "p95Ms": 105.2,
+       "p99Ms": 134.2,
+       "worstMs": 242.7,
+       "over100": 101,
+       "over200": 1,
+       "avgCalls": 116,
+       "maxCalls": 162,
+       "maxTrisK": 519,
+       "peakHeapMB": 230.1
+      }
+     ]
+    },
+    {
+     "run": "4-m6b",
+     "results": [
+      {
+       "s": "A stationary cold",
+       "seconds": 9.8,
+       "avgFps": 19.9,
+       "medianMs": 50.5,
+       "p95Ms": 81.4,
+       "p99Ms": 99.1,
+       "worstMs": 245.8,
+       "over100": 1,
+       "over200": 1,
+       "avgCalls": 119,
+       "maxCalls": 119,
+       "maxTrisK": 446,
+       "peakHeapMB": 215.4
+      },
+      {
+       "s": "B Jalan China lane cold",
+       "seconds": 28.2,
+       "avgFps": 22,
+       "medianMs": 44.2,
+       "p95Ms": 84.2,
+       "p99Ms": 106.2,
+       "worstMs": 141.4,
+       "over100": 14,
+       "over200": 0,
+       "avgCalls": 106,
+       "maxCalls": 135,
+       "maxTrisK": 452,
+       "peakHeapMB": 98.7
+      },
+      {
+       "s": "C block loop cold",
+       "seconds": 82.1,
+       "avgFps": 23.3,
+       "medianMs": 42.2,
+       "p95Ms": 80.6,
+       "p99Ms": 107.6,
+       "worstMs": 158.6,
+       "over100": 34,
+       "over200": 0,
+       "avgCalls": 114,
+       "maxCalls": 159,
+       "maxTrisK": 500,
+       "peakHeapMB": 113.7
+      }
+     ]
+    }
+   ],
+   "p95MedianOfTwo": {
+    "A": {
+     "m6b": 73.1,
+     "m7": 92.2,
+     "pct": 26.1
+    },
+    "B": {
+     "m6b": 82.7,
+     "m7": 88.8,
+     "pct": 7.4
+    },
+    "C": {
+     "m6b": 80.4,
+     "m7": 91.2,
+     "pct": 13.4
+    }
+   }
+  }
+ },
+ "startUp": {
+  "how": "load-probe, `ready` (loadMs) and ready + first frames (interactiveMs), ms. Three sets; the order of the builds within a repeat is as listed.",
+  "sets": [
+   {
+    "order": "baseline, m7 x3",
+    "baseline": {
+     "ready": [
+      5718,
+      6364,
+      13127
+     ],
+     "interactive": [
+      11923,
+      12355,
+      13358
+     ]
+    },
+    "m7": {
+     "ready": [
+      7538,
+      8124,
+      8385
+     ],
+     "interactive": [
+      7994,
+      8266,
+      8529
+     ]
+    }
+   },
+   {
+    "order": "m7, m6b, baseline x3",
+    "m7": {
+     "ready": [
+      8815,
+      8476,
+      8239
+     ],
+     "interactive": [
+      9081,
+      8848,
+      8547
+     ]
+    },
+    "m6b": {
+     "ready": [
+      8656,
+      7836,
+      7991
+     ],
+     "interactive": [
+      9284,
+      8418,
+      8185
+     ]
+    },
+    "baseline": {
+     "ready": [
+      7066,
+      6012,
+      5551
+     ],
+     "interactive": [
+      13206,
+      12201,
+      11864
+     ]
+    }
+   },
+   {
+    "order": "m6b, m7 x4",
+    "m6b": {
+     "ready": [
+      8617,
+      7888,
+      7047,
+      7378
+     ],
+     "interactive": [
+      8826,
+      8344,
+      7489,
+      7519
+     ]
+    },
+    "m7": {
+     "ready": [
+      7503,
+      7121,
+      7003,
+      7162
+     ],
+     "interactive": [
+      7992,
+      7655,
+      7461,
+      7463
+     ]
+    }
+   }
+  ],
+  "medians": {
+   "set1": {
+    "baselineReady": 6364,
+    "m7Ready": 8124,
+    "pct": 27.7,
+    "baselineInteractive": 12355,
+    "m7Interactive": 8266,
+    "interactivePct": -33.1
+   },
+   "set2": {
+    "baselineReady": 6012,
+    "m6bReady": 7991,
+    "m7Ready": 8476,
+    "m7VsBaselinePct": 41.0,
+    "m6bVsBaselinePct": 32.9,
+    "m7VsM6bPct": 6.1,
+    "m7InteractiveVsBaselinePct": -27.5
+   },
+   "set3": {
+    "m6bReady": 7633,
+    "m7Ready": 7142,
+    "m7VsM6bPct": -6.4
+   }
+  },
+  "note": "M7 against the M6b build: +6 % and -6 % with the order swapped, i.e. nothing measurable. But in this session BOTH builds are 28 to 41 % slower than the baseline build to `ready` (limit +20 %), where the M6b notes measured -10 %. Not explained here; ready + first frames is still about 30 % better than the baseline."
+ },
+ "tour": {
+  "desktop_1366x768_medium": {
+   "calls": 2845,
+   "triangles": 7660608,
+   "fpsMedian": 60.0,
+   "fpsMin": 44.2,
+   "views": {
+    "01-waterfront": {
+     "fps": 60.1,
+     "min": 57.1,
+     "calls": 252,
+     "tris": 815858
+    },
+    "02-main-bazaar": {
+     "fps": 60,
+     "min": 60,
+     "calls": 228,
+     "tris": 1119352
+    },
+    "03-carpenter-street": {
+     "fps": 60,
+     "min": 59.9,
+     "calls": 221,
+     "tris": 708400
+    },
+    "04-india-street": {
+     "fps": 60,
+     "min": 59.9,
+     "calls": 160,
+     "tris": 269302
+    },
+    "05-jalan-gambier": {
+     "fps": 53,
+     "min": 44.2,
+     "calls": 356,
+     "tris": 999118
+    },
+    "06-plaza-merdeka": {
+     "fps": 60,
+     "min": 57.4,
+     "calls": 313,
+     "tris": 813417
+    },
+    "07-padungan-cat-statue": {
+     "fps": 60,
+     "min": 59.9,
+     "calls": 195,
+     "tris": 374427
+    },
+    "08-kuching-mosque": {
+     "fps": 60,
+     "min": 56.2,
+     "calls": 153,
+     "tris": 359026
+    },
+    "09-satok": {
+     "fps": 60,
+     "min": 59.5,
+     "calls": 122,
+     "tris": 222292
+    },
+    "10-the-spring": {
+     "fps": 60,
+     "min": 59.8,
+     "calls": 87,
+     "tris": 197521
+    },
+    "11-residential-overture": {
+     "fps": 60,
+     "min": 59.8,
+     "calls": 176,
+     "tris": 352507
+    },
+    "12-trunk-road-openg": {
+     "fps": 59.9,
+     "min": 58.1,
+     "calls": 199,
+     "tris": 435459
+    },
+    "13-river-to-dun": {
+     "fps": 60,
+     "min": 60,
+     "calls": 144,
+     "tris": 300713
+    },
+    "14-jalan-china-control": {
+     "fps": 60,
+     "min": 59.9,
+     "calls": 239,
+     "tris": 693216
+    }
+   }
+  },
+  "phone_390x844_low": {
+   "calls": 1042,
+   "triangles": 3090806,
+   "fpsMedian": 60.0,
+   "fpsMin": 59.7,
+   "views": {
+    "01-waterfront": {
+     "fps": 60,
+     "min": 60,
+     "calls": 82,
+     "tris": 141861
+    },
+    "02-main-bazaar": {
+     "fps": 60,
+     "min": 59.9,
+     "calls": 81,
+     "tris": 438742
+    },
+    "03-carpenter-street": {
+     "fps": 60,
+     "min": 59.7,
+     "calls": 107,
+     "tris": 487367
+    },
+    "04-india-street": {
+     "fps": 60,
+     "min": 60,
+     "calls": 44,
+     "tris": 83055
+    },
+    "05-jalan-gambier": {
+     "fps": 60,
+     "min": 60,
+     "calls": 111,
+     "tris": 149442
+    },
+    "06-plaza-merdeka": {
+     "fps": 60,
+     "min": 59.7,
+     "calls": 94,
+     "tris": 416440
+    },
+    "07-padungan-cat-statue": {
+     "fps": 60,
+     "min": 60,
+     "calls": 79,
+     "tris": 110695
+    },
+    "08-kuching-mosque": {
+     "fps": 60,
+     "min": 59.9,
+     "calls": 45,
+     "tris": 79742
+    },
+    "09-satok": {
+     "fps": 60,
+     "min": 59.9,
+     "calls": 50,
+     "tris": 78220
+    },
+    "10-the-spring": {
+     "fps": 60,
+     "min": 60,
+     "calls": 34,
+     "tris": 70487
+    },
+    "11-residential-overture": {
+     "fps": 60,
+     "min": 60,
+     "calls": 56,
+     "tris": 93009
+    },
+    "12-trunk-road-openg": {
+     "fps": 60,
+     "min": 60,
+     "calls": 70,
+     "tris": 110335
+    },
+    "13-river-to-dun": {
+     "fps": 60,
+     "min": 59.9,
+     "calls": 86,
+     "tris": 401912
+    },
+    "14-jalan-china-control": {
+     "fps": 60,
+     "min": 60,
+     "calls": 103,
+     "tris": 429499
+    }
+   }
+  },
+  "note": "Desktop view 05 read 53 fps (minimum 44) in the tour run and 60 (minimum 59.8) when views 05 and 06 were captured again straight after: a passing load on the machine. M6b totals: 2761 draw calls and 7.13 M triangles over the 14 views."
+ },
+ "tests": {
+  "unit": "315 / 315 (20 new in tests/unit/play.test.ts)",
+  "e2e": "see NOTES.md"
+ }
+}

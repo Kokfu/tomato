@@ -25,11 +25,11 @@ import type { OfferView, PhoneStatus } from '../ui/Phone.ts';
 import { Sfx } from './Sfx.ts';
 import { boxOverlap, closingSpeed, damageFrom, repairCost } from './crash.ts';
 import type { Box } from './crash.ts';
-import { DRIVE_TO_KIND, parkingSpots, settle } from './parked.ts';
-import type { Pose } from './parked.ts';
+import { DRIVE_TO_KIND, candidates, fits, parkingSpots } from './parked.ts';
+import type { Pose, Stand } from './parked.ts';
 import { arrive, arrived, formatRM, goalOf, makeOffers, parTime, sen, startJob } from './missions.ts';
 import type { Job, JobKind, Offer } from './missions.ts';
-import { describeSite, sitesOf } from './sites.ts';
+import { describeSite, isPublicLandmark, sitesOf } from './sites.ts';
 import type { JobsFile, Site } from './sites.ts';
 import { freshSave, loadSave, writeSave } from './save.ts';
 import type { SaveState } from './save.ts';
@@ -85,11 +85,19 @@ export class Play {
   private jobEl: HTMLElement;
   private beacon: THREE.Mesh;
   private beaconAt: { x: number; z: number } | null = null;
+  /** The roadside point nearest the place the job is heading for (null: none within 160 m, or no job). */
+  private goalStop: { x: number; z: number } | null = null;
   private time = 0;
   private tick = 0;
   private scanned = new Map<string, number>();
   private taken = new Set<string>();
   private walled = 0;
+  /** Which parked vehicle each wall `park0..` stands for (0 = none). */
+  private wallIds: number[] = new Array(WALLS).fill(0);
+  /** The chunk whose parking places are being tested, a few a frame. */
+  private pending: { key: string; cx: number; cz: number; list: Stand[]; next: number; standing: Stand[] } | null = null;
+  /** The list of parked vehicles changed: what is drawn must be worked out again now. */
+  private stale = true;
   private nextParkedId = 1;
   private lastHit = -10;
   private hornHeld = false;
@@ -173,6 +181,8 @@ export class Play {
       hornBtn.addEventListener('mousedown', () => { this.hornTouch = true; });
       window.addEventListener('mouseup', () => { this.hornTouch = false; });
     }
+    // getting out: a place inside a parked vehicle's outline is not free (their walls are down while driving)
+    host.driving.spotTaken = (x, z) => this.draw.some((q) => this.reach(q, x, z) < 0.45);
     this.showMoney();
   }
 
@@ -224,6 +234,7 @@ export class Play {
       if (world.chunks.dataAt(cx, cz)) continue;
       this.scanned.delete(key);
       for (let i = this.parked.length - 1; i >= 0; i--) if (this.parked[i].chunk === key) this.parked.splice(i, 1);
+      this.stale = true;
     }
     let best: [number, number] | null = null, bd = Infinity;
     for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
@@ -242,21 +253,38 @@ export class Play {
     }
     if (!best) return;
     const [cx, cz] = best, key = `${cx}_${cz}`, data = world.chunks.dataAt(cx, cz)!;
+    // the places are tested a few a frame (`settleSome`): testing a whole chunk at once is a long frame on a phone
+    this.scanned.set(key, 0);
+    this.pending = { key, cx, cz, list: candidates(parkingSpots(data, PAINTS.length), cx, cz), next: 0, standing: [] };
+  }
+
+  /** Test the next few candidate places of the chunk being worked out; when all are done its vehicles appear. */
+  private settleSome(max: number): void {
+    const job = this.pending;
+    if (!job) return;
+    if (!this.host.world.chunks.dataAt(job.cx, job.cz)) { this.pending = null; this.scanned.delete(job.key); return; }
+    for (let n = 0; n < max && job.next < job.list.length; n++) {
+      const c = job.list[job.next++];
+      if (fits(job.standing, c) && this.clear(c, c.kind)) job.standing.push(c);
+    }
+    if (job.next < job.list.length) return;
+    this.pending = null;
     const car = this.host.driving;
-    const spots = settle(parkingSpots(data, PAINTS.length), cx, cz, (p, kind) => this.clear(p, kind));
     let n = 0;
-    for (const s of spots) {
+    for (const s of job.standing) {
       if (this.taken.has(s.key)) continue;
       // (not on top of the player's own vehicle, wherever that stands)
       if (car.placed && Math.hypot(s.x - car.car.x, s.z - car.car.z) < 6) continue;
-      this.parked.push(this.make(s.kind, s.kind === 'taxi' ? TAXI_PAINT : PAINTS[(s.tint * 5 + 1) % PAINTS.length], 0, s.x, s.z, s.heading, s.key, key));
+      this.parked.push(this.make(s.kind, s.kind === 'taxi' ? TAXI_PAINT : PAINTS[(s.tint * 5 + 1) % PAINTS.length], 0, s.x, s.z, s.heading, s.key, job.key));
       n++;
     }
-    this.scanned.set(key, n);
+    this.scanned.set(job.key, n);
+    this.stale = true;
   }
 
-  private make(drive: DriveKind, paint: number, damage: number, x: number, z: number, heading: number, key: string | null, chunk: string | null): Parked {
-    const c = this.host.world.collision, h = this.host.world.height.sample(x, z);
+  private make(drive: DriveKind, paint: number, damage: number, x: number, z: number, heading: number, key: string | null, chunk: string | null, at?: number): Parked {
+    // (`at`: the height it stands at, for a vehicle left on a bridge deck; otherwise it stands on the ground)
+    const c = this.host.world.collision, h = at ?? this.host.world.height.sample(x, z);
     const y = c.isLoaded(x, z) ? c.groundAt(x, z, h + 0.6).h : h;
     const fx = Math.sin(heading) * 1.2, fz = Math.cos(heading) * 1.2;
     const pitch = c.isLoaded(x + fx, z + fz) && c.isLoaded(x - fx, z - fz) ? Math.atan2(c.groundAt(x + fx, z + fz, y + 0.8).h - c.groundAt(x - fx, z - fz, y + 0.8).h, 2.4) : 0;
@@ -286,8 +314,10 @@ export class Play {
     if (i < 0) return false;
     this.parked.splice(i, 1);
     if (p.key) this.taken.add(p.key);
-    if (d.placed) {
-      this.parked.push(this.make(d.kind, d.paint, d.damage, d.car.x, d.car.z, d.car.heading, null, null));
+    {
+      // (a vehicle from a saved game whose area has not loaded yet stays where it was saved)
+      const at = d.placed ? d.car : d.start;
+      this.parked.push(this.make(d.kind, d.paint, d.damage, at.x, at.z, at.heading, null, null, d.placed ? d.car.y : undefined));
       // (no more than three vehicles are left about: the one furthest away goes)
       const left = this.parked.filter((q) => !q.key);
       if (left.length > 3) {
@@ -300,11 +330,15 @@ export class Play {
     d.adopt(p.x, p.z, p.heading);
     this.near = null;
     this.clearWalls();
+    // (the taken vehicle must not be drawn as a parked one for another frame, under the player's own model)
+    this.stale = true;
+    const at = this.draw.indexOf(p);
+    if (at >= 0) this.draw.splice(at, 1);
     return true;
   }
 
   private clearWalls(): void {
-    for (let i = 0; i < this.walled; i++) this.host.world.collision.setDynamicWall(`park${i}`, null);
+    for (let i = 0; i < this.walled; i++) { this.host.world.collision.setDynamicWall(`park${i}`, null); this.wallIds[i] = 0; }
     this.walled = 0;
   }
 
@@ -325,7 +359,10 @@ export class Play {
       other.x = v.x; other.z = v.z; other.heading = v.heading; other.half = size.half; other.hw = size.hw;
       const o = boxOverlap(me, other);
       if (!o) continue;
-      const speed = closingSpeed(o, car.vx, car.vz, Math.sin(v.heading) * v.v, Math.cos(v.heading) * v.v);
+      // (a driver who has given up waiting edges past at walking pace, through whatever is in the way: the player's
+      // vehicle is pushed aside, but that is not a collision; only the player's own speed counts against such a one)
+      const edging = v.past > 0 || v.ghost > 0;
+      const speed = closingSpeed(o, car.vx, car.vz, edging ? 0 : Math.sin(v.heading) * v.v, edging ? 0 : Math.cos(v.heading) * v.v);
       car.shove(o.px, o.pz);
       this.hit(speed, v, null);
     }
@@ -378,8 +415,9 @@ export class Play {
       ]);
       const stopping = (e: number) => isStoppingEdge(graph, e);
       const sites = sitesOf(file);
-      // the game's landmarks are places too (called by their mapped names), where a public road passes within 150 m
-      for (const l of this.host.world.landmarks.landmarks) if (graph.snap(l.x, l.z, 150, undefined, stopping).length) sites.push({ x: l.x, z: l.z, group: 'landmark', name: l.name });
+      // the game's public landmarks are places too (called by their mapped names; not the malls, markets and food
+      // courts among them), where a public road passes within 150 m
+      for (const l of this.host.world.landmarks.landmarks) if (isPublicLandmark(l) && graph.snap(l.x, l.z, 150, undefined, stopping).length) sites.push({ x: l.x, z: l.z, group: 'landmark', name: l.name });
       this.graph = graph;
       this.sites = sites;
     })();
@@ -430,7 +468,7 @@ export class Play {
     if (!this.job) return;
     this.job = null;
     if (this.host.minimap.nav?.target.id === JOB_ID) this.host.minimap.clearRoute();
-    this.beacon.visible = false; this.beaconAt = null;
+    this.beacon.visible = false; this.beaconAt = null; this.goalStop = null;
     this.showJob();
   }
 
@@ -443,7 +481,9 @@ export class Play {
   route(): void {
     const job = this.job;
     if (!job) return;
-    const goal = goalOf(job);
+    const goal = goalOf(job), g = this.graph;
+    const snap = g ? g.snap(goal.x, goal.z, 160, undefined, (e) => isStoppingEdge(g, e))[0] : undefined;
+    this.goalStop = snap ? { x: snap.x, z: snap.z } : null;
     void this.host.minimap.routeTo(this.target(JOB_ID, `${job.stage === 'pickup' ? 'pick-up' : 'drop-off'}: ${describeSite(goal)}`, goal.x, goal.z), this.host.driving.active ? 'drive' : 'walk');
   }
 
@@ -467,14 +507,17 @@ export class Play {
     if (!job) return;
     const { driving, player, minimap } = this.host, goal = goalOf(job);
     const nav = minimap.nav?.target.id === JOB_ID ? minimap.nav : null;
-    const stop = nav?.stop ?? null, p = player.position;
-    // the marker stands over the place itself
-    if (!this.beaconAt || this.beaconAt.x !== goal.x || this.beaconAt.z !== goal.z) {
-      this.beaconAt = { x: goal.x, z: goal.z };
+    const p = player.position;
+    // The place is reached at the roadside: where the GPS route ends, or (on foot, or with the GPS pointed elsewhere)
+    // the nearest point of a public road to it. The marker stands there, not over a building.
+    const at = this.goalStop ?? goal;
+    if (!this.beaconAt || this.beaconAt.x !== at.x || this.beaconAt.z !== at.z) {
+      this.beaconAt = { x: at.x, z: at.z };
       (this.beacon.material as THREE.MeshBasicMaterial).color.setHex(job.stage === 'pickup' ? 0x35d6c2 : 0xff5fd2);
     }
-    this.beacon.visible = Math.hypot(goal.x - p.x, goal.z - p.z) < 400;
-    if (!arrived(p.x, p.z, driving.active ? driving.car.speed : player.speed, goal, stop)) return;
+    this.beacon.visible = Math.hypot(at.x - p.x, at.z - p.z) < 400;
+    const speed = driving.active ? driving.car.speed : player.speed;
+    if (!arrived(p.x, p.z, speed, goal, nav?.stop ?? null) && !arrived(p.x, p.z, speed, goal, this.goalStop)) return;
     if (job.offer.kind === 'taxi' && !(driving.active && driving.kind === 'taxi')) {
       this.host.toast('Passengers ride in the taxi: bring the taxi here.', 2.5);
       return;
@@ -494,7 +537,7 @@ export class Play {
     this.stats[job.offer.kind]++;
     this.paid.push({ kind: job.offer.kind, total: pay.total, tip: pay.tip });
     if (minimap.nav?.target.id === JOB_ID) minimap.clearRoute();
-    this.beacon.visible = false; this.beaconAt = null;
+    this.beacon.visible = false; this.beaconAt = null; this.goalStop = null;
     this.sfx.cash();
     this.host.toast(`${job.offer.kind === 'taxi' ? 'Fare paid' : 'Delivered'}: ${formatRM(pay.fare)}${pay.tip > 0 ? ` + ${formatRM(pay.tip)} tip` : ', no tip'}. The phone has more jobs.`, 5);
     this.showMoney(true);
@@ -519,7 +562,9 @@ export class Play {
   save(): boolean {
     const d = this.host.driving, s = this.stats;
     s.money = this.money;
-    s.vehicle = d.placed ? { kind: d.kind, x: d.car.x, z: d.car.z, heading: d.car.heading, damage: d.damage, paint: d.paint } : null;
+    // (after a reload the vehicle is not stood on its ground until its area has loaded: it is still where it was saved)
+    const at = d.placed ? d.car : d.start;
+    s.vehicle = { kind: d.kind, x: at.x, z: at.z, heading: at.heading, damage: d.damage, paint: d.paint };
     return writeSave(s);
   }
 
@@ -536,7 +581,7 @@ export class Play {
       } : null,
       vehicle: { name: `${KIND_NAME[d.kind]}${d.active ? '' : ' (parked)'}`, driving: d.active, damage: d.damage, repair: cost > 0 ? formatRM(cost) : null, canRepair: this.money >= cost },
       stats: `${this.stats.delivery} deliveries · ${this.stats.taxi} fares · ${formatRM(this.stats.earned)} earned`,
-      taxiBlock: inTaxi ? '' : 'Fares are driven in a taxi: get into one first.',
+      taxiBlock: inTaxi ? '' : this.host.life ? 'Fares are driven in a taxi: get into one first.' : 'Fares are driven in a taxi, and no vehicles stand parked with ?life=0.',
       taxiNear: inTaxi ? null : this.taxiNear(),
     };
   }
@@ -587,48 +632,63 @@ export class Play {
     // the parked vehicles: which exist, which are drawn, which block the walker, which one E would take
     const budget = this.budget;
     this.tick++;
-    if (budget > 0 && this.tick % 12 === 0) this.scan(p.x, p.z);
-    if (budget <= 0 && this.parked.length) { this.parked.length = 0; this.scanned.clear(); this.clearWalls(); }
+    if (budget > 0) { if (this.pending) this.settleSome(3); else if (this.tick % 12 === 0) this.scan(p.x, p.z); }
+    if (budget <= 0 && this.scanned.size) {
+      // (nothing can be drawn just now, e.g. while a new preset's meshes are built: the rule-placed vehicles are worked
+      // out again afterwards; those the player left behind are kept)
+      for (let i = this.parked.length - 1; i >= 0; i--) if (this.parked[i].key) this.parked.splice(i, 1);
+      this.scanned.clear(); this.pending = null; this.clearWalls(); this.draw.length = 0; this.stale = true;
+    }
     if (life) {
       // (an ambient driver's horn is heard from where the vehicle is)
       if (life.traffic && !life.traffic.onHorn) life.traffic.onHorn = (v) => this.heard(v);
-      const draw = this.draw;
-      draw.length = 0;
-      if (budget > 0) {
-        for (const q of this.parked) if (Math.abs(q.x - p.x) < 170 && Math.abs(q.z - p.z) < 170) draw.push(q);
-        if (draw.length > budget) { draw.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z)); draw.length = budget; }
-      }
-      life.parked = draw;
-      // vehicles the player left standing are in the traffic's way like the player's own
-      const obs = this.obstacles;
-      let n = 0;
-      for (const q of this.parked) {
-        if (q.key || Math.abs(q.x - p.x) > 200 || Math.abs(q.z - p.z) > 200) continue;
-        for (const k of [-1, 1]) {
-          const o = obs[n] ?? (obs[n] = { x: 0, z: 0, r: 0, vx: 0, vz: 0 });
-          const half = SIZE[q.kind].half * 0.5;
-          o.x = q.x + Math.sin(q.heading) * half * k; o.z = q.z + Math.cos(q.heading) * half * k; o.r = q.kind === KIND.kapcai ? 0.5 : 1; n++;
+      // (which are drawn, and which stand in the traffic's way, is worked out five times a second and when the list changes)
+      if (this.tick % 12 === 1 || this.stale) {
+        this.stale = false;
+        const draw = this.draw;
+        draw.length = 0;
+        if (budget > 0) {
+          for (const q of this.parked) if (Math.abs(q.x - p.x) < 170 && Math.abs(q.z - p.z) < 170) draw.push(q);
+          if (draw.length > budget) { draw.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z)); draw.length = budget; }
         }
+        life.parked = draw;
+        // vehicles the player left standing are in the traffic's way like the player's own
+        const obs = this.obstacles;
+        let n = 0;
+        for (const q of this.parked) {
+          if (q.key || Math.abs(q.x - p.x) > 200 || Math.abs(q.z - p.z) > 200) continue;
+          for (let k = -1; k <= 1; k += 2) {
+            const o = obs[n] ?? (obs[n] = { x: 0, z: 0, r: 0, vx: 0, vz: 0 });
+            const half = SIZE[q.kind].half * 0.5;
+            o.x = q.x + Math.sin(q.heading) * half * k; o.z = q.z + Math.cos(q.heading) * half * k; o.r = q.kind === KIND.kapcai ? 0.5 : 1; n++;
+          }
+        }
+        obs.length = n;
+        life.extraObstacles = obs;
       }
-      obs.length = n;
-      life.extraObstacles = obs;
     }
     let near: Parked | null = null;
     if (!driving.active) {
       const c = world.collision;
       let k = 0, best = ENTER_RANGE;
+      const wall = this.wallIds;
       for (const q of this.draw) {
         if (Math.abs(q.x - p.x) > WALL_RANGE || Math.abs(q.z - p.z) > WALL_RANGE) continue;
         const d = this.reach(q, p.x, p.z);
         if (d <= best && Math.abs(q.y - p.y) < 2) { best = d; near = q; }
         if (k >= WALLS) continue;
-        const s = SIZE[q.kind], hx = Math.sin(q.heading), hz = Math.cos(q.heading), a = s.half, e = s.hw;
-        c.setDynamicWall(`park${k++}`, [
-          q.x + hx * a + hz * e, q.z + hz * a - hx * e, q.x + hx * a - hz * e, q.z + hz * a + hx * e,
-          q.x - hx * a - hz * e, q.z - hz * a + hx * e, q.x - hx * a + hz * e, q.z - hz * a - hx * e,
-        ], q.y + (q.kind === KIND.kapcai ? 1.0 : 1.3));
+        // (a parked vehicle does not move: its wall is written once, not every frame)
+        if (wall[k] !== q.id) {
+          wall[k] = q.id;
+          const s = SIZE[q.kind], hx = Math.sin(q.heading), hz = Math.cos(q.heading), a = s.half, e = s.hw;
+          c.setDynamicWall(`park${k}`, [
+            q.x + hx * a + hz * e, q.z + hz * a - hx * e, q.x + hx * a - hz * e, q.z + hz * a + hx * e,
+            q.x - hx * a - hz * e, q.z - hz * a + hx * e, q.x - hx * a + hz * e, q.z - hz * a - hx * e,
+          ], q.y + (q.kind === KIND.kapcai ? 1.0 : 1.3));
+        }
+        k++;
       }
-      for (let i = k; i < this.walled; i++) c.setDynamicWall(`park${i}`, null);
+      for (let i = k; i < this.walled; i++) { c.setDynamicWall(`park${i}`, null); wall[i] = 0; }
       this.walled = k;
     }
     this.near = near;
