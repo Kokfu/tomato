@@ -36,6 +36,8 @@ import { startModes } from './world/dayCycle.ts';
 import type { RainMode, TimeMode } from './world/dayCycle.ts';
 import { RainSound } from './world/Rain.ts';
 import { headlightGeometry } from './world/StreetFurniture.ts';
+import { Life } from './life/Life.ts';
+import { getFlags } from './flags.ts';
 
 /** Rendering at start: V7 Jalan China (its detailed section, the normal geographic rendering elsewhere). The legacy
  *  comparison modes stay available in Settings > Developer settings, by keys 1-4 and by ?render=v4|a|b|c. */
@@ -137,6 +139,7 @@ async function boot(): Promise<void> {
         const v5on = !!v5?.usesPipeline;
         if (v5on) v5!.pipeline.disable();
         world.applyQuality(quality);
+        life?.setQuality(quality);
         v5?.setTier(q);
         if (v5on) v5!.pipeline.enable();
         camera.far = world.viewDistance;
@@ -418,8 +421,10 @@ async function boot(): Promise<void> {
     : Promise.resolve();
   world.chunks.holdWarm = startHold;
   world.chunks.onBuilt = (o) => { if (startHold && v5?.usesPipeline) prepareObject(o); };
+  // N1-M6: ambient traffic and walkers. Loaded and compiled after `ready`, so they add nothing to start-up.
+  const life = getFlags().life ? new Life({ world, baseUrl: import.meta.env.BASE_URL, prepare: (o) => whenCompiled(renderer, prepareObject(o)) }, quality) : null;
   const applyInitialMode = () => {
-    const done = () => { startHold = false; world.chunks.holdWarm = false; world.chunks.onBuilt = null; renderReady = true; menu.setLoading(1, 'Ready', true); };
+    const done = () => { startHold = false; world.chunks.holdWarm = false; world.chunks.onBuilt = null; renderReady = true; menu.setLoading(1, 'Ready', true); void life?.start(); };
     // (N1-M6: this rendering draws from the first frame, so only what is not drawn by day, the rain and the pools of
     // lamp light, is still to compile: now, not on the frame night falls or rain starts)
     if (initialMode === 'v4') { prepareObject(world.scene); return done(); }
@@ -709,6 +714,8 @@ async function boot(): Promise<void> {
     controls.set(context);
 
     headlights.visible = driving.active;
+    life?.update(dt * stepsPerFrame, focus.x, focus.z, { x: player.position.x, z: player.position.z, vx: player.velocity.x, vz: player.velocity.z, driving: driving.active, car: driving.placed ? driving.car : null },
+      started && !paused && spawnReady, world.weather.rain);
     blob.visible = quality.shadowMap === 0 && !tpc.firstPerson && !driving.active;
     if (blob.visible) blob.position.set(player.position.x, world.collision.groundAt(player.position.x, player.position.z, player.position.y).h + 0.08, player.position.z);
 
@@ -804,7 +811,7 @@ async function boot(): Promise<void> {
 
   // Debug / automated-test hook.
   (window as any).__k3d = {
-    world, player, camera, tpc, input, renderer, minimap, gps, menu, placePanel, steps, v5, fly, refPanel, driving, mobile,
+    world, player, camera, tpc, input, renderer, minimap, gps, menu, placePanel, steps, v5, fly, refPanel, driving, mobile, life,
     geoToWorld, worldToGeo,
     /** Protected landmarks that reached a generic building generator (must stay empty). */
     landmarkGuard: guardViolations,

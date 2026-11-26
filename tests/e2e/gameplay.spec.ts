@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { watch, start, state, walk, teleport, waitChunks, frames, chainOfWays, manifest, overview, landmarks } from './helpers.ts';
+import { watch, start, seedCharacter, state, walk, teleport, waitChunks, frames, chainOfWays, manifest, overview, landmarks } from './helpers.ts';
 
 const SPAWN = manifest.spawn as { x: number; z: number };
 // Mapped OSM ways of the Darul Hana pedestrian bridge: south approach, ramp, main span.
@@ -184,7 +184,10 @@ test.describe('gameplay', () => {
   });
 
   test('movement is frame-rate independent', async ({ page }) => {
-    await start(page);
+    // (without the ambient traffic, N1-M6: a vehicle that stops for the runner blocks them, and no two runs meet the same one)
+    await seedCharacter(page);
+    await page.goto('./?life=0');
+    await start(page, { navigate: false });
     const mb = landmarks().find((l) => l.id === 'main-bazaar')!;
     await teleport(page, mb.x, mb.z);
     await waitChunks(page);

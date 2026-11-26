@@ -1,0 +1,86 @@
+{
+ "01-waterfront": {
+  "median": 60,
+  "min": 58,
+  "max": 60,
+  "n": 50
+ },
+ "02-main-bazaar": {
+  "median": 60,
+  "min": 60,
+  "max": 60,
+  "n": 50
+ },
+ "03-carpenter-street": {
+  "median": 60,
+  "min": 59.9,
+  "max": 60.1,
+  "n": 50
+ },
+ "04-india-street": {
+  "median": 60,
+  "min": 58,
+  "max": 60.1,
+  "n": 50
+ },
+ "05-jalan-gambier": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 50
+ },
+ "06-plaza-merdeka": {
+  "median": 60,
+  "min": 60,
+  "max": 60,
+  "n": 50
+ },
+ "07-padungan-cat-statue": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 50
+ },
+ "08-kuching-mosque": {
+  "median": 60,
+  "min": 59.9,
+  "max": 60.1,
+  "n": 50
+ },
+ "09-satok": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 50
+ },
+ "10-the-spring": {
+  "median": 60,
+  "min": 60,
+  "max": 60,
+  "n": 50
+ },
+ "11-residential-overture": {
+  "median": 60,
+  "min": 59.9,
+  "max": 60.1,
+  "n": 50
+ },
+ "12-trunk-road-openg": {
+  "median": 60,
+  "min": 59.8,
+  "max": 60.2,
+  "n": 50
+ },
+ "13-river-to-dun": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 50
+ },
+ "14-jalan-china-control": {
+  "median": 60,
+  "min": 60,
+  "max": 60.1,
+  "n": 50
+ }
+}

@@ -188,7 +188,7 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
   character visibly passes through a wall there.
 - Roads that pass under bridges or flyovers are walkable underneath; underpass tunnels
   (`tunnel=yes`, 8 trunk segments) are drawn at ground level.
-- Motor traffic, pedestrians, boats (tambang), day/night and weather are not simulated.
+- Boats (tambang) are not simulated. Traffic and pedestrians are ambient only (see "Traffic and walkers" below).
 - Jumping is cosmetic (0.7 m); it cannot be used to climb onto buildings.
 
 ## Rendering and performance
@@ -225,6 +225,35 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - **Sound is synthesised** (filtered noise for rain, a low rumble for thunder); there is no lightning flash.
 - **In an automated browser** (tests, screenshot and benchmark tools) the game starts on a frozen dry day unless the
   address or a saved setting says otherwise, so those runs do not show the cycle.
+
+## Traffic and walkers (N1-M6 part B, all invented)
+
+- **Only the roads are mapped.** Ambient vehicles follow the centre lines, one-way flags and signal positions of
+  OpenStreetMap; everything else is made up: how many there are, which kinds (three generic cars, a kapcai with a
+  rider), their paint, their speeds (27 to 45 km/h by road class) and where each one turns.
+- **They exist only round the player** (130 to 230 m by preset; 8 vehicles and 9 walkers on Low, 18 and 22 on Medium,
+  26 and 34 on High; about half at night, fewer walkers in rain) and appear and vanish at the edge of that ring.
+- **Lanes are inferred**: a vehicle keeps a quarter of the mapped (mostly inferred) carriageway width left of the centre
+  line. Lane counts are not in the data; nobody overtakes; a kapcai rides a little further left but does not filter.
+- **Priority is a rule, not the real one**: the larger road class goes first, a driver who has waited 20 s edges out, and
+  two vehicles that block each other for 8 s are let through one another. **Signal timing is invented** (15 s green,
+  2 s amber, in two directions by bearing) and the drawn signal heads do not change colour.
+- **Ambient traffic keeps out of** service roads, covered ways, streets that only lead to a dead end, and Jalan China
+  (the hand-built street where the player's car waits in the one free lane).
+- **Vehicles brake for the player, the player's car and walkers, but nothing collides with them.** The player's car
+  drives through ambient vehicles (collisions are planned for the play loop, N1-M7); a walking player is pushed aside
+  by the three nearest vehicles. A vehicle held up for 12 s by something that will not move edges through it.
+- **Walkers follow fixed short routes**, to and fro: the footpath beside a carriageway, a mapped footway or pedestrian
+  street, or the five-foot way behind a shophouse front. They do not cross a street on purpose (a footpath route may
+  pass the mouth of a side street), do not enter buildings, avoid nobody but the player, and may walk through each
+  other. Some just stand. Who is where is random, not a count of real footfall.
+- **One body for everyone**: the CC0 "Casual Character" with its walk cycle, recoloured (clothes, skin, hair) and
+  scaled 1.52 to 1.78 m; on Low and Medium a coarser copy of it. Walkers and the kapcai rider have no face detail at
+  that size. They cast no shadow of their own (a soft patch under each); ambient vehicles cast shadows on Medium and High.
+- **At night** vehicles show head and tail lamps and a patch of light on the road; like every lamp in the game it lights
+  nothing else, so the bodies of cars and walkers are dark away from daylight.
+- **The phone benchmark** still runs round Jalan China, where there is little ambient traffic (the old town is one-way
+  and Jalan China itself is closed to it).
 
 ## Testing
 

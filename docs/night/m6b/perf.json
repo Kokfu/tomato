@@ -1,0 +1,437 @@
+{
+ "commit": "N1-M6 part B",
+ "builds": {
+  "baseline": "C:/Kuching3D-night-builds/baseline",
+  "candidate": "C:/Kuching3D-night-builds/m6b"
+ },
+ "onOff": {
+  "how": "tools/dev/life-probe.ts --mobile --quality=low --cpu=4 --ab=24 --turn: one page, 24 pairs of 3 s windows with and without the traffic and walkers (life.suspended)",
+  "places": [
+   {
+    "place": "Jalan China (the spawn, where the bench runs)",
+    "at": "160,17",
+    "frames": [
+     1906,
+     2081
+    ],
+    "on": {
+     "mean": 33.21,
+     "median": 32.2,
+     "p95": 63.4,
+     "p99": 83.2,
+     "over100": 4
+    },
+    "off": {
+     "mean": 30.42,
+     "median": 29.4,
+     "p95": 60.6,
+     "p99": 76.5,
+     "over100": 5
+    },
+    "meanPct": 9.2,
+    "p95Pct": 4.6,
+    "pairMedianPct": {
+     "median": 12.5,
+     "quartiles": [
+      -4.5,
+      22.6
+     ]
+    }
+   },
+   {
+    "place": "Jalan Padungan",
+    "at": "1075,239",
+    "frames": [
+     2234,
+     2515
+    ],
+    "on": {
+     "mean": 28.34,
+     "median": 27.5,
+     "p95": 53.5,
+     "p99": 74,
+     "over100": 7
+    },
+    "off": {
+     "mean": 25.07,
+     "median": 24.5,
+     "p95": 48.3,
+     "p99": 61.3,
+     "over100": 1
+    },
+    "meanPct": 13,
+    "p95Pct": 10.8,
+    "pairMedianPct": {
+     "median": 11.9,
+     "quartiles": [
+      3.3,
+      33.8
+     ]
+    }
+   },
+   {
+    "place": "suburb, Jalan Nanas Barat",
+    "at": "-1610,1003",
+    "frames": [
+     3331,
+     3422
+    ],
+    "on": {
+     "mean": 18.85,
+     "median": 17.4,
+     "p95": 33.2,
+     "p99": 44.1,
+     "over100": 0
+    },
+    "off": {
+     "mean": 18.4,
+     "median": 17.2,
+     "p95": 30.9,
+     "p99": 39.6,
+     "over100": 0
+    },
+    "meanPct": 2.4,
+    "p95Pct": 7.4,
+    "pairMedianPct": {
+     "median": 2.5,
+     "quartiles": [
+      -0.6,
+      7
+     ]
+    }
+   }
+  ]
+ },
+ "driveBench": {
+  "how": "drive-bench --mobile --quality=low --cpu=4 --scenarios=A,B,C --runs=1, order baseline, m6b, m6b, baseline (the machine speed drifted about two-fold between and within runs: not conclusive). These four runs were taken one build before the last saving (the Low preset simulating every second frame); the on/off measurement above is from the final build.",
+  "runs": [
+   {
+    "run": "1-baseline",
+    "results": [
+     {
+      "s": "A stationary cold",
+      "avgFps": 28.6,
+      "medianMs": 24.8,
+      "p95Ms": 86.3,
+      "p99Ms": 101.4,
+      "worstMs": 156.9,
+      "over100": 4,
+      "over200": 0,
+      "avgCalls": 113,
+      "maxCalls": 113,
+      "maxTrisK": 318,
+      "lateCompileMs": [],
+      "peakHeapMB": 108.7
+     },
+     {
+      "s": "B Jalan China lane cold",
+      "avgFps": 24.3,
+      "medianMs": 37.8,
+      "p95Ms": 86.9,
+      "p99Ms": 120.4,
+      "worstMs": 143.3,
+      "over100": 15,
+      "over200": 0,
+      "avgCalls": 96,
+      "maxCalls": 129,
+      "maxTrisK": 322,
+      "lateCompileMs": [],
+      "peakHeapMB": 118.2
+     },
+     {
+      "s": "C block loop cold",
+      "avgFps": 25,
+      "medianMs": 38.4,
+      "p95Ms": 77.5,
+      "p99Ms": 112.5,
+      "worstMs": 141.9,
+      "over100": 39,
+      "over200": 0,
+      "avgCalls": 101,
+      "maxCalls": 150,
+      "maxTrisK": 348,
+      "lateCompileMs": [
+       78.3
+      ],
+      "peakHeapMB": 95.7
+     }
+    ]
+   },
+   {
+    "run": "2-m6b",
+    "results": [
+     {
+      "s": "A stationary cold",
+      "avgFps": 33.9,
+      "medianMs": 23.3,
+      "p95Ms": 68.6,
+      "p99Ms": 86,
+      "worstMs": 96.6,
+      "over100": 0,
+      "over200": 0,
+      "avgCalls": 119,
+      "maxCalls": 119,
+      "maxTrisK": 447,
+      "lateCompileMs": [],
+      "peakHeapMB": 112.2
+     },
+     {
+      "s": "B Jalan China lane cold",
+      "avgFps": 28.4,
+      "medianMs": 31.6,
+      "p95Ms": 70.2,
+      "p99Ms": 95.2,
+      "worstMs": 169.2,
+      "over100": 4,
+      "over200": 0,
+      "avgCalls": 108,
+      "maxCalls": 135,
+      "maxTrisK": 453,
+      "lateCompileMs": [],
+      "peakHeapMB": 101
+     },
+     {
+      "s": "C block loop cold",
+      "avgFps": 23.2,
+      "medianMs": 42.9,
+      "p95Ms": 82.1,
+      "p99Ms": 102.1,
+      "worstMs": 177.2,
+      "over100": 23,
+      "over200": 0,
+      "avgCalls": 114,
+      "maxCalls": 159,
+      "maxTrisK": 501,
+      "lateCompileMs": [
+       73.2
+      ],
+      "peakHeapMB": 121.4
+     }
+    ]
+   },
+   {
+    "run": "3-m6b",
+    "results": [
+     {
+      "s": "A stationary cold",
+      "avgFps": 16,
+      "medianMs": 61,
+      "p95Ms": 96.3,
+      "p99Ms": 108.7,
+      "worstMs": 118.1,
+      "over100": 5,
+      "over200": 0,
+      "avgCalls": 119,
+      "maxCalls": 119,
+      "maxTrisK": 447,
+      "lateCompileMs": [],
+      "peakHeapMB": 117.2
+     },
+     {
+      "s": "B Jalan China lane cold",
+      "avgFps": 18.4,
+      "medianMs": 53.1,
+      "p95Ms": 95.5,
+      "p99Ms": 123.7,
+      "worstMs": 164.6,
+      "over100": 20,
+      "over200": 0,
+      "avgCalls": 105,
+      "maxCalls": 135,
+      "maxTrisK": 453,
+      "lateCompileMs": [],
+      "peakHeapMB": 124.2
+     },
+     {
+      "s": "C block loop cold",
+      "avgFps": 22,
+      "medianMs": 43.5,
+      "p95Ms": 88.3,
+      "p99Ms": 122.1,
+      "worstMs": 257.4,
+      "over100": 53,
+      "over200": 2,
+      "avgCalls": 114,
+      "maxCalls": 160,
+      "maxTrisK": 511,
+      "lateCompileMs": [
+       37.2
+      ],
+      "peakHeapMB": 133.3
+     }
+    ]
+   },
+   {
+    "run": "4-baseline",
+    "results": [
+     {
+      "s": "A stationary cold",
+      "avgFps": 30.3,
+      "medianMs": 21.6,
+      "p95Ms": 77.9,
+      "p99Ms": 112.8,
+      "worstMs": 128.9,
+      "over100": 4,
+      "over200": 0,
+      "avgCalls": 113,
+      "maxCalls": 113,
+      "maxTrisK": 318,
+      "lateCompileMs": [],
+      "peakHeapMB": 88.7
+     },
+     {
+      "s": "B Jalan China lane cold",
+      "avgFps": 26,
+      "medianMs": 37.1,
+      "p95Ms": 74.4,
+      "p99Ms": 95,
+      "worstMs": 114.5,
+      "over100": 3,
+      "over200": 0,
+      "avgCalls": 97,
+      "maxCalls": 129,
+      "maxTrisK": 322,
+      "lateCompileMs": [],
+      "peakHeapMB": 91.4
+     },
+     {
+      "s": "C block loop cold",
+      "avgFps": 28.8,
+      "medianMs": 32,
+      "p95Ms": 69.3,
+      "p99Ms": 93,
+      "worstMs": 126,
+      "over100": 10,
+      "over200": 0,
+      "avgCalls": 103,
+      "maxCalls": 150,
+      "maxTrisK": 349,
+      "lateCompileMs": [
+       51.7
+      ],
+      "peakHeapMB": 94.4
+     }
+    ]
+   }
+  ]
+ },
+ "loadProbe": [
+  {
+   "dist": "baseline",
+   "run": 1,
+   "loadMs": 4170,
+   "interactiveMs": 5076,
+   "progsReady": 100,
+   "pan": {
+    "worst": 198,
+    "over50": 4,
+    "over200": 0,
+    "slowMs": 417,
+    "progs": 100
+   }
+  },
+  {
+   "dist": "m6b",
+   "run": 1,
+   "loadMs": 3825,
+   "interactiveMs": 4019,
+   "progsReady": 73,
+   "pan": {
+    "worst": 127,
+    "over50": 3,
+    "over200": 0,
+    "slowMs": 259,
+    "progs": 75
+   }
+  },
+  {
+   "dist": "baseline",
+   "run": 2,
+   "loadMs": 4157,
+   "interactiveMs": 5398,
+   "progsReady": 100,
+   "pan": {
+    "worst": 246,
+    "over50": 3,
+    "over200": 1,
+    "slowMs": 422,
+    "progs": 100
+   }
+  },
+  {
+   "dist": "m6b",
+   "run": 2,
+   "loadMs": 3773,
+   "interactiveMs": 4088,
+   "progsReady": 74,
+   "pan": {
+    "worst": 109,
+    "over50": 4,
+    "over200": 0,
+    "slowMs": 323,
+    "progs": 75
+   }
+  },
+  {
+   "dist": "baseline",
+   "run": 3,
+   "loadMs": 4426,
+   "interactiveMs": 5677,
+   "progsReady": 100,
+   "pan": {
+    "worst": 321,
+    "over50": 3,
+    "over200": 1,
+    "slowMs": 502,
+    "progs": 100
+   }
+  },
+  {
+   "dist": "m6b",
+   "run": 3,
+   "loadMs": 3685,
+   "interactiveMs": 3840,
+   "progsReady": 73,
+   "pan": {
+    "worst": 143,
+    "over50": 2,
+    "over200": 0,
+    "slowMs": 273,
+    "progs": 75
+   }
+  }
+ ],
+ "startUp": {
+  "baselineReadyMs": 4170,
+  "m6bReadyMs": 3773,
+  "baselineInteractiveMs": 5398,
+  "m6bInteractiveMs": 4019
+ },
+ "tour": {
+  "desktop": {
+   "views": 14,
+   "calls": 2761,
+   "tris": 7131614,
+   "fpsMedianMin": 60,
+   "fpsMin": 58
+  },
+  "phone": {
+   "views": 14,
+   "calls": 1022,
+   "tris": 3003384,
+   "fpsMedianMin": 60,
+   "fpsMin": 59.8
+  },
+  "night": {
+   "views": 6,
+   "calls": 1229,
+   "tris": 2541063,
+   "fpsMedianMin": null,
+   "fpsMin": null
+  }
+ },
+ "tests": {
+  "unit": "295 / 295",
+  "e2e": "desktop-1920: m6-life, m6-daynight, shader-prep, gameplay, driving, gps, landmarks, district: 36 passed; mobile-390: touch, touch-drive, touch-lowprep: 3 passed"
+ }
+}

@@ -39,6 +39,8 @@ await page.waitForFunction(() => (window as any).__k3d?.ready, null, { timeout: 
 await page.click('#btn-start');
 if (quality) await page.evaluate((q) => (document.querySelector(`#quality-seg [data-q="${q}"]`) as HTMLElement).click(), quality);
 await setSky(timeOpt, rainOpt);
+// N1-M6: the traffic and the walkers are loaded after `ready`
+await page.waitForFunction(() => { const l = (window as any).__k3d.life; return !l || (l.active && l.render.walkerTriangles > 0); }, null, { timeout: 30000 }).catch(() => errors.push('life not started'));
 for (const v of views) {
   await page.evaluate((v) => {
     const k = (window as any).__k3d;

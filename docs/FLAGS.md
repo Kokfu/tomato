@@ -10,6 +10,7 @@ Since N1-M1 the merged features (and since N1-M5 the hero places) are **on by de
 | `c1` | Upper China Street corner | `?c1=0` |
 | `char` | Six-character picker (first launch shows the picker; "Change character" in the pause menu) | `?char=0` |
 | `m5` | N1-M5 hero places: Kuching Waterfront promenade kit (paved walk, ring railing, festoon lights, palms, kapcai, Square Tower forecourt) the rest of Carpenter Street (Jalan China to Jalan Bishopgate), India Street (rows on both sides, canopy, diamond paving, stalls, mapped shop names) Jalan Gambier's parked cars, the Square Tower and Old Courthouse clock tower in their photographed forms, the Plaza Merdeka entrance, and Jalan Padungan (the Cat Column, the Great Cat, the open Chinatown gate, strong paint and fascia boards on the rows), the Kuching City Mosque with its cemetery, and the floating mosque in its photographed form | `?m5=0` |
+| `life` | N1-M6 ambient traffic (cars and kapcai on the mapped carriageways) and walkers on footpaths and five-foot ways | `?life=0` |
 
 - N1-M6 (not flags, but address parameters): `?time=auto|day|evening|night` or `?time=<hour 0..24>` and
   `?rain=auto|off|on` set the time of day and the rain at start-up; they win over the saved settings

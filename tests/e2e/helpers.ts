@@ -16,7 +16,10 @@ export function watch(page: Page): Issues {
   page.on('pageerror', (e) => issues.errors.push(`pageerror: ${e.message}`));
   // A single aborted chunk request is retried by the app; a chunk that stays missing is reported
   // by the app as a console error, which is collected above.
-  page.on('requestfailed', (r) => { if (!r.url().includes('/chunks/')) issues.errors.push(`requestfailed: ${r.url()} ${r.failure()?.errorText ?? ''}`); });
+  // N1-M6: the traffic's road graph and the walkers' model are fetched after `ready`; a test that reloads the page
+  // at that moment aborts them, which is not a fault (a download that fails for any other reason still is one).
+  const late = (url: string, why: string) => why.includes('ERR_ABORTED') && (url.endsWith('/casual-character.glb') || url.endsWith('/drive-graph.json'));
+  page.on('requestfailed', (r) => { if (!r.url().includes('/chunks/') && !late(r.url(), r.failure()?.errorText ?? '')) issues.errors.push(`requestfailed: ${r.url()} ${r.failure()?.errorText ?? ''}`); });
   page.on('response', (r) => { if (r.status() >= 400) issues.errors.push(`http ${r.status()}: ${r.url()}`); });
   return issues;
 }

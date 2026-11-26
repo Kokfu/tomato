@@ -1,0 +1,6 @@
+01-waterfront {"fps":60,"calls":258,"tris":739925,"geo":409,"tex":77,"chunks":44,"pos":[-188.9,1.8,-202]}
+05-jalan-gambier {"fps":60,"calls":298,"tris":885137,"geo":445,"tex":77,"chunks":44,"pos":[-45.8,1.8,-222.4]}
+07-padungan-cat-statue {"fps":60,"calls":160,"tris":175580,"geo":419,"tex":78,"chunks":45,"pos":[1074.8,6,239.2]}
+09-satok {"fps":60,"calls":125,"tris":168509,"geo":335,"tex":66,"chunks":34,"pos":[-2533.1,1.8,492.1]}
+11-residential-overture {"fps":60,"calls":221,"tris":333184,"geo":400,"tex":79,"chunks":43,"pos":[-1610,5.2,1003]}
+12-trunk-road-openg {"fps":59.9,"calls":167,"tris":238728,"geo":384,"tex":77,"chunks":44,"pos":[-321,10.9,1290]}

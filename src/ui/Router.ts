@@ -257,6 +257,8 @@ export class RouteGraph {
   isOneWay(edge: number): boolean { return (this.eflags[edge] & EDGE_ONEWAY) !== 0; }
   nameOf(edge: number): string | undefined { return this.ename[edge] >= 0 ? this.names[this.ename[edge]] : undefined; }
   typeOf(edge: number): string { return this.types[this.etype[edge]]; }
+  /** Edges that meet at a node (N1-M6 traffic). */
+  edgesAt(node: number): Int32Array { return this.adjEdge.subarray(this.adjStart[node], this.adjStart[node + 1]); }
   /** OSM way id (bridge / pier edges only, 0 otherwise). */
   wayOf(edge: number): number { return this.ways[edge] ?? 0; }
 
