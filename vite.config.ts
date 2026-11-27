@@ -1,15 +1,32 @@
 import { defineConfig, loadEnv } from 'vite';
 import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+
+function computeDataHash(commit: string): string {
+  const h = createHash('sha256').update(commit);
+  for (const f of [
+    'public/data/kuching/manifest.json',
+    'public/data/kuching/streetscape-report.json',
+    'public/data/kuching/places/index.json',
+    'public/data/kuching/jobs.json',
+    'public/data/kuching/drive-graph.json',
+  ]) {
+    if (existsSync(f)) h.update(readFileSync(f));
+  }
+  return h.digest('hex').slice(0, 10);
+}
 
 /** What is actually being built: the release (from the last commit's "Vn:" prefix), the commit, uncommitted changes and the date. */
 function buildInfo(command: string) {
   const git = (args: string) => { try { return execSync(`git ${args}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return ''; } };
   const subject = git('log -1 --format=%s');
+  const commit = git('rev-parse --short HEAD');
   return {
     release: /^(V\d+(?:\.\d+)*)\b/.exec(subject)?.[1] ?? '',
     package: JSON.parse(readFileSync('package.json', 'utf8')).version as string,
-    commit: git('rev-parse --short HEAD'),
+    commit,
+    dataHash: computeDataHash(commit),
     modified: git('status --porcelain --untracked-files=no') !== '',
     date: new Date().toISOString().slice(0, 10),
     dev: command === 'serve',
@@ -41,8 +58,8 @@ export default defineConfig(({ mode, command }) => {
       ...common,
       // HMR websocket goes back through the same public host:port when opened remotely.
       hmr: { host: undefined, clientPort: publicPort },
-      // Do not watch agent worktrees or the raw data cache.
-      watch: { ignored: ['**/.claude/**', '**/data-src/**', '**/test-results/**'] },
+      // Do not watch agent worktrees, build outputs, docs/screenshots, or the raw data cache.
+      watch: { ignored: ['**/.claude/**', '**/data-src/**', '**/test-results/**', '**/dist/**', '**/docs/**'] },
     },
     preview: common,
     // Pre-bundle the lazily imported three.js add-ons, so the dev server never re-optimises and reloads the page mid-session.

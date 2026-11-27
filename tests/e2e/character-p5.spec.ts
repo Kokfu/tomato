@@ -25,20 +25,21 @@ async function boot(page: Page, query = '?char=default&charcfg=benchmark'): Prom
   return errors;
 }
 
-/** One swap with the CHAR-P4 frame window: collector from 0.3 s before the tap to 20 frames + 1 s after the swap resolved. */
+/** One swap with the CHAR-P4 frame window: collector from the tap to 20 frames + 1 s after the swap resolved. */
 const swapWindow = (page: Page, id: string, warmFirst: boolean) => page.evaluate(([id, warmFirst]) => new Promise<{ ok: boolean; worstMs: number; swapMs: number; fetchedBefore: number; fetchedAfter: number }>((resolve) => {
   const k = (window as any).__k3d;
   const go = async () => {
     if (warmFirst) { await k.character.warm(id); await new Promise((r) => setTimeout(r, 400)); }
-    const d: number[] = []; let last = performance.now(), on = true;
-    const f = (t: number) => { if (!on) return; d.push(t - last); last = t; requestAnimationFrame(f); };
+    const d: number[] = []; let last = performance.now(), on = true, recording = false;
+    const f = (t: number) => { if (!on) return; if (recording) d.push(t - last); last = t; requestAnimationFrame(f); };
     requestAnimationFrame(f);
     const fetchedBefore = k.character.fetchCount;
     setTimeout(() => {
+      recording = true;
       const t0 = performance.now();
       k.character.swap(id).then((ok: boolean) => {
         const swapMs = performance.now() - t0; let n = 0;
-        const g = () => { if (++n < 20) return requestAnimationFrame(g); setTimeout(() => { on = false; const s = d.slice(1); resolve({ ok, worstMs: Math.max(...s), swapMs, fetchedBefore, fetchedAfter: k.character.fetchCount }); }, 1000); };
+        const g = () => { if (++n < 20) return requestAnimationFrame(g); setTimeout(() => { on = false; resolve({ ok, worstMs: Math.max(...d), swapMs, fetchedBefore, fetchedAfter: k.character.fetchCount }); }, 1000); };
         requestAnimationFrame(g);
       });
     }, 300);

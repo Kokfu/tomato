@@ -26,17 +26,34 @@ export function* creasedNormalsSteps(geometry: THREE.BufferGeometry, creaseAngle
   const index = idx.array;
   const px = (i: number) => pos.getX(i), py = (i: number) => pos.getY(i), pz = (i: number) => pos.getZ(i);
 
-  // 1. hash every source vertex once
+  // 1. hash every source vertex once (numeric 51-bit key for |coord| < 655 m avoids allocating a string per vertex)
   const group = new Int32Array(nv);
-  const groups = new Map<string, number>();
+  const numGroups = new Map<number, number>();
+  let strGroups: Map<string, number> | null = null;
+  let ng = 0;
   for (let i = 0; i < nv; i++) {
-    const key = `${~~(px(i) * mul)},${~~(py(i) * mul)},${~~(pz(i) * mul)}`;
-    let g = groups.get(key);
-    if (g === undefined) { g = groups.size; groups.set(key, g); }
+    const ix = ~~(px(i) * mul), iy = ~~(py(i) * mul), iz = ~~(pz(i) * mul);
+    let g: number | undefined;
+    if (!strGroups && ix > -65536 && ix < 65536 && iy > -65536 && iy < 65536 && iz > -65536 && iz < 65536) {
+      const k = (ix + 65536) * 4294967296 + (iy + 65536) * 65536 + (iz + 65536);
+      g = numGroups.get(k);
+      if (g === undefined) { g = ng++; numGroups.set(k, g); }
+    } else {
+      if (!strGroups) {
+        strGroups = new Map();
+        for (const [k, v] of numGroups) {
+          const lo = k % 4294967296, x = Math.floor(k / 4294967296) - 65536, y = (lo >>> 16) - 65536, z = (lo & 65535) - 65536;
+          strGroups.set(`${x},${y},${z}`, v);
+        }
+        numGroups.clear();
+      }
+      const key = `${ix},${iy},${iz}`;
+      g = strGroups.get(key);
+      if (g === undefined) { g = ng++; strGroups.set(key, g); }
+    }
     group[i] = g;
     if ((i & 4095) === 4095) yield;
   }
-  const ng = groups.size;
 
   // 2. face normals (float64, as three's Vector3) and the number of corners per group
   const count = new Int32Array(ng);

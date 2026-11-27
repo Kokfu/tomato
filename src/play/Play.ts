@@ -9,6 +9,7 @@ import type { Minimap } from '../ui/Minimap.ts';
 import type { Life } from '../life/Life.ts';
 import type { Landmark } from '../world/types.ts';
 import { CHUNK_SIZE, DATA_ROOT } from '../world/config.ts';
+import { withDataVersion } from '../version.ts';
 import { worldToGeo } from '../world/GeoProjection.ts';
 import { loadRouteGraph, isStoppingEdge, formatDistance } from '../ui/Router.ts';
 import type { RouteGraph } from '../ui/Router.ts';
@@ -95,7 +96,7 @@ export class Play {
   /** Which parked vehicle each wall `park0..` stands for (0 = none). */
   private wallIds: number[] = new Array(WALLS).fill(0);
   /** The chunk whose parking places are being tested, a few a frame. */
-  private pending: { key: string; cx: number; cz: number; list: Stand[]; next: number; standing: Stand[] } | null = null;
+  private pending: { key: string; cx: number; cz: number; list: Stand[]; next: number; standing: Stand[]; made: Parked[] } | null = null;
   /** The list of parked vehicles changed: what is drawn must be worked out again now. */
   private stale = true;
   private nextParkedId = 1;
@@ -255,7 +256,7 @@ export class Play {
     const [cx, cz] = best, key = `${cx}_${cz}`, data = world.chunks.dataAt(cx, cz)!;
     // the places are tested a few a frame (`settleSome`): testing a whole chunk at once is a long frame on a phone
     this.scanned.set(key, 0);
-    this.pending = { key, cx, cz, list: candidates(parkingSpots(data, PAINTS.length), cx, cz), next: 0, standing: [] };
+    this.pending = { key, cx, cz, list: candidates(parkingSpots(data, PAINTS.length), cx, cz), next: 0, standing: [], made: [] };
   }
 
   /** Test the next few candidate places of the chunk being worked out; when all are done its vehicles appear. */
@@ -263,19 +264,26 @@ export class Play {
     const job = this.pending;
     if (!job) return;
     if (!this.host.world.chunks.dataAt(job.cx, job.cz)) { this.pending = null; this.scanned.delete(job.key); return; }
+    const deadline = performance.now() + 1.5;
     for (let n = 0; n < max && job.next < job.list.length; n++) {
+      if (n > 0 && performance.now() >= deadline) break;
       const c = job.list[job.next++];
-      if (fits(job.standing, c) && this.clear(c, c.kind)) job.standing.push(c);
+      if (fits(job.standing, c) && this.clear(c, c.kind)) {
+        job.standing.push(c);
+        if (!this.taken.has(c.key)) {
+          job.made.push(this.make(c.kind, c.kind === 'taxi' ? TAXI_PAINT : PAINTS[(c.tint * 5 + 1) % PAINTS.length], 0, c.x, c.z, c.heading, c.key, job.key));
+        }
+      }
     }
     if (job.next < job.list.length) return;
     this.pending = null;
     const car = this.host.driving;
     let n = 0;
-    for (const s of job.standing) {
-      if (this.taken.has(s.key)) continue;
+    for (const p of job.made) {
+      if (p.key && this.taken.has(p.key)) continue;
       // (not on top of the player's own vehicle, wherever that stands)
-      if (car.placed && Math.hypot(s.x - car.car.x, s.z - car.car.z) < 6) continue;
-      this.parked.push(this.make(s.kind, s.kind === 'taxi' ? TAXI_PAINT : PAINTS[(s.tint * 5 + 1) % PAINTS.length], 0, s.x, s.z, s.heading, s.key, job.key));
+      if (car.placed && Math.hypot(p.x - car.car.x, p.z - car.car.z) < 6) continue;
+      this.parked.push(p);
       n++;
     }
     this.scanned.set(job.key, n);
@@ -409,9 +417,10 @@ export class Play {
   private load(): Promise<void> {
     this.loading ??= (async () => {
       const base = `${this.host.baseUrl}${DATA_ROOT}`;
+      const ver = this.host.world.manifest.hash || undefined;
       const [graph, file] = await Promise.all([
-        loadRouteGraph(`${base}/drive-graph.json`),
-        fetch(`${base}/jobs.json`).then((r) => { if (!r.ok) throw new Error(`jobs.json ${r.status}`); return r.json() as Promise<JobsFile>; }),
+        loadRouteGraph(withDataVersion(`${base}/drive-graph.json`, ver)),
+        fetch(withDataVersion(`${base}/jobs.json`, ver)).then((r) => { if (!r.ok) throw new Error(`jobs.json ${r.status}`); return r.json() as Promise<JobsFile>; }),
       ]);
       const stopping = (e: number) => isStoppingEdge(graph, e);
       const sites = sitesOf(file);

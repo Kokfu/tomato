@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { DATA_ROOT } from './config.ts';
+import { withDataVersion } from '../version.ts';
 import type { Manifest, Landmark } from './types.ts';
 import { HeightMap } from './HeightMap.ts';
 import { CollisionWorld } from './CollisionWorld.ts';
@@ -144,13 +145,14 @@ export class WorldManager {
 
   static async load(quality: Quality): Promise<WorldManager> {
     const base = `${import.meta.env.BASE_URL}${DATA_ROOT}/`;
-    const manifest = (await (await fetch(`${base}manifest.json`)).json()) as Manifest;
+    const manifest = (await (await fetch(withDataVersion(`${base}manifest.json`))).json()) as Manifest;
+    const ver = manifest.hash || undefined;
     const [hbuf, landmarks, sites] = await Promise.all([
-      fetch(`${base}${manifest.height.file}`).then((r) => r.arrayBuffer()),
-      fetch(`${base}landmarks.json`).then((r) => r.json() as Promise<Landmark[]>).catch(() => [] as Landmark[]),
-      fetch(`${base}landmark-sites.json`).then((r) => r.json() as Promise<{ sites: LandmarkSite[] }>).then((j) => j.sites).catch(() => [] as LandmarkSite[]),
+      fetch(withDataVersion(`${base}${manifest.height.file}`, ver)).then((r) => r.arrayBuffer()),
+      fetch(withDataVersion(`${base}landmarks.json`, ver)).then((r) => r.json() as Promise<Landmark[]>).catch(() => [] as Landmark[]),
+      fetch(withDataVersion(`${base}landmark-sites.json`, ver)).then((r) => r.json() as Promise<{ sites: LandmarkSite[] }>).then((j) => j.sites).catch(() => [] as LandmarkSite[]),
     ]);
-    const places = new PlaceIndex();
+    const places = new PlaceIndex(ver);
     const [ground] = await Promise.all([loadGroundTextures(import.meta.env.BASE_URL), places.load()]);
     return new WorldManager(manifest, new Int16Array(hbuf), landmarks, quality, places, sites, ground);
   }

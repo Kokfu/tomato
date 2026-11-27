@@ -23,7 +23,7 @@ place over the +12 % per-place guide must be brought back under it with LOD befo
 
 | # | Milestone | Model | Status | Commit | Result |
 |---|---|---|---|---|---|
-| N2-M0a | Trust: credits, text, tests, bench scenario E, data hash, baseline | Sonnet Medium | TODO | | |
+| N2-M0a | Trust: credits, text, tests, bench scenario E, data hash, baseline | Sonnet Medium | DONE | | Credits modal + honest text; 0 extra char GLBs; `?v=` hash; E2E fixed; cold phone p95 A/C/E 38.7/40.7/35.4 ms vs 43.1/47.4/34.6 ms |
 | N2-M0b | Ceiling: V5 distance hide, hero-chunk LOD, start-up, shadow pre-warm | Fable High | TODO | | |
 | N2-M1 | Map truth audit: roads, roundabouts, signals | Sonnet Medium | TODO | | |
 | N2-M2 | Roads true: roundabouts, dual carriageways, widths, junctions | Fable High | TODO | | |
@@ -126,3 +126,7 @@ drive graph, and apply `data-src/overrides/`. Everything under the `roads` flag.
 - 2026-11-26 plan: re-sequenced on the owner's request. Night 2 = trust plus roads (audit, roundabouts, dual carriageways, junctions,
   signals). The old N2-M1 to M4 (people, places, night and rain, feel) moved to `PLAN_N3.md`, buildings to `PLAN_BUILDINGS.md`.
   Google imagery stays out (its terms forbid tracing and 3D models from it); `docs/MAP_SOURCES.md` sets the sources.
+- 2026-11-27 N2-M0a: `production.spec.ts` gated on actual first-visit gzipped downloads (`<= 3 MB` app [2.13 MB], `<= 2.5 MB` map data [0.56 MB], 0 character GLBs while picker is open, only chosen GLB after confirm) rather than raw `dist/` directory sum (which holds 5 unchosen character GLBs and V5 LODs).
+- 2026-11-27 N2-M0a: Walkers bake `ProceduralHumanoid` into the single-draw-call walker VAT (`bakeStandInWalker`) until/unless the player's own model supplies one, saving the 415 KB `casual-character.glb` download.
+- 2026-11-27 N2-M0a: `character-p5.spec.ts` `swapWindow` now records from the tap (`swapped >= 0`) onward matching its `"from tap to 1 s after"` spec (a pre-tap idle GC frame at `swapped: -1` was 116.7 ms), alongside a `1.5 ms` per-frame budget on `Play.settleSome` and cached numeric-key `creasedNormals`.
+- 2026-11-27 N2-M0a: Scenario E routes Padungan -> Main Bazaar -> Khoo Hun Yeang (India St south) -> City Mosque -> Jalan Market / Waterfront (`centralCityRoute`), skirting Jalan Gambier's `x = -82` grade-level footbridge deck (`way 901466610`, queued for N2-M1/N2-M2).

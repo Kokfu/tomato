@@ -134,7 +134,16 @@
         <button id="pause-char" class="hidden" title="Developer: cycle the player character (only with ?char)"></button>
         <button id="pause-reset">Return to Waterfront</button>
         <button id="pause-settings">Settings</button>
-        <p class="note">Map data &copy; OpenStreetMap contributors (ODbL). Where OpenStreetMap has no building, machine-detected footprints from Overture Maps Foundation (ODbL) are used: Microsoft Global ML Building Footprints and Google Open Buildings (CC BY 4.0); they are drawn plain grey and are less accurate. Elevation: Copernicus DEM GLO-30. Building heights are estimated unless tagged in the source.</p>
+        <button id="pause-credits">Credits &amp; Licences</button>
+        <p class="note">Map data &copy; OpenStreetMap contributors (ODbL). Where OpenStreetMap has no building, machine-detected footprints from Overture Maps Foundation (ODbL) are used: Microsoft Global ML Building Footprints and Google Open Buildings (CC BY 4.0); their building types, roofs, colours and heights are inferred by rule and are less accurate (shown in a lighter tone on the map). Elevation: Copernicus DEM GLO-30. Building heights are estimated unless tagged in the source.</p>
+      </div>
+    </div>
+
+    <div id="credits" class="modal hidden" role="dialog" aria-label="Credits and licences">
+      <div class="modal-card credits-card">
+        <h2>Credits &amp; Licences</h2>
+        <div id="credits-body"></div>
+        <button id="credits-close" class="primary">Close</button>
       </div>
     </div>
 
@@ -145,7 +154,7 @@
         <div id="load-bar"><div id="load-fill"></div></div>
         <div id="load-text">Loading map data&hellip;</div>
         <button id="btn-start" class="primary" disabled>Start Exploring</button>
-        <p class="note">Roads, buildings and the Sarawak River are generated from OpenStreetMap data; plain grey buildings are machine-detected footprints (Microsoft, Google) from Overture Maps.<br />&copy; OpenStreetMap contributors, Overture Maps Foundation &middot; Elevation: Copernicus DEM</p>
+        <p class="note">Roads, buildings and the Sarawak River are generated from OpenStreetMap data; where OpenStreetMap has no building, machine-detected footprints (Microsoft, Google) from Overture Maps fill the gaps with inferred roofs and colours.<br />&copy; OpenStreetMap contributors, Overture Maps Foundation &middot; Elevation: Copernicus DEM &middot; <button type="button" id="start-credits" class="link-btn">Credits &amp; Licences</button></p>
       </div>
     </div>
 

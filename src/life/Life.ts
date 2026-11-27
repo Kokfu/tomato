@@ -7,6 +7,7 @@ import type { WorldManager } from '../world/WorldManager.ts';
 import type { Quality, QualityName } from '../ui/GraphicsSettings.ts';
 import { loadRouteGraph } from '../ui/Router.ts';
 import { CHUNK_SIZE, DATA_ROOT, QUANT } from '../world/config.ts';
+import { withDataVersion } from '../version.ts';
 import { FURN } from '../world/types.ts';
 import { ENV } from '../world/env.ts';
 import { nearestDrivable } from '../vehicle/RoadQuery.ts';
@@ -14,7 +15,7 @@ import { Traffic, rng, SIZE } from './traffic.ts';
 import type { FillOptions, Obstacle } from './traffic.ts';
 import { Walkers } from './walkers.ts';
 import type { WalkOptions } from './walkers.ts';
-import { LifeRender, PAINTS, bakeWalker } from './LifeRender.ts';
+import { LifeRender, PAINTS, bakeStandInWalker } from './LifeRender.ts';
 import type { ParkedDraw } from './LifeRender.ts';
 
 interface Budget {
@@ -64,7 +65,6 @@ export class Life {
   private fresh = 4;
   private last = new THREE.Vector2(Infinity, Infinity);
   private obstacles: Obstacle[] = [];
-  private gltf: Promise<{ scene: THREE.Object3D; animations: THREE.AnimationClip[] }> | null = null;
   private walled = 0;
   /** Seconds not simulated yet, seconds since the simulation last ran, and a frame counter. */
   private owed = 0;
@@ -102,11 +102,12 @@ export class Life {
   /** True once vehicles can be drawn. */
   get active(): boolean { return !!this.render && !!this.traffic; }
 
-  /** Load the drive graph, build the meshes, compile their programs; then the walker model. Safe to call again. */
+  /** Load the drive graph, build the meshes, compile their programs; then the walker VAT. Safe to call again. */
   async start(): Promise<void> {
     const token = ++this.token, { world } = this.host, c = world.collision;
     try {
-      const graph = await loadRouteGraph(`${this.host.baseUrl}${DATA_ROOT}/drive-graph.json`);
+      const ver = world.manifest.hash || undefined;
+      const graph = await loadRouteGraph(withDataVersion(`${this.host.baseUrl}${DATA_ROOT}/drive-graph.json`, ver));
       if (token !== this.token) return;
       const dataAt = (cx: number, cz: number) => world.chunks.dataAt(cx, cz);
       this.traffic ??= new Traffic(graph, {
@@ -148,12 +149,9 @@ export class Life {
       this.render = render;
       world.scene.add(render.group);
       this.fresh = 4; this.warm = this.traffic.vehicles.length ? 0 : 3;
-      // the walkers: load the model once, bake its walk cycle a frame at a time, compile, show
-      this.gltf ??= import('three/addons/loaders/GLTFLoader.js').then(({ GLTFLoader }) => new GLTFLoader().loadAsync(`${this.host.baseUrl}models/characters/casual-character.glb`));
-      this.gltf.catch(() => { this.gltf = null; }); // a failed download is tried again at the next start
-      const gltf = await this.gltf;
-      if (token !== this.token) return;
-      const bake = await bakeWalker(gltf, b.cell, () => new Promise((r) => window.setTimeout(r, 30)));
+      // N2-M0a: bake the procedural stand-in figure so `casual-character.glb` is never downloaded while the picker is
+      // open or when another character is chosen.
+      const bake = bakeStandInWalker(b.cell);
       if (token !== this.token) { bake.geometry.dispose(); bake.texture.dispose(); return; }
       const mesh = render.setWalkers(bake);
       await this.host.prepare(mesh);

@@ -58,25 +58,64 @@ test.describe('production', () => {
     // Everything was served from the sub-path: no absolute-root or third-party requests.
     const outside = urls.filter((u) => !u.startsWith(`http://127.0.0.1:${port}${PREFIX}`) && !u.startsWith('data:') && !u.startsWith('blob:'));
     expect(outside).toEqual([]);
-    expect(urls.some((u) => u.includes('/data/kuching/chunks/'))).toBe(true);
+    expect(urls.some((u) => u.includes('/data/kuching/chunks/') && u.includes('?v='))).toBe(true);
+    // Credits modal opens from the pause menu and carries the MIT Rocketbox notice and CC attributions.
+    await page.locator('#btn-pause').click();
+    await expect(page.locator('#pause')).toBeVisible();
+    await page.locator('#pause-credits').click();
+    await expect(page.locator('#credits')).toBeVisible();
+    await expect(page.locator('#credits-body')).toContainText('Copyright (c) 2020 Microsoft');
+    await expect(page.locator('#credits-body')).toContainText('CC BY-SA');
+    await page.locator('#credits-close').click();
+    await expect(page.locator('#credits')).toBeHidden();
+    await page.locator('#pause-resume').click();
     expect(errors).toEqual([]);
     await page.screenshot({ path: 'docs/screenshots/production-build.png' });
   });
 
-  test('initial download stays within the size targets', async () => {
+  test('initial download stays within the size targets (measured on what a first visit actually downloads)', async ({ page }) => {
     const gz = (p: string) => gzipSync(readFileSync(p)).length;
-    let app = 0;
-    const walk = (dir: string) => {
-      for (const f of readdirSync(dir)) {
-        const p = join(dir, f);
-        if (statSync(p).isDirectory()) { if (f !== 'data') walk(p); } else app += gz(p);
+    const fetchedPaths = new Set<string>();
+    page.on('response', (r) => {
+      if (r.status() >= 200 && r.status() < 300) {
+        const u = new URL(r.url()).pathname;
+        if (u.startsWith(PREFIX)) fetchedPaths.add(u.slice(PREFIX.length) || 'index.html');
       }
-    };
-    walk('dist');
-    const core = ['manifest.json', 'height.bin', 'landmarks.json'].reduce((s, f) => s + gz(join('dist/data/kuching', f)), 0);
-    console.log(`application assets (gzip, excluding map data): ${(app / 1e6).toFixed(2)} MB; core map files (gzip): ${(core / 1e6).toFixed(2)} MB`);
+    });
+
+    // True first visit: no saved character in localStorage, traffic & walkers ON by default.
+    await page.goto(`http://127.0.0.1:${port}${PREFIX}`);
+    await page.waitForFunction(() => (window as any).__k3d?.ready === true, null, { timeout: 90_000 });
+    await expect(page.locator('#start-credits')).toBeVisible();
+    await page.locator('#btn-start').click();
+    await expect(page.locator('#char-picker')).toBeVisible();
+    await page.waitForTimeout(800);
+    // While the picker is open, no character GLB (including casual-character.glb) may be fetched.
+    expect([...fetchedPaths].filter((p) => p.startsWith('models/characters/') && p.endsWith('.glb'))).toEqual([]);
+
+    // Pick a character, enter the world, and let spawn chunks + traffic & walkers settle.
+    await page.locator('#char-picker [role=radio][data-id=man]').click();
+    await page.locator('#pk-confirm').click();
+    await expect(page.locator('#char-picker')).toBeHidden({ timeout: 60_000 });
+    await page.waitForFunction(() => {
+      const k = (window as any).__k3d;
+      return k.world.chunks.progress() >= 0.999 && k.life?.active && k.life.render.walkerTriangles > 0;
+    }, null, { timeout: 90_000 });
+
+    let app = 0, data = 0;
+    for (const rel of fetchedPaths) {
+      const p = normalize(join('dist', rel));
+      if (!existsSync(p) || !statSync(p).isFile()) continue;
+      if (rel.startsWith('data/')) data += gz(p);
+      else app += gz(p);
+    }
+    const charGlbs = [...fetchedPaths].filter((p) => p.startsWith('models/characters/') && p.endsWith('.glb'));
+    const refs = [...fetchedPaths].filter((p) => p.startsWith('reference/'));
+    console.log(`first-visit download (gzip): app ${(app / 1e6).toFixed(2)} MB (${fetchedPaths.size} files, charGlbs=${charGlbs.join(',')}), map data ${(data / 1e6).toFixed(2)} MB`);
     expect(existsSync('dist/index.html')).toBe(true);
+    expect(charGlbs, 'only the chosen character GLB is downloaded, never casual-character.glb or unchosen characters').toEqual(['models/characters/man.glb']);
+    expect(refs, 'OP-mode reference photographs are not downloaded on a normal visit').toEqual([]);
     expect(app).toBeLessThan(5e6);
-    expect(core).toBeLessThan(10e6);
+    expect(data).toBeLessThan(10e6);
   });
 });

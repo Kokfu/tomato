@@ -459,3 +459,14 @@ body.touch-drive #hud:has(#gps-panel:not(.hidden)) #wallet { display: none; }
 /* Touch driving: HORN joins GPS and RESET in the upper row above the steering pad (the lower row ends at the handbrake). */
 #btn-horn { left: calc(152px + var(--safe-l)); bottom: calc(192px + var(--safe-b)); }
 #btn-horn:active { background: rgba(242, 193, 78, 0.85); color: var(--accent-ink); }
+
+/* N2-M0a: Credits & Licences modal (reachable from both the start screen and the pause menu) */
+.link-btn { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; font: inherit; cursor: pointer; }
+.link-btn:hover { color: #ffe394; }
+#credits { z-index: 35; }
+.credits-card { width: min(580px, 100%); max-height: min(86vh, 100%); -webkit-user-select: text; user-select: text; }
+#credits-body { overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; touch-action: pan-y; }
+#credits-body h3 { margin: 6px 0 0; font-size: 14px; color: var(--accent); letter-spacing: 0.03em; }
+.credits-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; line-height: 1.45; color: var(--text); }
+.credits-list a { color: var(--accent); }
+.credits-mit { margin: 0; padding: 10px 12px; border-radius: 8px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--line); font: 11px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; color: var(--muted); }

@@ -1,6 +1,7 @@
 import { QUALITY, saveQuality } from './GraphicsSettings.ts';
 import type { QualityName } from './GraphicsSettings.ts';
 import { buildLabel } from '../version.ts';
+import { populateCredits } from './Credits.ts';
 import type { RainMode, TimeMode } from '../world/dayCycle.ts';
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -31,6 +32,7 @@ export class GameMenu {
   private cb: MenuCallbacks;
   private toastTimer = 0;
   private settingsFromPause = false;
+  private creditsFromPause = false;
   showStats = false;
 
   constructor(cb: MenuCallbacks, quality: QualityName, modes: { time: TimeMode; rain: RainMode } = { time: 'day', rain: 'off' }) {
@@ -64,6 +66,15 @@ export class GameMenu {
       if (this.settingsFromPause) $('pause').classList.remove('hidden');
       else cb.onResume();
     });
+    $('pause-credits').addEventListener('click', () => this.openCredits(true));
+    $('start-credits').addEventListener('click', () => this.openCredits(false));
+    $('credits-close').addEventListener('click', () => this.closeCredits());
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Escape' && this.creditsOpen) {
+        e.stopPropagation();
+        this.closeCredits();
+      }
+    }, true);
     $('btn-view').addEventListener('click', () => cb.onToggleView());
     $('btn-map').addEventListener('click', () => cb.onToggleMap());
     for (const b of Array.from($('quality-seg').querySelectorAll('button'))) {
@@ -104,12 +115,31 @@ export class GameMenu {
   }
 
   get anyModalOpen(): boolean {
-    return !$('pause').classList.contains('hidden') || !$('settings').classList.contains('hidden') || !$('start').classList.contains('hidden');
+    return !$('pause').classList.contains('hidden') || !$('settings').classList.contains('hidden') || !$('credits').classList.contains('hidden') || !$('start').classList.contains('hidden');
+  }
+
+  get creditsOpen(): boolean {
+    return !$('credits').classList.contains('hidden');
+  }
+
+  openCredits(fromPause: boolean): void {
+    populateCredits($('credits-body'));
+    this.creditsFromPause = fromPause;
+    if (fromPause) $('pause').classList.add('hidden');
+    $('credits').classList.remove('hidden');
+  }
+
+  closeCredits(): void {
+    if (!this.creditsOpen) return;
+    $('credits').classList.add('hidden');
+    if (this.creditsFromPause) $('pause').classList.remove('hidden');
+    this.creditsFromPause = false;
   }
 
   pause(): void {
     if (!$('start').classList.contains('hidden')) return;
     $('settings').classList.add('hidden');
+    $('credits').classList.add('hidden');
     $('pause').classList.remove('hidden');
     this.cb.onPause();
   }
@@ -165,11 +195,13 @@ export class GameMenu {
   resume(): void {
     $('pause').classList.add('hidden');
     $('settings').classList.add('hidden');
+    $('credits').classList.add('hidden');
+    this.creditsFromPause = false;
     this.cb.onResume();
   }
 
   togglePause(): void {
-    if ($('pause').classList.contains('hidden') && $('settings').classList.contains('hidden')) this.pause();
+    if ($('pause').classList.contains('hidden') && $('settings').classList.contains('hidden') && $('credits').classList.contains('hidden')) this.pause();
     else this.resume();
   }
 

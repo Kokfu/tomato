@@ -1,6 +1,7 @@
 import { patchHeroData } from './district/indiaStreet.ts';
 import * as THREE from 'three';
 import { CHUNK_SIZE, QUANT, DATA_ROOT, chunkKey } from './config.ts';
+import { withDataVersion } from '../version.ts';
 import type { ChunkData, Manifest } from './types.ts';
 import type { HeightMap } from './HeightMap.ts';
 import type { CollisionWorld } from './CollisionWorld.ts';
@@ -334,7 +335,7 @@ export class ChunkManager {
     // The chunk's place file (shop identities) is fetched alongside it, so signs are ready when the
     // mesh is first built.
     Promise.all([
-      fetch(`${this.base}${key}.json`).then((r) => {
+      fetch(withDataVersion(`${this.base}${key}.json`, this.manifest.hash || undefined)).then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.text();
       }),

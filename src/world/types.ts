@@ -135,6 +135,7 @@ export interface Landmark {
 
 export interface Manifest {
   version: number;
+  hash?: string;
   generatedAt: string;
   osmTimestamp: string | null;
   /** Overture Maps release of the machine-detected footprints; absent when none were used. */

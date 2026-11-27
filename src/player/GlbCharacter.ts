@@ -10,6 +10,7 @@ export interface CharacterSource {
 }
 
 export const CHARACTER_HEIGHT = 1.72;
+const creasedCache = new WeakMap<THREE.BufferGeometry, THREE.BufferGeometry>();
 
 /** Clip roles a profile can name explicitly. `jump` is the airborne pose; turnL/turnR are optional turn-in-place clips. */
 export type ClipNames = Partial<Record<'idle' | 'walk' | 'run' | 'jump' | 'turnL' | 'turnR', string>>;
@@ -306,14 +307,21 @@ export class GlbCharacter implements CharacterVisual {
         const orig = mesh.geometry;
         const origIndex = orig.index ? orig.index.array : null;
         let creased: THREE.BufferGeometry | null = null;
-        try {
-          const it = creasedNormalsSteps(orig, (70 * Math.PI) / 180);
-          for (;;) {
-            const r = it.next();
-            if (r.done) { creased = r.value; break; }
-            lap('crease'); cut(); yield; resume();
-          }
-        } catch { creased = null; /* keep the authored normals */ }
+        const cached = creasedCache.get(orig);
+        if (cached) {
+          creased = cached.clone();
+          lap('crease'); cut(); yield; resume();
+        } else {
+          try {
+            const it = creasedNormalsSteps(orig, (70 * Math.PI) / 180);
+            for (;;) {
+              const r = it.next();
+              if (r.done) { creased = r.value; break; }
+              lap('crease'); cut(); yield; resume();
+            }
+            if (creased && creased !== orig) creasedCache.set(orig, creased.clone());
+          } catch { creased = null; /* keep the authored normals */ }
+        }
         lap('crease');
         if (creased && creased !== orig) mesh.geometry = creased;
         const mine = pending.find((p) => p.mesh === mesh);

@@ -14,6 +14,7 @@ import { vehicle, kapcai } from '../v5/vehicles.ts';
 import type { VehicleKind } from '../v5/vehicles.ts';
 import { ENV } from '../world/env.ts';
 import { headlightGeometry } from '../world/StreetFurniture.ts';
+import { ProceduralHumanoid } from '../player/CharacterAnimator.ts';
 import { KIND, KINDS, SIZE } from './traffic.ts';
 import type { Vehicle } from './traffic.ts';
 import type { Walker } from './walkers.ts';
@@ -245,6 +246,112 @@ export async function bakeWalker(gltf: { scene: THREE.Object3D; animations: THRE
   return { geometry, texture, rows, vertices: n, triangles: idx.length / 3 };
 }
 
+/**
+ * N2-M0a: bake the procedural humanoid stand-in into the same single-draw-call VAT format, so ambient walkers
+ * never trigger a 415 KB `casual-character.glb` download while the picker is open or when another character is chosen.
+ */
+export function bakeStandInWalker(cell: number): WalkerBake {
+  const standFig = new ProceduralHumanoid();
+  standFig.update(0, { speed: 0, grounded: true, vy: 0 });
+  standFig.root.updateMatrixWorld(true);
+
+  const walkFig = new ProceduralHumanoid();
+  const walkState = { speed: 1.45, grounded: true, vy: 0 };
+  for (let i = 0; i < 120; i++) walkFig.update(1 / 60, walkState);
+
+  const collectMeshes = (root: THREE.Object3D): THREE.Mesh[] => {
+    const out: THREE.Mesh[] = [];
+    root.traverse((o) => { if ((o as THREE.Mesh).isMesh) out.push(o as THREE.Mesh); });
+    return out;
+  };
+  const standMeshes = collectMeshes(standFig.root);
+  const walkMeshes = collectMeshes(walkFig.root);
+
+  const src: [number, number][] = [], tris: number[] = [], part: number[] = [], base: number[] = [];
+  standMeshes.forEach((m, mi) => {
+    const mat = m.material as THREE.MeshLambertMaterial;
+    const hexCol = mat.color.getHex();
+    // ProceduralHumanoid palette: SHIRT 0x2f6f9f (1), TROUSERS 0x2c2f38 (2), SKIN 0xc68e6a (3), HAIR 0x18120e (4), SHOES (0)
+    const kind = hexCol === 0x2f6f9f ? 1 : hexCol === 0x2c2f38 ? 2 : hexCol === 0xc68e6a ? 3 : hexCol === 0x18120e ? 4 : 0;
+    const c = kind === 3 || kind === 4 ? new THREE.Color(1, 1, 1) : kind === 0 ? new THREE.Color(0x1d1d20) : mat.color.clone();
+    const p = m.geometry.getAttribute('position'), index = m.geometry.getIndex(), seen = new Map<string, number>(), remap: number[] = [];
+    for (let i = 0; i < p.count; i++) {
+      const key = `${Math.round(p.getX(i) * 1e4)},${Math.round(p.getY(i) * 1e4)},${Math.round(p.getZ(i) * 1e4)}`;
+      let id = seen.get(key);
+      if (id === undefined) { id = src.length; seen.set(key, id); src.push([mi, i]); part.push(kind); base.push(c.r, c.g, c.b); }
+      remap.push(id);
+    }
+    const count = index ? index.count : p.count;
+    for (let i = 0; i < count; i++) tris.push(remap[index ? index.getX(i) : i]);
+  });
+
+  const tmp = new THREE.Vector3();
+  const sample = (meshes: THREE.Mesh[]): Float32Array => {
+    const out = new Float32Array(src.length * 3);
+    for (let i = 0; i < src.length; i++) {
+      const m = meshes[src[i][0]];
+      tmp.fromBufferAttribute(m.geometry.getAttribute('position'), src[i][1]).applyMatrix4(m.matrixWorld);
+      out[i * 3] = tmp.x; out[i * 3 + 1] = tmp.y; out[i * 3 + 2] = tmp.z;
+    }
+    return out;
+  };
+  const centre = (f: Float32Array): [number, number] => {
+    let x = 0, z = 0;
+    for (let i = 0; i < f.length; i += 3) { x += f[i]; z += f[i + 2]; }
+    return [x / (f.length / 3), z / (f.length / 3)];
+  };
+
+  const frames: Float32Array[] = [sample(standMeshes)];
+  // At speed = 1.45 m/s and stride = 1.45 m, 1.0 s advances gait phase by exact 2*PI.
+  for (let f = 0; f < WALK_FRAMES; f++) {
+    if (f > 0) walkFig.update(1 / WALK_FRAMES, walkState);
+    walkFig.root.updateMatrixWorld(true);
+    frames.push(sample(walkMeshes));
+  }
+  standFig.dispose();
+  walkFig.dispose();
+
+  const st = frames[0];
+  let y0 = Infinity, y1 = -Infinity;
+  for (let i = 1; i < st.length; i += 3) { y0 = Math.min(y0, st[i]); y1 = Math.max(y1, st[i]); }
+  const k = 1 / (y1 - y0);
+  for (const f of frames) {
+    const [cx, cz] = centre(f);
+    for (let i = 0; i < f.length; i += 3) { f[i] = (f[i] - cx) * k; f[i + 1] = (f[i + 1] - y0) * k; f[i + 2] = (f[i + 2] - cz) * k; }
+  }
+
+  let keep: number[] = src.map((_, i) => i), to: number[] = keep.slice();
+  if (cell > 0) {
+    const c = cell / 1.72, seen = new Map<string, number>();
+    keep = []; to = [];
+    for (let i = 0; i < src.length; i++) {
+      const key = `${part[i]}|${base[i * 3].toFixed(3)}|${Math.floor(st[i * 3] / c)},${Math.floor(st[i * 3 + 1] / c)},${Math.floor(st[i * 3 + 2] / c)}`;
+      let id = seen.get(key);
+      if (id === undefined) { id = keep.length; seen.set(key, id); keep.push(i); }
+      to.push(id);
+    }
+  }
+  const idx: number[] = [];
+  for (let i = 0; i < tris.length; i += 3) {
+    const a = to[tris[i]], b = to[tris[i + 1]], c = to[tris[i + 2]];
+    if (a !== b && b !== c && a !== c) idx.push(a, b, c);
+  }
+  const n = keep.length, rows = Math.ceil(n / VAT_W), data = new Float32Array(VAT_W * rows * frames.length * 4);
+  frames.forEach((f, fi) => { for (let i = 0; i < n; i++) { const o = (fi * rows * VAT_W + i) * 4, s = keep[i] * 3; data[o] = f[s]; data[o + 1] = f[s + 1]; data[o + 2] = f[s + 2]; } });
+  const texture = new THREE.DataTexture(data, VAT_W, rows * frames.length, THREE.RGBAFormat, THREE.FloatType);
+  texture.minFilter = texture.magFilter = THREE.NearestFilter;
+  texture.generateMipmaps = false;
+  texture.needsUpdate = true;
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), prt = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const s = keep[i]; pos.set(st.subarray(s * 3, s * 3 + 3), i * 3); col.set(base.slice(s * 3, s * 3 + 3), i * 3); prt[i] = part[s]; }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geometry.setAttribute('part', new THREE.BufferAttribute(prt, 1));
+  geometry.setIndex(idx);
+  return { geometry, texture, rows, vertices: n, triangles: idx.length / 3 };
+}
+
 function walkerMaterial(bake: WalkerBake): THREE.MeshLambertMaterial {
   const m = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
   m.onBeforeCompile = (s) => {
@@ -298,11 +405,13 @@ export class LifeRender {
   private counts = new Array<number>(KINDS).fill(0);
   private maxVehicles: number;
   private maxWalkers: number;
+  private pools: THREE.MeshBasicMaterial;
   /** Triangles of one walker (after the bake). */
   walkerTriangles = 0;
 
   /** `budget.kinds`: which vehicle kinds get a mesh (weight > 0). `pools` is the world's lamp-pool material: the beams follow it. */
-  constructor(budget: RenderBudget, private pools: THREE.MeshBasicMaterial) {
+  constructor(budget: RenderBudget, pools: THREE.MeshBasicMaterial) {
+    this.pools = pools;
     this.group.name = 'life';
     const parked = budget.parked ?? 0;
     this.maxVehicles = budget.vehicles + 4 + parked; this.maxWalkers = budget.walkers + 4;

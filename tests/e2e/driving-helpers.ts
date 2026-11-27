@@ -95,8 +95,20 @@ export function driveRoute(page: Page, points: [number, number][], opts: { speed
           // The path may not jump sideways: each point is searched within 1 m of the offset its predecessor took
           // (otherwise the nearest clear spot can be on the far side of a row of parked cars).
           const prev = offset[j - 1];
+          // Rule-placed parked vehicles (Play.ts) drop their CollisionWorld walls while driving, so test their boxes too.
+          const hitParked = (qx: number, qz: number, half: number) => {
+            const list = k.play?.parked as any[] | undefined;
+            if (!list?.length) return false;
+            for (const pv of list) {
+              const dx = qx - pv.x, dz = qz - pv.z;
+              if (Math.abs(dx) > 6 || Math.abs(dz) > 6 || Math.abs((pv.y ?? y) - y) > 2.5) continue;
+              const sh = Math.sin(pv.heading), ch = Math.cos(pv.heading);
+              if (Math.abs(dx * sh + dz * ch) < 2.4 + 2.35 && Math.abs(dx * ch - dz * sh) < half + 0.98) return true;
+            }
+            return false;
+          };
           for (const half of [1.62, 1.27, 1.02]) {
-            const free = (n: number) => { const qx = p[0] + fz * n * 0.25, qz = p[1] - fx * n * 0.25; return !c.insideBuilding(qx, qz, y + 0.3) && !c.boxContact(qx, qz, fx, fz, 2.4, half, y); };
+            const free = (n: number) => { const qx = p[0] + fz * n * 0.25, qz = p[1] - fx * n * 0.25; return !c.insideBuilding(qx, qz, y + 0.3) && !c.groundAt(qx, qz, y + 0.5).deck && !c.boxContact(qx, qz, fx, fz, 2.4, half, y) && !hitParked(qx, qz, half); };
             // Nearest clear offset to the line, then the middle of the clear band around it (capped: a wide road is not re-centred).
             let n0: number | null = null;
             for (let n = 0; n <= 40 && n0 === null; n++) { const q = (n % 2 ? -1 : 1) * Math.ceil(n / 2); if (Math.abs(q - prev) <= 4 && free(q)) n0 = q; }
@@ -185,10 +197,32 @@ export function driveRoute(page: Page, points: [number, number][], opts: { speed
           }
           for (let j = Math.max(0, i - 4); j < Math.min(points.length, i + 5); j++) if (tight[j]) { target = Math.min(target, 3.2); break; }
           if (i >= points.length - 1) target = Math.min(target, Math.max(2, toEnd * 0.5));
+          // N2-M0a: with ambient traffic on, follow behind queued vehicles in our lane and ease left past oncoming traffic
+          // instead of ramming them off the route or triggering blind reverse recovery.
+          let waitingTraffic = false, dodgeSteer = 0;
+          const traffic = k.life?.active ? (k.life.traffic?.vehicles as any[] | undefined) : undefined;
+          if (traffic?.length) {
+            const hx = Math.sin(car.heading), hz = Math.cos(car.heading);
+            for (const v of traffic) {
+              const dx = v.x - car.x, dz = v.z - car.z;
+              if (Math.abs(dx) > 22 || Math.abs(dz) > 22 || Math.abs(v.y - car.y) > 2.5) continue;
+              const fwd = dx * hx + dz * hz;
+              if (fwd < 1.2 || fwd > 20) continue;
+              const lat = dx * hz - dz * hx; // > 0 means vehicle is to our left
+              const align = Math.cos(v.heading - car.heading);
+              if (align > 0.35 && Math.abs(lat) < 2.2) {
+                const safe = Math.max(0, v.v + (fwd - 6.8) * 0.65);
+                if (safe < target) { target = safe; if (fwd < 9 && v.v < 1.5) waitingTraffic = true; }
+              } else if (align < -0.45 && Math.abs(lat) < 2.5 && fwd < 18) {
+                target = Math.min(target, 4.2);
+                dodgeSteer = -0.28; // steer slightly toward the left kerb (heading+, steerOut-)
+              }
+            }
+          }
           let throttle = Math.max(-1, Math.min(1, (target - car.vf) * 0.7));
-          let steerOut = steer;
+          let steerOut = Math.max(-1, Math.min(1, steer + dodgeSteer));
           // Stuck against something: back off with opposite lock for a moment, then try again.
-          stuck = Math.abs(car.vf) < 0.3 && throttle > 0.2 ? stuck + 1 : 0;
+          stuck = !waitingTraffic && Math.abs(car.vf) < 0.3 && throttle > 0.2 ? stuck + 1 : 0;
           if (stuck > 90) { backing = 100; stuck = 0; res.recoveries++; }
           if (backing > 0) { backing--; throttle = -0.7; steerOut = -steer; }
           k.input.touchX = steerOut;

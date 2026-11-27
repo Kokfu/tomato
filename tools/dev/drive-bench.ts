@@ -3,24 +3,30 @@
 // (tests/e2e/driving-helpers.ts driveRoute, real time) and records every frame.
 //
 // Usage: node tools/dev/drive-bench.ts [--dist=dist] [--port=4181] [--out=test-results/drive-bench.json]
-//        [--scenarios=A,B,C,D] [--quality=medium] [--runs=2]
+//        [--scenarios=A,B,C,D,E] [--quality=medium] [--runs=2]
 // Scenarios: A stationary at Jalan China, B the 88 m Jalan China lane, C the block loop (Carpenter, Bishopgate,
-// Main Bazaar), D the 2 km high-speed run on Jalan Tun Abang Haji Openg (crosses many chunk borders).
+// Main Bazaar), D the 2 km high-speed run on Jalan Tun Abang Haji Openg (crosses many chunk borders),
+// E the central-city loop (Main Bazaar -> India Street south edge -> City Mosque -> Jalan Gambier -> Main Bazaar -> Padungan).
 // Every scenario runs `runs` times in the same page: run 1 is cold (fresh browser profile: empty HTTP cache, no
 // compiled shaders, chunks never built), later runs are warm (HTTP cache and shader programs warm, chunk meshes
 // rebuilt as they stream in again).
 import { chromium } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { execSync, spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { createServer } from 'node:http';
+import type { Server } from 'node:http';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, extname, resolve } from 'node:path';
 import { driveRoute, waysNamed, placeCar } from '../../tests/e2e/driving-helpers.ts';
-import { chainOfWays } from '../../tests/e2e/helpers.ts';
+import { chainOfWays, DATA } from '../../tests/e2e/helpers.ts';
+import { RouteGraph, isStoppingEdge } from '../../src/ui/Router.ts';
 import { CHINA } from '../../src/v5/geo.ts';
 
 const opt = (k: string, d: string) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3) ?? d;
 const DIST = opt('dist', 'dist'), PORT = +opt('port', '4181'), OUT = opt('out', 'test-results/drive-bench.json');
-const SCEN = opt('scenarios', 'A,B,C,D').split(','), QUALITY = opt('quality', 'medium'), RUNS = +opt('runs', '2');
+/** --mobile: V8.5 phone emulation (390x844 CSS px, DPR 3, touch, mobile viewport); pair with --quality=low --cpu=4. Emulated, not a real phone. */
+const MOBILE = process.argv.includes('--mobile');
+const SCEN = opt('scenarios', MOBILE ? 'A,C,E' : 'A,B,C,D,E').split(','), QUALITY = opt('quality', 'medium'), RUNS = +opt('runs', '2');
 /** --dev: run against the Vite dev server (as the e2e suite does) instead of a production build. */
 const DEV = process.argv.includes('--dev');
 /** --trace=file.json: record a Chrome trace (all processes, GPU included) of the first scenario of the first run. */
@@ -29,8 +35,6 @@ const TRACE = opt('trace', '');
 const CPU = +opt('cpu', '1');
 /** --gps=fort-margherita: V8.4 builds only: keep a GPS (driving) route to this landmark active during every scenario. */
 const GPS = opt('gps', '');
-/** --mobile: V8.5 phone emulation (390x844 CSS px, DPR 3, touch, mobile viewport); pair with --quality=low --cpu=4. Emulated, not a real phone. */
-const MOBILE = process.argv.includes('--mobile');
 /** --query=time=21&rain=on: N1-M6: address parameters for the page (the bench otherwise runs on a frozen dry day). */
 const QUERY = opt('query', '');
 
@@ -49,6 +53,34 @@ function highSpeedRoute(): [number, number][] {
   let skip = 0, acc = 0;
   while (acc < 150) { acc += Math.hypot(pts[skip + 1][0] - pts[skip][0], pts[skip + 1][1] - pts[skip][1]); skip++; }
   return pts.slice(skip);
+}
+
+/**
+ * N2-M0a Scenario E: central-city loop exercising ambient traffic, walkers and the heavy hero chunks:
+ * Jalan Padungan (Cat Column) -> Jalan Main Bazaar -> India Street south edge (Khoo Hun Yeang, chunk -1_-1) ->
+ * City Mosque (chunk -2_-1) -> Jalan Market / India Street west mouth & Waterfront (chunk -1_-1).
+ */
+function centralCityRoute(): [number, number][] {
+  const g = new RouteGraph(JSON.parse(readFileSync(`${DATA}/drive-graph.json`, 'utf8')));
+  const wps: [number, number][] = [
+    [1065, 248],   // Jalan Padungan (Cat Column)
+    [415, 55],     // Jalan Main Bazaar east entry (westbound)
+    [165, -101],   // Jalan Main Bazaar west
+    [-175, -1],    // Jalan Khoo Hun Yeang (India Street south edge, chunk -1_-1)
+    [-396, 43],    // City Mosque / Jalan Market (chunk -2_-1)
+    [-225, -152],  // Jalan Market north / India Street west mouth & Waterfront (chunk -1_-1)
+  ];
+  const out: [number, number][] = [];
+  for (let i = 1; i < wps.length; i++) {
+    const r = g.route(wps[i - 1][0], wps[i - 1][1], wps[i][0], wps[i][1], { endEdge: (e) => isStoppingEdge(g, e) });
+    if (!r) throw new Error(`Scenario E: could not route leg ${i - 1} -> ${i}`);
+    // Skip the off-network end connectors (first and last point of r.points) so every point lies on the road spine.
+    for (let k = i === 1 ? 2 : 4; k < r.points.length - 2; k += 2) {
+      const p: [number, number] = [r.points[k], r.points[k + 1]];
+      if (!out.length || Math.hypot(p[0] - out[out.length - 1][0], p[1] - out[out.length - 1][1]) > 0.5) out.push(p);
+    }
+  }
+  return out;
 }
 
 /** In-page instrumentation: wraps the per-frame systems and closes one record per game frame. */
@@ -268,6 +300,10 @@ async function toCar(page: Page) {
   await page.evaluate(() => { const k = (window as any).__k3d, c = k.driving.car; k.player.teleport(c.x - Math.cos(c.heading) * 1.9, c.z + Math.sin(c.heading) * 1.9); k.tpc.snap(); });
   await page.waitForTimeout(300);
   await page.keyboard.press('KeyE');
+  if (!(await page.evaluate(() => (window as any).__k3d.driving.active))) {
+    await page.waitForTimeout(300);
+    await page.keyboard.press('KeyE');
+  }
   if (!(await page.evaluate(() => (window as any).__k3d.driving.active))) throw new Error('could not get in the car');
 }
 async function waitChunks(page: Page) {
@@ -278,14 +314,33 @@ async function leaveCar(page: Page) {
   await page.evaluate(() => { const k = (window as any).__k3d; if (k.driving.active) { k.driving.car.vf = k.driving.car.vl = 0; k.driving.exit(k.player, true); } });
 }
 
-const server = spawn('npx', DEV ? ['vite', '--port', String(PORT), '--strictPort'] : ['vite', 'preview', '--outDir', DIST, '--port', String(PORT), '--strictPort'], { shell: true, stdio: 'pipe' });
-server.stdout.resume();
-server.stderr.resume();
-// Ready once it answers (its console line can carry colour codes inside the port number).
-for (let i = 0; ; i++) {
-  try { if ((await fetch(`http://localhost:${PORT}/`)).ok) break; } catch { /* not yet */ }
-  if (i > 240) throw new Error('preview server did not start');
-  await new Promise((r) => setTimeout(r, 500));
+const MIME: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8', '.bin': 'application/octet-stream', '.glb': 'model/gltf-binary',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8',
+};
+let httpServer: Server | null = null;
+let server: ReturnType<typeof spawn> | null = null;
+if (DEV) {
+  server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  server.stdout?.resume();
+  server.stderr?.resume();
+  for (let i = 0; ; i++) {
+    try { if ((await fetch(`http://localhost:${PORT}/`)).ok) break; } catch { /* not yet */ }
+    if (i > 240) throw new Error('dev server did not start');
+    await new Promise((r) => setTimeout(r, 500));
+  }
+} else {
+  const root = resolve(DIST);
+  httpServer = createServer((req, res) => {
+    let rel = decodeURIComponent((req.url ?? '/').split('?')[0]).replace(/^\/+/, '') || 'index.html';
+    if (rel.endsWith('/')) rel += 'index.html';
+    const file = resolve(root, rel);
+    if (!file.startsWith(root) || !existsSync(file) || !statSync(file).isFile()) { res.writeHead(404).end('not found'); return; }
+    res.writeHead(200, { 'Content-Type': MIME[extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'public, max-age=3600' });
+    res.end(readFileSync(file));
+  });
+  await new Promise<void>((r, rej) => { httpServer!.once('error', rej); httpServer!.listen(PORT, () => r()); });
 }
 const results: any[] = [];
 const browser = await chromium.launch({ channel: 'msedge', args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-precise-memory-info'] });
@@ -307,17 +362,19 @@ try {
   if (process.argv.includes('--who-render')) await page.evaluate(() => { (window as any).__whoRender = true; });
   await page.evaluate(instrument);
   const start = await page.evaluate(() => { const c = (window as any).__k3d.driving.car; return { x: c.x, z: c.z, h: c.heading }; });
-  const hs = highSpeedRoute();
+  const hs = SCEN.includes('D') ? highSpeedRoute() : [];
+  const cc = SCEN.includes('E') ? centralCityRoute() : [];
   for (let runNo = 1; runNo <= RUNS; runNo++) {
     const tag = runNo === 1 ? 'cold' : `warm${runNo - 1}`;
     for (const sc of SCEN) {
       // Every scenario starts from a settled world at its starting place.
       await leaveCar(page);
-      if (sc === 'D') {
-        const h0 = Math.atan2(hs[1][0] - hs[0][0], hs[1][1] - hs[0][1]);
-        await page.evaluate(([x, z]) => (window as any).__k3d.player.teleport(x, z), hs[0]);
+      if (sc === 'D' || sc === 'E') {
+        const route = sc === 'D' ? hs : cc;
+        const h0 = Math.atan2(route[1][0] - route[0][0], route[1][1] - route[0][1]);
+        await page.evaluate(([x, z]) => (window as any).__k3d.player.teleport(x, z), route[0]);
         await waitChunks(page);
-        await placeCar(page, hs[0][0], hs[0][1], h0);
+        await placeCar(page, route[0][0], route[0][1], h0);
       } else {
         await page.evaluate(([x, z]) => (window as any).__k3d.player.teleport(x, z), [start.x - 3, start.z]);
         await waitChunks(page);
@@ -340,6 +397,7 @@ try {
       if (sc === 'B') results.push(await run(page, `B Jalan China lane ${tag}`, () => driveRoute(page, LANE, { speed: 8, realTime: true, maxSeconds: 60 })));
       if (sc === 'C') results.push(await run(page, `C block loop ${tag}`, () => driveRoute(page, BLOCK_LOOP_V7, { speed: 9, realTime: true, maxSeconds: 200 })));
       if (sc === 'D') results.push(await run(page, `D high-speed 2 km ${tag}`, () => driveRoute(page, hs, { speed: 27, cornerSpeed: 9, realTime: true, maxSeconds: 300, tolerance: 8 })));
+      if (sc === 'E') results.push(await run(page, `E central loop ${tag}`, () => driveRoute(page, cc, { speed: 15, cornerSpeed: 5.5, realTime: true, maxSeconds: 320, tolerance: 7 })));
       if (tracing) await browser.stopTracing();
       if (GPS) {
         const g = await page.evaluate(() => { const m = (window as any).__k3d.minimap; return m ? { routes: m.routeCount, lastRouteMs: m.lastRouteMs } : null; });
@@ -356,10 +414,12 @@ try {
   console.log('\nmeta', JSON.stringify(meta), '\nwritten', OUT);
 } finally {
   await browser.close();
-  if (process.platform === 'win32') {
-    // `npx` under a shell can leave vite in a separate tree: stop whatever listens on the port.
-    const pids = new Set(execSync('netstat -ano').toString().split(/\r?\n/).filter((l) => l.includes(`:${PORT} `) && l.includes('LISTEN')).map((l) => l.trim().split(/\s+/).pop()));
-    for (const pid of [server.pid, ...pids]) try { execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' }); } catch { /* gone */ }
-  } else server.kill();
+  if (httpServer) await new Promise((r) => httpServer!.close(r));
+  if (server) {
+    if (process.platform === 'win32') {
+      const pids = new Set(execSync('netstat -ano').toString().split(/\r?\n/).filter((l) => l.includes(`:${PORT} `) && l.includes('LISTEN')).map((l) => l.trim().split(/\s+/).pop()));
+      for (const pid of [server.pid, ...pids]) try { execSync(`taskkill /pid ${pid} /T /F`, { stdio: 'ignore' }); } catch { /* gone */ }
+    } else server.kill();
+  }
   process.exit(0);
 }

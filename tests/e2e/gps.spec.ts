@@ -228,6 +228,8 @@ test.describe('V8.4 GPS navigation', () => {
         if (!c.isLoaded(x, z) || !ch.isReady(x, z) || c.inWater(x, z)) continue;
         const y = c.groundAt(x, z, 1e6).h;
         if (c.insideBuilding(x, z, y + 0.5, false) || c.boxContact(x, z, 0, 1, 2.6, 1.3, y)) continue;
+        if ((k.play?.parked ?? []).some((q: any) => Math.hypot(q.x - x, q.z - z) < 5)) continue;
+        if ((k.life?.traffic?.vehicles ?? []).some((q: any) => Math.hypot(q.x - x, q.z - z) < 6)) continue;
         if (dg.snap(x, z, 45).length) continue;
         return [x, z];
       }

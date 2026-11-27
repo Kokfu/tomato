@@ -3,6 +3,7 @@
 // OSM has no building (optional: skipped when data-src/overture/buildings.geojsonl is absent).
 // Usage: node tools/generate-world/build.ts
 import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import polygonClipping from 'polygon-clipping';
 import earcut from 'earcut';
 import { fromArrayBuffer } from 'geotiff';
@@ -1037,8 +1038,10 @@ const [slat, slon] = worldToGeo(spawn[0], spawn[1]);
 log(`spawn: ${slat.toFixed(6)}, ${slon.toFixed(6)} (${bestD.toFixed(1)} m from configured point)`);
 
 for (const k of Object.keys(stats)) stats[k] = Math.round(stats[k] * 10) / 10;
+const manifestHash = createHash('sha256').update(JSON.stringify({ timestamp, overture: overtureReport.release ?? null, stats, totalBytes, maxBytes })).digest('hex').slice(0, 10);
 const manifest: Manifest = {
   version: 1,
+  hash: manifestHash,
   generatedAt: new Date().toISOString(),
   osmTimestamp: timestamp,
   overtureRelease: overtureReport.used ? ((overtureReport.release as string | null) ?? null) : undefined,

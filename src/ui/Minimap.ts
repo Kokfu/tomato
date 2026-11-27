@@ -1,5 +1,6 @@
 import '../styles/map.css';
 import { CHUNK_SIZE, DATA_ROOT } from '../world/config.ts';
+import { withDataVersion } from '../version.ts';
 import type { ChunkData, Landmark } from '../world/types.ts';
 import type { WorldManager } from '../world/WorldManager.ts';
 import type { PlayerController } from '../player/PlayerController.ts';
@@ -289,9 +290,10 @@ export class Minimap {
   /** Load the routing graphs a mode needs (drive mode also uses the walking graph for the last stretch on foot). */
   async loadGraphs(mode: NavMode): Promise<void> {
     const base = `${import.meta.env.BASE_URL}${DATA_ROOT}`;
+    const ver = this.deps.world.manifest.hash || undefined;
     const [graph, drive] = await Promise.all([
-      loadRouteGraph(`${base}/graph.json`),
-      mode === 'drive' ? loadRouteGraph(`${base}/drive-graph.json`) : Promise.resolve(this.driveGraph),
+      loadRouteGraph(withDataVersion(`${base}/graph.json`, ver)),
+      mode === 'drive' ? loadRouteGraph(withDataVersion(`${base}/drive-graph.json`, ver)) : Promise.resolve(this.driveGraph),
       this.loadOverview(),
     ]);
     this.graph = graph;
@@ -367,7 +369,8 @@ export class Minimap {
 
   private loadOverview(): Promise<Overview | null> {
     if (!this.overviewPromise) {
-      this.overviewPromise = fetch(`${import.meta.env.BASE_URL}${DATA_ROOT}/overview.json`)
+      const ver = this.deps.world.manifest.hash || undefined;
+      this.overviewPromise = fetch(withDataVersion(`${import.meta.env.BASE_URL}${DATA_ROOT}/overview.json`, ver))
         .then((r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           return r.json() as Promise<OverviewFile>;

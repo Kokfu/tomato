@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { v5Exclusion } from '../../v5/geo.ts';
 import { CHUNK_SIZE, QUANT, DATA_ROOT, chunkKey } from '../config.ts';
+import { withDataVersion } from '../../version.ts';
 import type { ChunkData } from '../types.ts';
 import { FURN } from '../types.ts';
 import type { BuildContext } from '../ChunkManager.ts';
@@ -42,14 +43,16 @@ export class PlaceIndex {
   private available = new Set<string>();
   private byChunk = new Map<string, Place[]>();
   private base: string;
+  private version?: string;
   /** Local (not yet published) corrections; see docs/SHOP_IDENTITY.md. */
   edits: PlaceOverrides = { upsert: [], remove: [] };
   /** Called when local edits change the places of a chunk (so its signs can be rebuilt). */
   onChanged: ((key: string) => void) | null = null;
   meta: { generatedAt?: string; sources?: Record<string, unknown>; stats?: Record<string, number> } = {};
 
-  constructor() {
+  constructor(version?: string) {
     this.base = `${import.meta.env.BASE_URL}${DATA_ROOT}/places/`;
+    this.version = version;
     try {
       const raw = localStorage.getItem(EDIT_KEY);
       if (raw) this.edits = { upsert: [], remove: [], ...JSON.parse(raw) };
@@ -58,7 +61,7 @@ export class PlaceIndex {
 
   async load(): Promise<void> {
     try {
-      const idx = await (await fetch(`${this.base}index.json`)).json();
+      const idx = await (await fetch(withDataVersion(`${this.base}index.json`, this.version))).json();
       this.available = new Set(idx.chunks as string[]);
       this.meta = idx;
     } catch {
@@ -72,7 +75,7 @@ export class PlaceIndex {
     let list: Place[] = [];
     if (this.available.has(key)) {
       try {
-        const r = await fetch(`${this.base}${key}.json`);
+        const r = await fetch(withDataVersion(`${this.base}${key}.json`, this.version));
         if (r.ok) list = ((await r.json()) as PlaceChunk).places;
       } catch { /* treated as no places */ }
     }
