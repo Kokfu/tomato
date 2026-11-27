@@ -10,8 +10,7 @@
 // Both use the same V5 materials, lighting and post-processing, so the comparison isolates what
 // authored content adds on top of procedural generation.
 import * as THREE from 'three';
-import { Kit, hex, rnd } from './kit.ts';
-import type { Buf } from './kit.ts';
+import { Kit, Buf, hex, rnd } from './kit.ts';
 import { createMaterials } from './materials.ts';
 import type { KuchingMaterials, MaterialName } from './materials.ts';
 import { autoLot, buildLot, eaveY, ARCADE, KERB, PIER, F1, UP } from './shophouse.ts';
@@ -146,7 +145,20 @@ function bufGeometry(b: Buf): THREE.BufferGeometry {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2));
   g.setIndex(b.count > 65535 ? new THREE.Uint32BufferAttribute(b.idx, 1) : new THREE.Uint16BufferAttribute(b.idx, 1));
   g.computeBoundingSphere();
+  g.computeBoundingBox();
   return g;
+}
+
+function mergeBufs(list: Buf[]): Buf {
+  if (list.length === 1) return list[0];
+  const out = new Buf();
+  for (const b of list) {
+    const base = out.count;
+    for (let i = 0; i < b.pos.length; i++) { out.pos.push(b.pos[i]); out.nor.push(b.nor[i]); out.col.push(b.col[i]); }
+    for (let i = 0; i < b.uv.length; i++) out.uv.push(b.uv[i]);
+    for (let i = 0; i < b.idx.length; i++) out.idx.push(base + b.idx[i]);
+  }
+  return out;
 }
 
 const NO_SHADOW = new Set<string>(['poly', 'glow', 'glass', 'wire', 'contact', 'pane']);
@@ -350,11 +362,13 @@ export class V5Scene {
     if (mode !== 'a') await this.loadAtlas();
     if (token !== this.token) return;
     const h = this.host.height;
-    const kit = new Kit(0);
+    // N2-M0b: build into three street-block kits (Carpenter West, Jalan China, Carpenter East) so the heaviest opaque
+    // materials can be frustum-culled block by block while keeping lightweight materials merged (at most +6 draw calls).
+    const kitWest = new Kit(0), kitChina = new Kit(0), kitEast = new Kit(0);
     const floors: { ring: number[]; h: number }[] = [];
     let lots = 0;
 
-    buildRoad(kit, h);
+    buildRoad(kitWest, h);
     // With the Jalan China section the corner building keeps only its Carpenter Street bay depth, and the
     // simplified Jalan China frontage ("JC") is replaced by the detailed rows.
     const china = mode === 'c';
@@ -384,6 +398,7 @@ export class V5Scene {
     };
     for (const def of rowDefs) {
       const { row, fr, w, mid, baseOf, stepped } = frame(def);
+      const kit = stepped ? kitEast : kitWest;
       const specs = this.lotSpecs(row, mode, places, fr.len, fr);
       // N1-M5: on the low preset the new rows drop the fine timber (ceiling joists, rafter tails) and loose dressing
       kit.lod = stepped && this.host.low ? 1 : row.lod;
@@ -427,57 +442,80 @@ export class V5Scene {
         cables(kit, [fr.ox + fr.nx * 0.16, y, fr.oz + fr.nz * 0.16], [fr.ox + fr.dx * fr.len + fr.nx * 0.16, y, fr.oz + fr.dz * fr.len + fr.nz * 0.16], 3, row.lots);
       }
     }
-    if (china) { const r = buildChinaStreet(kit, h, this.signs, photo); floors.push(...r.floors); walls = r.walls; lots += r.lots; }
-    if (m5Enabled()) { const r = buildCarpenterEast(kit, h, this.signs, china); floors.push(...r.floors); walls.push(...r.walls, ...stepWalls); }
-    this.yards(kit, h, china ? [...BLOCKS, CHINA_BLOCK] : BLOCKS, china ? [...rowDefs, CHINA_WEST, CHINA_EAST] : ROWS);
+    if (china) { const r = buildChinaStreet(kitChina, h, this.signs, photo); floors.push(...r.floors); walls = r.walls; lots += r.lots; }
+    if (m5Enabled()) { const r = buildCarpenterEast(kitEast, h, this.signs, china); floors.push(...r.floors); walls.push(...r.walls, ...stepWalls); }
+    const allRowDefs = china ? [...rowDefs, CHINA_WEST, CHINA_EAST] : ROWS;
+    const westBlocks = m5Enabled() ? BLOCKS.slice(0, -2) : BLOCKS;
+    this.yards(kitWest, h, westBlocks, allRowDefs);
+    if (china) this.yards(kitChina, h, [CHINA_BLOCK], allRowDefs);
+    if (m5Enabled()) this.yards(kitEast, h, BLOCKS.slice(-2), allRowDefs);
 
     // street lamps on the south side at lot boundaries
     for (const [rid, idx] of [['S1', 3], ['S2', 2], ['N1', 5]] as [string, number][]) {
       const row = ROWS.find((r) => r.id === rid)!, fr = rowFrame(row), w = fr.len / row.lots;
       const x = fr.ox + fr.dx * idx * w + fr.nx * 1.0, z = fr.oz + fr.dz * idx * w + fr.nz * 1.0;
-      kit.at({ x, y: h(x, z) + 0.03, z, ry: fr.ry }, () => lampPost(kit));
+      kitWest.at({ x, y: h(x, z) + 0.03, z, ry: fr.ry }, () => lampPost(kitWest));
     }
 
     // landmarks
     const site = (id: string) => this.host.sites.find((s) => s.id === id);
     const temple = site(V5_LANDMARK_IDS[0]), court = site(V5_LANDMARK_IDS[1]), stage = site(V5_LANDMARK_IDS[2]);
-    const lm = new Kit(0);
-    const place = (s: SiteLike | undefined, fn: () => void, k = lm) => { if (s) k.at({ x: s.anchor.x, y: s.anchor.y, z: s.anchor.z, ry: s.anchor.yaw }, fn); };
+    const place = (s: SiteLike | undefined, fn: () => void, k = kitWest) => { if (s) k.at({ x: s.anchor.x, y: s.anchor.y, z: s.anchor.z, ry: s.anchor.yaw }, fn); };
     let glbs: THREE.Object3D[] = [];
     if (mode === 'a') {
-      place(temple, () => buildGenericTemple(lm, temple!.widthM ?? 10.4, temple!.depthM ?? 29.4));
-      place(court, () => buildGenericFoodCourt(lm));
-      place(stage, () => buildGenericStage(lm));
+      place(temple, () => buildGenericTemple(kitWest, temple!.widthM ?? 10.4, temple!.depthM ?? 29.4));
+      place(court, () => buildGenericFoodCourt(kitWest));
+      place(stage, () => buildGenericStage(kitWest));
     } else {
       glbs = await this.loadGlbs([temple, court, stage]);
       if (token !== this.token) return;
       if (!glbs.length) {
         // GLB assets not built yet: run the authored generators in the browser instead.
-        place(temple, () => buildTemple(lm)); place(court, () => buildFoodCourt(lm)); place(stage, () => buildOperaStage(lm));
+        place(temple, () => buildTemple(kitWest)); place(court, () => buildFoodCourt(kitWest)); place(stage, () => buildOperaStage(kitWest));
       }
       // reference-specific street dressing
       const tf = temple!.anchor, nx = Math.sin(tf.yaw), nz = Math.cos(tf.yaw), rx = Math.cos(tf.yaw), rz = -Math.sin(tf.yaw);
-      const at = (u: number, v: number, ry: number, fn: () => void) => { const x = tf.x + rx * u + nx * v, z = tf.z + rz * u + nz * v; kit.at({ x, y: h(x, z) + 0.04, z, ry: tf.yaw + ry }, fn); };
-      at(-6.6, 0.9, 0.2, () => pushcart(kit));                                   // mapped banana-fritter pushcart beside the forecourt
+      const at = (u: number, v: number, ry: number, fn: () => void) => { const x = tf.x + rx * u + nx * v, z = tf.z + rz * u + nz * v; kitWest.at({ x, y: h(x, z) + 0.04, z, ry: tf.yaw + ry }, fn); };
+      at(-6.6, 0.9, 0.2, () => pushcart(kitWest));                                   // mapped banana-fritter pushcart beside the forecourt
       // cars at the kerb either side of the food court mouth (iPackTravel street-front photograph)
-      at(-7.4, 6.7, 0.03, () => vehicle(kit, 'saloon', hex(0xc9cdd0), this.signs, plateFor(1)));
-      at(7.6, 6.7, Math.PI - 0.02, () => vehicle(kit, 'hatch', hex(0xe9e9e6), this.signs, plateFor(2)));
-      at(-21, 1.75, Math.PI, () => vehicle(kit, 'hatch', hex(0x7a1f1c), this.signs, plateFor(3)));
-      at(24, 6.6, 0, () => vehicle(kit, 'suv', hex(0x2c3e55), this.signs, plateFor(4)));
-      streetLanterns(kit, h, [0.16, 0.3, 0.72, 0.86]);
+      at(-7.4, 6.7, 0.03, () => vehicle(kitWest, 'saloon', hex(0xc9cdd0), this.signs, plateFor(1)));
+      at(7.6, 6.7, Math.PI - 0.02, () => vehicle(kitWest, 'hatch', hex(0xe9e9e6), this.signs, plateFor(2)));
+      at(-21, 1.75, Math.PI, () => vehicle(kitWest, 'hatch', hex(0x7a1f1c), this.signs, plateFor(3)));
+      at(24, 6.6, 0, () => vehicle(kitWest, 'suv', hex(0x2c3e55), this.signs, plateFor(4)));
+      streetLanterns(kitWest, h, [0.16, 0.3, 0.72, 0.86]);
     }
 
-    // kits -> meshes
+    // kits -> meshes: split the heaviest opaque materials across the 3 street blocks (adding <= 6 draw calls total)
     this.disposeMeshes();
     let tris = 0, calls = 0, gbytes = 0;
-    for (const k of [kit, lm]) for (const [name, buf] of k.bufs) {
-      if (!buf.idx.length) continue;
+    const addBuf = (name: string, buf: Buf) => {
+      if (!buf.idx.length) return;
       const mesh = new THREE.Mesh(bufGeometry(buf), this.materials.byName[name as MaterialName]);
       mesh.castShadow = !NO_SHADOW.has(name); mesh.receiveShadow = !NO_RECEIVE.has(name);
       mesh.renderOrder = name === 'poly' ? 5 : name === 'pane' ? 6 : 0;
       mesh.matrixAutoUpdate = false;
       this.group.add(mesh);
       tris += buf.idx.length / 3; calls++; gbytes += buf.count * 44 + buf.idx.length * (buf.count > 65535 ? 4 : 2);
+    };
+    const blockKits = [kitWest, kitChina, kitEast];
+    const byMat = new Map<string, Buf[]>();
+    for (const k of blockKits) for (const [name, buf] of k.bufs) {
+      if (!buf.idx.length) continue;
+      const list = byMat.get(name);
+      if (list) list.push(buf); else byMat.set(name, [buf]);
+    }
+    const candidates = [...byMat.entries()]
+      .filter(([name, list]) => list.length > 1 && !NO_SHADOW.has(name))
+      .map(([name, list]) => ({ name, extra: list.length - 1, tris: list.reduce((a, b) => a + b.idx.length / 3, 0) }))
+      .sort((a, b) => b.tris - a.tris);
+    const splitMats = new Set<string>();
+    let extraCalls = 0;
+    for (const c of candidates) {
+      if (extraCalls + c.extra <= 6) { splitMats.add(c.name); extraCalls += c.extra; }
+    }
+    for (const [name, list] of byMat) {
+      if (splitMats.has(name)) for (const buf of list) addBuf(name, buf);
+      else addBuf(name, mergeBufs(list));
     }
     for (const o of glbs) {
       this.group.add(o);

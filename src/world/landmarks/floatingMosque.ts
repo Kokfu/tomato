@@ -96,9 +96,33 @@ const verified: LandmarkBuilder = ({ data, ctx }) => {
   m.walls(loc, deck, deck + 0.95, WHITE_2);
   m.walls(insetRing(loc, 0.2), deck, deck + 0.95, WHITE_2, true);
 
-  // The arcaded hall: dark round-headed openings between white piers, a flat roof with a projecting edge.
   const terrace = Math.min(fp.W * 0.14, 6);
   const hall = insetRing(loc, terrace);
+  const up = insetRing(hall, Math.min(fp.W * 0.15, 5.5));
+  const R = Math.min(7.2, Math.min(fp.L, fp.W) * 0.17);
+  const front = towardWater(fp, data, ctx) ?? [0, 1];
+  const alongA = front[1] !== 0;
+  const half = (alongA ? fp.W : fp.L) / 2 - terrace - Math.min(fp.W * 0.15, 5.5) * 0.5;
+  const at = (t: number, back: number): [number, number] => (alongA ? [t, front[1] * (half - back)] : [front[0] * (half - back), t]);
+  const span = alongA ? fp.L : fp.W;
+  const [da, db] = at(-span * 0.14, 0.4), r2 = R * 0.46;
+  const [ma, mb] = at(span * 0.1, 0.2), s = 1.7, by = deck + 10.6;
+
+  // N2-M0b: distant ('low') chunk silhouette (~260 tris vs ~1.8k).
+  if (ctx.detail !== 'high') {
+    m.walls(hall, deck, deck + F.arcade, WHITE);
+    m.cap(hall, [], deck + F.arcade, WHITE_2);
+    m.walls(up, deck + F.arcade, deck + F.upper, WHITE);
+    m.cap(up, [], deck + F.upper, WHITE_2);
+    m.lathe(0, 0, [[R, deck + F.upper], [R, deck + F.drum]], 8, WHITE);
+    m.lathe(0, 0, [[R * 1.02, deck + F.drum], [R * 0.65, deck + F.drum + R * 0.75], [0, deck + F.drum + R * 1.06]], 8, SLATE);
+    m.lathe(da, db, [[r2, deck + F.arcade], [r2 * 0.65, deck + F.arcade + 3.1 + r2 * 0.7], [0, deck + F.arcade + 3.1 + r2 * 1.06]], 6, SLATE);
+    m.box(ma - s, ma + s, mb - s, mb + s, deck, by, WHITE, WHITE_2);
+    m.lathe(ma, mb, [[0.95, by], [0.62, by + 17.0], [0, deck + F.minaretTop]], 6, WHITE);
+    return m.mesh(ctx, 'floating-mosque');
+  }
+
+  // The arcaded hall: dark round-headed openings between white piers, a flat roof with a projecting edge.
   m.walls(hall, deck, deck + F.arcade, WHITE);
   windowRing(m, hall, deck + 0.25, deck + 3.5, F.bay, 2.3, SHADE);
   windowRing(m, hall, deck + 3.5, deck + 3.95, F.bay, 1.7, SHADE);
@@ -109,14 +133,12 @@ const verified: LandmarkBuilder = ({ data, ctx }) => {
   m.cap(eave, [], deck + F.arcade, WHITE_2);
 
   // Set-back upper storey.
-  const up = insetRing(hall, Math.min(fp.W * 0.15, 5.5));
   m.walls(up, deck + F.arcade, deck + F.upper, WHITE);
   m.cap(up, [], deck + F.upper, WHITE_2);
   windowRing(m, up, deck + F.arcade + 0.8, deck + F.upper - 0.7, 3.6, 1.0, SHADE);
   m.walls(insetRing(up, -0.15), deck + F.upper - 0.25, deck + F.upper, FASCIA);
 
   // The dome on its windowed drum.
-  const R = Math.min(7.2, Math.min(fp.L, fp.W) * 0.17);
   m.lathe(0, 0, [[R * 1.12, deck + F.upper], [R * 1.12, deck + F.upper + 0.8], [R, deck + F.upper + 0.8], [R, deck + F.drum]], 14, WHITE);
   for (let k = 0; k < 14; k++) {
     const u = ((k + 0.5) / 14) * Math.PI * 2, r = R * Math.cos(Math.PI / 14) + 0.04, tx = -Math.sin(u), tz = Math.cos(u);
@@ -130,15 +152,8 @@ const verified: LandmarkBuilder = ({ data, ctx }) => {
   dome(0, 0, R, deck + F.drum, 14);
 
   // Towards the water: the small dome on a round drum, and the one minaret on its square base.
-  const front = towardWater(fp, data, ctx) ?? [0, 1];
-  const alongA = front[1] !== 0; // the water side is a long side: features are spread along a
-  const half = (alongA ? fp.W : fp.L) / 2 - terrace - Math.min(fp.W * 0.15, 5.5) * 0.5;
-  const at = (t: number, back: number): [number, number] => (alongA ? [t, front[1] * (half - back)] : [front[0] * (half - back), t]);
-  const span = alongA ? fp.L : fp.W;
-  const [da, db] = at(-span * 0.14, 0.4), r2 = R * 0.46;
   m.lathe(da, db, [[r2 * 1.12, deck + F.arcade], [r2 * 1.12, deck + F.arcade + 2.6], [r2 * 1.02, deck + F.arcade + 2.6], [r2 * 1.02, deck + F.arcade + 3.1]], 10, WHITE);
   dome(da, db, r2, deck + F.arcade + 3.1, 10);
-  const [ma, mb] = at(span * 0.1, 0.2), s = 1.7, by = deck + 10.6;
   m.box(ma - s, ma + s, mb - s, mb + s, deck, by, WHITE, WHITE_2);
   windowRing(m, [ma - s, mb - s, ma + s, mb - s, ma + s, mb + s, ma - s, mb + s], deck + 6.4, deck + 8.6, 2 * s, 0.8, SHADE);
   const prof: [number, number][] = [[1.0, by], [0.9, by + 4.4]];

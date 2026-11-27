@@ -17,14 +17,15 @@ export function buildGraves(data: ChunkData, ctx: BuildContext, solid: GeoBuf): 
     const x = g.x - ox, z = g.z - oz, y = ctx.height.sample(g.x, g.z), dark = (g.h >>> 20) % 7 === 0, tone = 0.9 + ((g.h >>> 23) % 10) / 100;
     if (!low) {
       paint(dark ? 0x8d8f92 : 0xdcd8cc, tone);
-      box(solid, x, z, ax, az, 1.0, 0.42, y - 0.15, y + 0.17);
+      box(solid, x, z, ax, az, 1.0, 0.42, y - 0.15, y + 0.17, false);
       paint(0x5f7f45, tone);
-      const p = (a: number, b: number) => [x + ax * a - az * b, y + 0.185, z + az * a + ax * b];
-      quad(solid, p(-0.86, -0.29), p(0.86, -0.29), p(0.86, 0.29), p(-0.86, 0.29), [0, 1, 0]);
+      const p = (a: number, b: number) => [x + ax * a - az * b, y + 0.17, z + az * a + ax * b];
+      quad(solid, p(-1.0, -0.42), p(1.0, -0.42), p(1.0, 0.42), p(-1.0, 0.42), [0, 1, 0]);
     }
-    // the head stone is a small slab, the foot stone a single pane (the structure mesh is double sided)
+    // Both stones are double-sided panes in the chunk's structure material (4 tris per grave on Low, 14 on Medium/High).
     paint(dark ? 0x4a4d52 : 0xf2f0e8, tone);
-    box(solid, x + ax * 0.82, z + az * 0.82, ax, az, 0.05, 0.1, y - 0.1, y + 0.62, false);
+    const h = (b: number, yy: number) => [x + ax * 0.82 - az * b, yy, z + az * 0.82 + ax * b];
+    quad(solid, h(-0.1, y - 0.1), h(0.1, y - 0.1), h(0.1, y + 0.62), h(-0.1, y + 0.62), [ax, 0, az]);
     const q = (b: number, yy: number) => [x - ax * 0.82 - az * b, yy, z - az * 0.82 + ax * b];
     quad(solid, q(-0.09, y - 0.1), q(0.09, y - 0.1), q(0.09, y + 0.48), q(-0.09, y + 0.48), [ax, 0, az]);
   }

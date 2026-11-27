@@ -9,6 +9,7 @@ import type { BuildContext } from './ChunkManager.ts';
 import { addShophouseRow, addRowRoof } from './arch/Shophouse.ts';
 import { addHeritageRow, addHeritageRoof } from './arch/HeritageRow.ts';
 import { inDistrict, isDistrictRow } from './district/mainBazaar.ts';
+import { NORTH_BLOCK } from './district/indiaStreet.ts';
 import { assertGeneric, isProtectedLandmark, mayHaveShopfront } from './landmarks/protect.ts';
 import { v5Exclusion } from '../v5/geo.ts';
 import { addFarTrees } from './VegetationBuilder.ts';
@@ -338,7 +339,8 @@ export function* buildBuildings(data: ChunkData, ctx: BuildContext): Generator<v
     }
     if (row) {
       const fr = addShophouseRow(b, ox, oz, ctx, arch);
-      if (addRowRoof(b, fr, roofs, arch)) continue;
+      const isHeroSlice = b.id > NORTH_BLOCK * 100 && b.id <= NORTH_BLOCK * 100 + 7;
+      if ((ctx.detail === 'high' || !isHeroSlice) && addRowRoof(b, fr, roofs, arch, ctx.detail === 'high')) continue;
     }
     // Small unclassified / machine-detected footprints on the district waterfront are the promenade's
     // kiosks and pavilions: drawn with cream walls and a pitched tile roof (appearance approximate).

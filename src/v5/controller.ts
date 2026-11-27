@@ -246,9 +246,16 @@ export class V5Controller {
 
   update(dt: number, rawDt: number, px: number, pz: number): void {
     this.time += dt;
-    this.scene.update(this.time);
+    if (this.mode !== 'v4') {
+      // N2-M0b: hide the hand-built old-town section when the player is beyond the low-detail radius (past the fog
+      // wall, ~576 m from the section edge on Low, ~832 m on Medium, ~1344 m on High); never dispose it by distance.
+      const dx = Math.max(0, 71.5 - px, px - 269.7), dz = Math.max(0, -58.8 - pz, pz - 83.0);
+      const maxDist = (this.world.chunks.quality.lowRadius + 0.25) * 256;
+      this.scene.group.visible = Math.hypot(dx, dz) <= maxDist;
+    }
+    if (this.scene.group.visible) this.scene.update(this.time);
     this.ambience.update(px, pz);
-    if (this.peds?.active) this.peds.update(dt, px, pz);
+    if (this.peds?.active && this.scene.group.visible) this.peds.update(dt, px, pz);
     this.frameMs.push(rawDt * 1000);
     if (this.frameMs.length > 120) this.frameMs.shift();
     if (this.frameMs.length % 30 === 0 && !this.busy) {
@@ -262,7 +269,7 @@ export class V5Controller {
   measure(): Record<string, number | string | boolean> {
     const s = [...this.frameMs].sort((a, b) => a - b), i = this.renderer.info;
     return {
-      mode: this.mode, frames: s.length, avgMs: +(s.reduce((a, b) => a + b, 0) / Math.max(1, s.length)).toFixed(2), p95Ms: +(s[Math.floor(s.length * 0.95)] ?? 0).toFixed(2), maxMs: +(s[s.length - 1] ?? 0).toFixed(2),
+      mode: this.mode, v5Visible: this.scene.group.visible, frames: s.length, avgMs: +(s.reduce((a, b) => a + b, 0) / Math.max(1, s.length)).toFixed(2), p95Ms: +(s[Math.floor(s.length * 0.95)] ?? 0).toFixed(2), maxMs: +(s[s.length - 1] ?? 0).toFixed(2),
       calls: i.render.calls, triangles: i.render.triangles, geometries: i.memory.geometries, textures: i.memory.textures,
       v5Triangles: this.scene.stats.triangles, v5DrawCalls: this.scene.stats.drawCalls, v5BuildMs: this.scene.stats.buildMs, v5AssetBytes: this.scene.stats.assetBytes, v5Glb: this.scene.stats.glb,
       v5RealAssets: this.scene.realAssets, v5GeometryBytes: this.scene.stats.geometryBytes, v5TextureBytes: this.scene.stats.textureBytes, pipelineTargetBytes: this.pipeline.active ? this.pipeline.targetBytes() : 0,

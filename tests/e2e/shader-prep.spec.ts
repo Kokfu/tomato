@@ -4,7 +4,7 @@
 // throttled phone profile). These checks run on the desktop project; the resize to phone size is the trigger.
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { watch, start, frames, waitChunks } from './helpers.ts';
+import { watch, start, frames, waitChunks, seedCharacter } from './helpers.ts';
 
 const k3d = <T>(page: Page, fn: (k: any) => T): Promise<T> => page.evaluate(`(${fn.toString()})(window.__k3d)`) as Promise<T>;
 
@@ -51,6 +51,35 @@ test.describe('V8.6 shader preparation', () => {
       expect(await calls()).toBeGreaterThan(0);
       expect(await k3d(page, (k) => k.renderer.shadowMap.enabled)).toBe(shadows);
     }
+    expect(issues.errors).toEqual([]);
+  });
+
+  test('Medium: walking from spawn to the waterfront compiles zero shadow-pass programs', async ({ page }) => {
+    const issues = watch(page);
+    await seedCharacter(page);
+    await page.addInitScript(() => { try { localStorage.setItem('k3d.quality', 'medium'); } catch { /* ignore */ } });
+    await page.goto('./?life=0');
+    await start(page, { navigate: false });
+    await waitChunks(page);
+    await frames(page, 20);
+    const depthCount = () => k3d(page, (k) => (k.renderer.info.programs as { cacheKey?: string }[]).filter((p) => String(p.cacheKey ?? '').startsWith('depth,')).length);
+    const before = await depthCount();
+    expect(before).toBeGreaterThanOrEqual(4);
+    for (const [x, z] of [[95, -25], [-20, -110], [-188.9, -202]] as const) {
+      await page.evaluate(([px, pz]) => (window as any).__k3d.player.teleport(px, pz), [x, z]);
+      await waitChunks(page);
+      await frames(page, 10);
+    }
+    expect(await depthCount()).toBe(before);
+    // N2-M0b: V5 stays visible near the old town, hides beyond the low-detail radius (Satok), and reappears on return.
+    expect(await k3d(page, (k) => k.v5.scene.group.visible)).toBe(true);
+    await page.evaluate(() => (window as any).__k3d.player.teleport(-2533.1, 492.1));
+    await frames(page, 5);
+    expect(await k3d(page, (k) => k.v5.scene.group.visible)).toBe(false);
+    expect(await k3d(page, (k) => !!k.v5.scene.group.parent)).toBe(true);
+    await page.evaluate(() => (window as any).__k3d.player.teleport(-188.9, -202));
+    await frames(page, 5);
+    expect(await k3d(page, (k) => k.v5.scene.group.visible)).toBe(true);
     expect(issues.errors).toEqual([]);
   });
 });

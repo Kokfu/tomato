@@ -157,13 +157,14 @@ function bridgeStructure(buf: GeoBuf, pts: Sample[], hw: number, ox: number, oz:
   }
 }
 
-export interface RoadMeshes { groups: (THREE.BufferGeometry | null)[]; marks: THREE.BufferGeometry | null; structure: GeoBuf }
+export interface NearStructure { geo: THREE.BufferGeometry; x: number; z: number; maxDist: number }
+export interface RoadMeshes { groups: (THREE.BufferGeometry | null)[]; marks: THREE.BufferGeometry | null; structure: GeoBuf; near?: NearStructure }
 
 /**
  * Road ribbons (grouped by draw layer), lane markings, and bridge structures for a chunk. A generator: it yields
  * between roads so that ChunkManager can spread a heavy chunk over several frames (V8.2); the result is the same.
  */
-export function* buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBuf): Generator<void, { groups: (THREE.BufferGeometry | null)[]; marks: THREE.BufferGeometry | null }> {
+export function* buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBuf): Generator<void, { groups: (THREE.BufferGeometry | null)[]; marks: THREE.BufferGeometry | null; near?: NearStructure }> {
   const ox = data.cx * CHUNK_SIZE, oz = data.cz * CHUNK_SIZE;
   const high = ctx.detail === 'high';
   const bufs = [new GeoBuf(), new GeoBuf(), new GeoBuf(), new GeoBuf()];
@@ -276,14 +277,25 @@ export function* buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBu
   }
   // N1-M5: the paved riverside walk of the Kuching Waterfront and the Square Tower apron (district/PromenadeMesh.ts).
   if (high && m5Enabled() && stationOfChunk(data)) buildPromenadePaving(data, ctx, bufs[1]);
+  // N2-M0b: street-level props of India Street (stalls, awnings, flags, Gambier parked cars) and City Mosque graves
+  // go into a near-detail buffer culled beyond ~145 m / ~130 m so neighbouring chunks stay within the +12 % guide.
+  const nearBuf = new GeoBuf();
+  let nearMeta: { x: number; z: number; maxDist: number } | undefined;
   // N1-M5 place 3: India Street's paving, canopy, stalls and flags, and Jalan Gambier's parked cars (district/IndiaStreetMesh.ts).
-  if (high) buildIndiaStreet(data, ctx, bufs[1], marks, structure);
+  if (high) {
+    buildIndiaStreet(data, ctx, bufs[1], marks, structure, nearBuf);
+    if (nearBuf.count > 0) nearMeta = { x: -110, z: -155, maxDist: 150 };
+  }
   // N1-M5 place 4: the entrance of Plaza Merdeka (district/PlazaMesh.ts).
   if (high) buildPlazaEntrance(data, ctx, bufs[1], structure);
   // N1-M5 place 5: fascia boards, awnings and kapcai of the Jalan Padungan rows (district/PadunganMesh.ts).
   if (high) buildPadungan(data, ctx, structure);
   // N1-M5 place 6: the graves of the cemetery beside the Kuching City Mosque (district/GravesMesh.ts).
-  if (high) buildGraves(data, ctx, structure);
+  if (high) {
+    const before = nearBuf.count;
+    buildGraves(data, ctx, nearBuf);
+    if (nearBuf.count > before && !nearMeta) nearMeta = { x: -410, z: 20, maxDist: 135 };
+  }
   // Polygon decks (piers mapped as areas)
   for (const d of data.pdecks) {
     const y = d.h / QUANT;
@@ -293,7 +305,7 @@ export function* buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBu
     tmpColor.setHex(ROAD_STYLE.pier.color);
     const base = bufs[1].count;
     for (let i = 0; i < flat.length; i += 2) bufs[1].vert(flat[i], y, flat[i + 1], ...UP, tmpColor);
-    for (const t of ids) bufs[1].triUp(base + t[0], base + t[1], base + t[2]);
+    for (let t of ids) bufs[1].triUp(base + t[0], base + t[1], base + t[2]);
     const n = flat.length / 2;
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
@@ -301,7 +313,8 @@ export function* buildRoads(data: ChunkData, ctx: BuildContext, structure: GeoBu
     }
   }
   yield;
-  return { groups: bufs.map((b) => b.build()), marks: marks.build() };
+  const nearGeo = nearBuf.build();
+  return { groups: bufs.map((b) => b.build()), marks: marks.build(), near: nearGeo && nearMeta ? { geo: nearGeo, ...nearMeta } : undefined };
 }
 
 export function toVec2(flat: number[]): THREE.Vector2[] {

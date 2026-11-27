@@ -6,7 +6,7 @@ import type { GeoBuf } from '../Materials.ts';
 import type { BuildContext } from '../ChunkManager.ts';
 import { ARCADE_DEPTH, edgeOutward, hash3, insetEdges, pointInRingFlat, ringArea2, unitsAlong } from './frontage.ts';
 import { TILE, tileUV, WHITE_UV } from './FacadeAtlas.ts';
-import { heroLotStyle } from '../district/indiaStreet.ts';
+import { heroFront, heroLotStyle } from '../district/indiaStreet.ts';
 import { padunganLotStyle } from '../district/padungan.ts';
 
 // Kuching old-town shophouse rows, generated on the mapped building outline.
@@ -151,6 +151,16 @@ export function addShophouseRow(b: BuildingData, ox: number, oz: number, ctx: Bu
     }
 
     const { n: units, w } = unitsAlong(len);
+    if (simple && heroFront(b.id, i) === 'india') {
+      // N2-M0b: India Street is an enclosed 11 m canyon covered by a canopy; in distant ('low') chunks one two-band
+      // facade per row edge keeps the street's warm paint and dark arcade band without 74 per-lot subdivisions.
+      const st0 = unitStyle(b.id, i, 0);
+      cWall.setHex(st0.wall);
+      cTmp.copy(cWall).multiplyScalar(0.5);
+      wall(buf, ax, az, bx, bz, yBase, yBeam0, nx, nz, cTmp);
+      wall(buf, ax, az, bx, bz, yBeam0, top, nx, nz, cWall, tileUV(st0.upper));
+      continue;
+    }
     for (let u = 0; u < units; u++) {
       const st = unitStyle(b.id, i, u);
       const t0 = u / units, t1 = (u + 1) / units;
@@ -230,7 +240,7 @@ const cRoof = new THREE.Color();
  * Roof shapes are not mapped; this is an inferred form. Returns false when the outline is too
  * shallow or irregular for it, in which case the caller falls back to the generic roof.
  */
-export function addRowRoof(b: BuildingData, fr: RowFrame, roofs: GeoBuf, walls: GeoBuf): boolean {
+export function addRowRoof(b: BuildingData, fr: RowFrame, roofs: GeoBuf, walls: GeoBuf, high = true): boolean {
   const { ring, top } = fr;
   const n = ring.length / 2;
   const area = Math.abs(fr.area2) / 2;
@@ -266,6 +276,7 @@ export function addRowRoof(b: BuildingData, fr: RowFrame, roofs: GeoBuf, walls: 
     const b0: P3 = [back[i * 2], top, back[i * 2 + 1]], b1: P3 = [back[j * 2], top, back[j * 2 + 1]];
     slope(f0, f1, m1, m0);
     slope(m0, m1, b1, b0);
+    if (!high) continue;
     // Party walls rising through the roof at every lot boundary: the signature silhouette of a
     // shophouse row from above. Lot boundaries are the same estimated ones the facade uses.
     const len = Math.hypot(f1[0] - f0[0], f1[2] - f0[2]);

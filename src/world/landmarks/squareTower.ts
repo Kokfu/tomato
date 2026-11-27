@@ -68,10 +68,6 @@ export const buildSquareTower: LandmarkBuilder = (args) => {
 
   m.walls(loc, g - 0.6, bodyTop, WHITE);
   m.cap(loc, [], bodyTop, WALK);
-  // string course between the storeys, cornice under the parapet
-  m.walls(insetRing(loc, -0.07), gTop + TOWER_FORM.string, gTop + TOWER_FORM.string + 0.16, WHITE_2);
-  m.walls(insetRing(loc, -0.12), bodyTop - 0.3, bodyTop - 0.05, WHITE_2);
-  m.crenels(loc, bodyTop, 0.85, WHITE, 1.5, 0.45);
 
   // The front: the face turned furthest from the river (world south-east here). Local axes in world: a = (ux, uz),
   // b = (-uz, ux).
@@ -87,6 +83,17 @@ export const buildSquareTower: LandmarkBuilder = (args) => {
   // the corner of the outline nearest that OBB corner
   let ci = 0, cd = Infinity;
   for (let i = 0; i < n; i++) { const d = Math.hypot(loc[i * 2] - ca, loc[i * 2 + 1] - cb); if (d < cd) { cd = d; ci = i; } }
+  const ka = loc[ci * 2], kb = loc[ci * 2 + 1], sa = Math.sign(front.a + left.a) || 1, sb = Math.sign(front.b + left.b) || 1;
+  const a0 = Math.min(ka + sa * out, ka + sa * out - sa * T), a1 = Math.max(ka + sa * out, ka + sa * out - sa * T);
+  const b0 = Math.min(kb + sb * out, kb + sb * out - sb * T), b1 = Math.max(kb + sb * out, kb + sb * out - sb * T);
+  const tTop = bodyTop + TOWER_FORM.turret;
+  m.box(a0, a1, b0, b1, g - 0.6, tTop, WHITE, WALK);
+  if (ctx.detail !== 'high') return m.mesh(ctx, 'square-tower');
+
+  // string course between the storeys, cornice under the parapet
+  m.walls(insetRing(loc, -0.07), gTop + TOWER_FORM.string, gTop + TOWER_FORM.string + 0.16, WHITE_2);
+  m.walls(insetRing(loc, -0.12), bodyTop - 0.3, bodyTop - 0.05, WHITE_2);
+  m.crenels(loc, bodyTop, 0.85, WHITE, 1.5, 0.45);
   // openings, edge by edge of the mapped outline
   for (let i = 0, j = n - 1; i < n; j = i, i++) {
     const a0 = loc[j * 2], b0 = loc[j * 2 + 1], a1 = loc[i * 2], b1 = loc[i * 2 + 1], l = Math.hypot(a1 - a0, b1 - b0);
@@ -126,11 +133,6 @@ export const buildSquareTower: LandmarkBuilder = (args) => {
     }
   }
 
-  const ka = loc[ci * 2], kb = loc[ci * 2 + 1], sa = Math.sign(front.a + left.a) || 1, sb = Math.sign(front.b + left.b) || 1;
-  const a0 = Math.min(ka + sa * out, ka + sa * out - sa * T), a1 = Math.max(ka + sa * out, ka + sa * out - sa * T);
-  const b0 = Math.min(kb + sb * out, kb + sb * out - sb * T), b1 = Math.max(kb + sb * out, kb + sb * out - sb * T);
-  const tTop = bodyTop + TOWER_FORM.turret;
-  m.box(a0, a1, b0, b1, g - 0.6, tTop, WHITE, WALK);
   m.box(a0 - 0.12, a1 + 0.12, b0 - 0.12, b1 + 0.12, tTop - 0.32, tTop - 0.06, WHITE_2);
   const ring = [a0, b0, a1, b0, a1, b1, a0, b1];
   m.crenels(ring, tTop, 0.75, WHITE, 1.0, 0.38);

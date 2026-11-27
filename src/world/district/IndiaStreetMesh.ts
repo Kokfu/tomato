@@ -85,7 +85,7 @@ function canopy(solid: GeoBuf, fabric: GeoBuf, ox: number, oz: number, ctx: Buil
   const sp = indiaSpine().filter((n) => n.s >= CANOPY_INSET - 0.01 && n.s <= INDIA_LENGTH - CANOPY_INSET + 0.01);
   const half = (n: SpineNode) => Math.min(n.w / 2 - 0.8, 6.4);
   const gy = (n: SpineNode) => ctx.height.sample(n.x + n.nx * n.w / 2, n.z + n.nz * n.w / 2);
-  const SEG = low ? 4 : 6;
+  const SEG = low ? 3 : 4;
   // cross-section point k of SEG at node n: a shallow vault
   const P = (n: SpineNode, k: number): [number, number, number] => {
     const u = (k / SEG) * 2 - 1, d = n.w / 2 + u * half(n);
@@ -103,22 +103,22 @@ function canopy(solid: GeoBuf, fabric: GeoBuf, ox: number, oz: number, ctx: Buil
     }
     // steel: an eaves tube each side and a ridge tube
     c.setHex(STEEL).multiplyScalar(0.92);
-    for (const k of [0, SEG / 2, SEG]) {
+    for (const k of [0, Math.floor(SEG / 2), SEG]) {
       const p = P(a, k), q = P(b, k), y = -0.16;
       quad(solid, [p[0], p[1] + y, p[2]], [q[0], q[1] + y, q[2]], [q[0], q[1] - 0.02, q[2]], [p[0], p[1] - 0.02, p[2]], [a.nx, 0, a.nz]);
     }
-    // an arched rib across the street at every node
-    if (!low || i % 2 === 0) for (let k = 0; k < SEG; k++) {
+    // an arched rib across the street every 6 m bay
+    if (i % 2 === 0) for (let k = 0; k < SEG; k++) {
       const p = P(b, k), q = P(b, k + 1);
       quad(solid, [p[0], p[1] - 0.2, p[2]], [q[0], q[1] - 0.2, q[2]], [q[0], q[1] - 0.02, q[2]], [p[0], p[1] - 0.02, p[2]], [b.tx, 0, b.tz]);
     }
   }
-  // columns: octagonal shaft, four arms up to the vault, a collar
+  // columns: hexagonal shaft, branching arms up to the vault, a collar
   const all = indiaSpine();
   for (const p of indiaPosts()) {
     const n = all.reduce((m, q) => (Math.abs(q.s - p.s) < Math.abs(m.s - p.s) ? q : m));
     const y0 = ctx.height.sample(p.x, p.z), yTop = y0 + CANOPY_EAVES + CANOPY_RISE - 0.1, yArm = y0 + 6.4, lx = p.x - ox, lz = p.z - oz;
-    const N = low ? 6 : 8;
+    const N = 6;
     for (let k = 0; k < N; k++) {
       const u0 = (k / N) * Math.PI * 2, u1 = ((k + 1) / N) * Math.PI * 2, um = (u0 + u1) / 2;
       c.setHex(STEEL).multiplyScalar(0.9 + 0.1 * Math.cos(um - 0.8));
@@ -133,8 +133,7 @@ function canopy(solid: GeoBuf, fabric: GeoBuf, ox: number, oz: number, ctx: Buil
       // arm from the shaft up to the vault: across the street, and diagonally along it
       const ex = lx + n.tx * da * 3.2 + n.nx * db * h, ez = lz + n.tz * da * 3.2 + n.nz * db * h, u = (db * h) / half(n);
       const ey = y0 + CANOPY_EAVES + CANOPY_RISE * (1 - u * u) - 0.2;
-      const sx = -(ez - lz), sz = ex - lx, sl = Math.hypot(sx, sz) || 1, t = 0.07;
-      quad(solid, [lx - (sx / sl) * t, yArm, lz - (sz / sl) * t], [lx + (sx / sl) * t, yArm, lz + (sz / sl) * t], [ex + (sx / sl) * t, ey, ez + (sz / sl) * t], [ex - (sx / sl) * t, ey, ez - (sz / sl) * t], [0, -1, 0]);
+      const sx = -(ez - lz), sz = ex - lx, sl = Math.hypot(sx, sz) || 1, t = 0.08;
       quad(solid, [lx, yArm - t, lz], [lx, yArm + t, lz], [ex, ey + t, ez], [ex, ey - t, ez], [sx / sl, 0, sz / sl]);
     }
   }
@@ -146,9 +145,9 @@ function stall(buf: GeoBuf, s: Stall, ox: number, oz: number, ctx: BuildContext,
   if (s.rack) {
     // a garment rail: two end frames, the rail, and the clothes as blocks of colour
     c.setHex(0xb8bcc0);
-    for (const a of [-0.95, 0.95]) { const [px, pz] = at(a, 0); box(buf, px, pz, tx, tz, 0.025, 0.025, y, y + 1.72, false); box(buf, px, pz, tx, tz, 0.03, 0.3, y, y + 0.05); }
-    box(buf, x, z, tx, tz, 0.95, 0.025, y + 1.66, y + 1.72);
-    const n = low ? 3 : 6;
+    for (const a of [-0.95, 0.95]) { const [px, pz] = at(a, 0); quad(buf, [px, y, pz - 0.025], [px, y, pz + 0.025], [px, y + 1.72, pz + 0.025], [px, y + 1.72, pz - 0.025], [tx, 0, tz]); }
+    box(buf, x, z, tx, tz, 0.95, 0.025, y + 1.66, y + 1.72, false);
+    const n = low ? 2 : 4;
     for (let k = 0; k < n; k++) {
       const [px, pz] = at(-0.78 + (1.56 * (k + 0.5)) / n, 0), hk = hash3(s.h, k, 5);
       c.setHex(CLOTH[hk % CLOTH.length]).multiplyScalar(0.85 + (hk >>> 8) % 16 / 100);
@@ -158,7 +157,7 @@ function stall(buf: GeoBuf, s: Stall, ox: number, oz: number, ctx: BuildContext,
     // a trestle table under a cloth, with folded textiles stacked on it
     c.setHex(CLOTH[(s.h >>> 10) % CLOTH.length]).multiplyScalar(0.8);
     box(buf, x, z, tx, tz, 0.95, 0.42, y, y + 0.74);
-    const n = low ? 2 : 5;
+    const n = low ? 2 : 3;
     for (let k = 0; k < n; k++) for (const b of low ? [0] : [-0.2, 0.2]) {
       const [px, pz] = at(-0.76 + (1.52 * (k + 0.5)) / n, b), hk = hash3(s.h, k, b > 0 ? 9 : 4);
       c.setHex(CLOTH[hk % CLOTH.length]).multiplyScalar(0.88 + (hk >>> 8) % 12 / 100);
@@ -167,8 +166,8 @@ function stall(buf: GeoBuf, s: Stall, ox: number, oz: number, ctx: BuildContext,
   }
   if (s.parasol) {
     const [px, pz] = at(0.2, 0.75);
-    c.setHex(0xd8d8d2); box(buf, px, pz, tx, tz, 0.022, 0.022, y, y + 2.45, false);
-    const N = 8, R = 1.35, a0 = CLOTH[(s.h >>> 14) % 6], a1 = (s.h >>> 17) % 2 ? 0xf4f1e8 : a0;
+    c.setHex(0xd8d8d2); quad(buf, [px - 0.022, y, pz], [px + 0.022, y, pz], [px + 0.022, y + 2.45, pz], [px - 0.022, y + 2.45, pz], [0, 0, 1]);
+    const N = 6, R = 1.35, a0 = CLOTH[(s.h >>> 14) % 6], a1 = (s.h >>> 17) % 2 ? 0xf4f1e8 : a0;
     for (let k = 0; k < N; k++) {
       const u0 = (k / N) * Math.PI * 2, u1 = ((k + 1) / N) * Math.PI * 2, um = (u0 + u1) / 2;
       c.setHex(k % 2 ? a1 : a0);
@@ -195,7 +194,7 @@ function frontDressing(buf: GeoBuf, data: ChunkData, ox: number, oz: number, ctx
       if (h % 10 < 6) {
         // a sloping cloth awning from the beam out over the street, in two colours, with a valance
         const y0 = ground + 2.98, out = 1.5, drop = 0.5, hw = w / 2 - 0.28, a0 = CLOTH[(h >>> 4) % 6], a1 = (h >>> 9) % 3 ? 0xf4f1e8 : a0;
-        const S = low ? 1 : 4;
+        const S = low ? 1 : 2;
         for (let k = 0; k < S; k++) {
           const u0 = -hw + (2 * hw * k) / S, u1 = -hw + (2 * hw * (k + 1)) / S;
           c.setHex(k % 2 ? a1 : a0).multiplyScalar(0.92);
@@ -210,15 +209,15 @@ function frontDressing(buf: GeoBuf, data: ChunkData, ox: number, oz: number, ctx
         c.setHex(0xd9d9d4);
         quad(buf, [px, y0 - 0.02, pz], [px, y0 + 0.02, pz], [px + nx * L, y0 + rise + 0.02, pz + nz * L], [px + nx * L, y0 + rise - 0.02, pz + nz * L], [ex, 0, ez]);
         // flag: 0.9 m out along the pole's outer part, 0.46 m deep, hanging below the pole line
-        const f0 = 0.5, f1 = 1.4, H = 0.46, N = 14;
+        const f0 = 0.5, f1 = 1.4, H = 0.46, N = 7;
         const P = (o: number, d: number) => [px + nx * o, y0 + (rise * o) / L - 0.03 - d, pz + nz * o];
         for (let k = 0; k < N; k++) {
-          const top = k < 8, o0 = top ? f0 + (f1 - f0) * 0.5 : f0;
+          const top = k < 4, o0 = top ? f0 + (f1 - f0) * 0.5 : f0;
           c.setHex(k % 2 ? 0xf4f2ec : 0xc2262e);
           quad(buf, P(o0, (H * k) / N), P(f1, (H * k) / N), P(f1, (H * (k + 1)) / N), P(o0, (H * (k + 1)) / N), [ex, 0, ez]);
         }
         c.setHex(0x1f2f73);
-        quad(buf, P(f0, 0), P(f0 + (f1 - f0) * 0.5, 0), P(f0 + (f1 - f0) * 0.5, (H * 8) / N), P(f0, (H * 8) / N), [ex, 0, ez]);
+        quad(buf, P(f0, 0), P(f0 + (f1 - f0) * 0.5, 0), P(f0 + (f1 - f0) * 0.5, (H * 4) / N), P(f0, (H * 4) / N), [ex, 0, ez]);
       }
     }
   }
@@ -238,9 +237,12 @@ function car(buf: GeoBuf, p: Parked, ox: number, oz: number, ctx: BuildContext):
     quad(buf, p(-1, y + 0.98), p(1, y + 0.98), p(1, y + 1.4), p(-1, y + 1.4), ha ? [-tz * Math.sign(b), 0, tx * Math.sign(b)] : [tx * Math.sign(a), 0, tz * Math.sign(a)]);
   }
   c.setHex(0x17181a);
-  for (const [a, b] of [[1.25, 0.8], [1.25, -0.8], [-1.25, 0.8], [-1.25, -0.8]]) { const [wx, wz] = at(a, b); box(buf, wx, wz, tx, tz, 0.3, 0.09, y, y + 0.6, false); }
-  { const [lx, lz] = at(long + 0.01, 0); c.setHex(0xf0edd6); box(buf, lx, lz, tx, tz, 0.012, 0.7, y + 0.56, y + 0.68, false); }
-  { const [lx, lz] = at(-long - 0.01, 0); c.setHex(0xa31d1d); box(buf, lx, lz, tx, tz, 0.012, 0.7, y + 0.58, y + 0.7, false); }
+  for (const [a, b] of [[1.25, 0.8], [1.25, -0.8], [-1.25, 0.8], [-1.25, -0.8]]) {
+    const [wx, wz] = at(a, b);
+    quad(buf, [wx - tx * 0.3, y, wz - tz * 0.3], [wx + tx * 0.3, y, wz + tz * 0.3], [wx + tx * 0.3, y + 0.6, wz + tz * 0.3], [wx - tx * 0.3, y + 0.6, wz - tz * 0.3], [-tz * Math.sign(b), 0, tx * Math.sign(b)]);
+  }
+  { const [lx, lz] = at(long + 0.01, 0); c.setHex(0xf0edd6); quad(buf, [lx + tz * 0.65, y + 0.56, lz - tx * 0.65], [lx - tz * 0.65, y + 0.56, lz + tx * 0.65], [lx - tz * 0.65, y + 0.68, lz + tx * 0.65], [lx + tz * 0.65, y + 0.68, lz - tx * 0.65], [tx, 0, tz]); }
+  { const [lx, lz] = at(-long - 0.01, 0); c.setHex(0xa31d1d); quad(buf, [lx - tz * 0.65, y + 0.58, lz + tx * 0.65], [lx + tz * 0.65, y + 0.58, lz - tx * 0.65], [lx + tz * 0.65, y + 0.7, lz - tx * 0.65], [lx - tz * 0.65, y + 0.7, lz + tx * 0.65], [-tx, 0, -tz]); }
 }
 
 /** Three kapcai (underbone motorbikes) nose to the kerb. */
@@ -267,14 +269,15 @@ export function kapcai(buf: GeoBuf, p: Parked, ox: number, oz: number, ctx: Buil
 
 /**
  * Everything of hero place 3 in this chunk. `paved` is the paving road layer, `marks` the lane-marking mesh,
- * `solid` the structure mesh (all chunk-local).
+ * `solid` the always-shown structure mesh (canopy), and `near` the street-level dressing (stalls, awnings, flags,
+ * parked vehicles) culled beyond near-detail range so distant Old Town views stay under the per-place triangle guide.
  */
-export function buildIndiaStreet(data: ChunkData, ctx: BuildContext, paved: GeoBuf, marks: GeoBuf, solid: GeoBuf): void {
+export function buildIndiaStreet(data: ChunkData, ctx: BuildContext, paved: GeoBuf, marks: GeoBuf, solid: GeoBuf, near: GeoBuf = solid): void {
   if (!isIndiaChunk(data)) return;
   const ox = data.cx * CHUNK_SIZE, oz = data.cz * CHUNK_SIZE, low = ctx.quality.name === 'low';
   paving(paved, ox, oz, ctx);
   canopy(solid, marks, ox, oz, ctx, low);
-  for (const s of indiaStalls()) stall(solid, s, ox, oz, ctx, low);
-  frontDressing(solid, data, ox, oz, ctx, low);
-  for (const p of gambierParked(data)) (p.kind === 'car' ? car : kapcai)(solid, p, ox, oz, ctx);
+  for (const s of indiaStalls()) stall(near, s, ox, oz, ctx, low);
+  frontDressing(near, data, ox, oz, ctx, low);
+  for (const p of gambierParked(data)) (p.kind === 'car' ? car : kapcai)(near, p, ox, oz, ctx);
 }

@@ -1,0 +1,84 @@
+{
+  "milestone": "N2-M0b",
+  "baselineBuild": "C:/Kuching3D-night-builds/n1-final",
+  "candidateBuild": "C:/Kuching3D-night-builds/n2-m0b",
+  "loadProbe": {
+    "n1Final": {
+      "loadMs": [4432, 4292, 4185],
+      "medianLoadMs": 4292,
+      "interactiveMs": [4553, 4486, 4332],
+      "medianInteractiveMs": 4486,
+      "programsAtReady": [72, 73, 72],
+      "panOver200": [1, 0, 0],
+      "panSlowMs": [777, 466, 840]
+    },
+    "n2M0b": {
+      "loadMs": [4216, 4652, 4677],
+      "medianLoadMs": 4652,
+      "loadDeltaPct": 8.4,
+      "interactiveMs": [4577, 4875, 4806],
+      "medianInteractiveMs": 4806,
+      "interactiveDeltaPct": 7.1,
+      "programsAtReady": [81, 77, 79],
+      "panOver200": [0, 0, 0],
+      "panSlowMs": [486, 242, 511]
+    }
+  },
+  "phoneBenchAlternatingPairs": {
+    "profile": "390x844 DPR 3, quality=low, 4x CPU throttle, scenarios A,C,E",
+    "n1FinalCold": {
+      "A_p95Ms": [57.3, 35.3, 45.0],
+      "A_medianP95Ms": 45.0,
+      "C_p95Ms": [57.3, 40.6, 48.1],
+      "C_medianP95Ms": 48.1,
+      "E_p95Ms": [37.4, 35.7, 39.4],
+      "E_medianP95Ms": 37.4,
+      "maxCalls": { "A": 121, "C": 162, "E": 176 },
+      "maxTrisK_median": { "A": 454, "C": 516, "E": 583 },
+      "over200Frames": [1, 0, 0],
+      "compileStallsOver200": 0
+    },
+    "n2M0bCold": {
+      "A_p95Ms": [47.5, 49.0, 47.4],
+      "A_medianP95Ms": 47.5,
+      "A_deltaPct": 5.6,
+      "C_p95Ms": [49.9, 44.9, 43.6],
+      "C_medianP95Ms": 44.9,
+      "C_deltaPct": -6.7,
+      "E_p95Ms": [37.9, 39.2, 38.2],
+      "E_medianP95Ms": 38.2,
+      "E_deltaPct": 2.1,
+      "maxCalls": { "A": 126, "C": 165, "E": 182 },
+      "maxTrisK_median": { "A": 443, "C": 483, "E": 573 },
+      "over200Frames": [0, 1, 0],
+      "compileStallsOver200": 0
+    }
+  },
+  "heroChunkTriangles": {
+    "minus1_minus1_indiaStreet": {
+      "lowMed_m5Off": 2636,
+      "lowMed_m5On": 2788,
+      "lowMed_deltaPct": 5.8,
+      "highMed_m5Off": 28116,
+      "highMed_m5On_total": 42564,
+      "highMed_m5On_farPropsCulled": 37716,
+      "highLowQ_m5On_total": 35778,
+      "highLowQ_m5On_farPropsCulled": 32540
+    },
+    "minus2_minus1_cityMosque": {
+      "lowMed_m5Off": 2170,
+      "lowMed_m5On": 2370,
+      "lowMed_deltaPct": 9.2,
+      "highMed_m5Off": 18772,
+      "highMed_m5On_total": 26603,
+      "highMed_m5On_farPropsCulled": 22585,
+      "highLowQ_m5On_total": 19041,
+      "highLowQ_m5On_farPropsCulled": 17893
+    },
+    "zero_minus1_courthouse": {
+      "lowMed_m5Off": 5200,
+      "lowMed_m5On": 4336,
+      "lowMed_deltaPct": -16.6
+    }
+  }
+}

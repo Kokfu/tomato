@@ -442,12 +442,66 @@ async function boot(): Promise<void> {
       const programs = prepareObject(world.scene);
       // N1-M4: the road-sign material is first used wherever the first sign board stands, which may be a few chunks
       // away: its program is compiled now, not on the frame that board comes into view. (Low draws no sign plates.)
-      if (quality.name !== 'low') for (const m of prepareObject(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), world.materials.signs))) programs.add(m);
+      // N2-M0b: also pre-warm directional-light shadow depth variants (instanced FrontSide tree crowns and DoubleSide
+      // palm fronds, plus non-instanced FrontSide/DoubleSide) inside the spawn shadow frustum so walking to the
+      // waterfront compiles zero shadow programs.
+      let shadowWarm: THREE.Group | null = null;
+      let warmGeoUv: THREE.BufferGeometry | null = null;
+      let warmGeoNoUv: THREE.BufferGeometry | null = null;
+      if (quality.name !== 'low') {
+        warmGeoNoUv = new THREE.BufferGeometry();
+        warmGeoNoUv.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0.2, 0, 0, 0, 0, 0.2], 3));
+        warmGeoNoUv.setAttribute('normal', new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
+        warmGeoNoUv.setAttribute('color', new THREE.Float32BufferAttribute([1, 1, 1, 1, 1, 1, 1, 1, 1], 3));
+        warmGeoUv = warmGeoNoUv.clone();
+        warmGeoUv.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1], 2));
+        shadowWarm = new THREE.Group();
+        shadowWarm.position.set(player.position.x, player.position.y - 8, player.position.z);
+        // Interleave Mesh and InstancedMesh children: Three.js shares one _depthMaterial across shadow casters and only
+        // re-evaluates its program cache key when instancing/instancingColor flips, not when shadowSide changes.
+        const idMat = new THREE.Matrix4();
+        const warmWhite = new THREE.Color(1, 1, 1);
+        const addMesh = (geo: THREE.BufferGeometry, mat: THREE.Material, shadow = true) => {
+          const m = new THREE.Mesh(geo, mat);
+          m.castShadow = shadow;
+          m.frustumCulled = false;
+          shadowWarm!.add(m);
+        };
+        const addInst = (mat: THREE.Material, colored: boolean) => {
+          const im = new THREE.InstancedMesh(warmGeoNoUv!, mat, 1);
+          im.setMatrixAt(0, idMat);
+          if (colored) im.setColorAt(0, warmWhite);
+          im.castShadow = true;
+          im.frustumCulled = false;
+          shadowWarm!.add(im);
+        };
+        addMesh(warmGeoNoUv, world.materials.roofs);
+        addInst(world.materials.crown, true);
+        addMesh(warmGeoNoUv, world.materials.structure);
+        addInst(world.materials.frond, true);
+        addMesh(warmGeoUv, world.materials.wallsTextured);
+        addInst(world.materials.crown, false);
+        addMesh(warmGeoUv, world.materials.arch);
+        addInst(world.materials.frond, false);
+        addMesh(warmGeoUv, world.materials.signs, false);
+        world.scene.add(shadowWarm);
+        for (const m of prepareObject(shadowWarm)) programs.add(m);
+      }
       await Promise.race([whenCompiled(renderer, programs), new Promise((r) => window.setTimeout(r, 15000))]);
-      // The first frames upload every chunk's buffers and compile the few shadow-pass programs: still behind the screen.
+      // The first frames upload every chunk's buffers and compile the shadow-pass programs: still behind the screen.
       startHold = false;
       world.chunks.holdWarm = false;
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      if (world.sun.castShadow) world.sun.shadow.needsUpdate = true;
+      await new Promise((r) => requestAnimationFrame(() => {
+        if (world.sun.castShadow) world.sun.shadow.needsUpdate = true;
+        requestAnimationFrame(r);
+      }));
+      if (shadowWarm) {
+        world.scene.remove(shadowWarm);
+        shadowWarm.traverse((o) => { if ((o as THREE.InstancedMesh).isInstancedMesh) (o as THREE.InstancedMesh).dispose(); });
+        warmGeoUv?.dispose();
+        warmGeoNoUv?.dispose();
+      }
     }).finally(done);
   };
 

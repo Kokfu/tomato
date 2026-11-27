@@ -54,6 +54,16 @@ export const buildCatColumn: LandmarkBuilder = ({ data, ctx }) => {
   const g = ctx.height.sample(CAT_COLUMN.x, CAT_COLUMN.z), R = COLUMN.plinthR, r = COLUMN.shaftR;
   const m = new Model().world();
   const y1 = g + COLUMN.plinthH, y2 = y1 + 0.75, top = g + COLUMN.height;
+  if (ctx.detail !== 'high') {
+    m.lathe(lx, lz, [[R, g - 0.4], [R - 0.1, y1]], 6, PLINTH, Math.PI / 8, false, true);
+    m.lathe(lx, lz, [[r, y1], [r, g + 6.6]], 6, SHAFT);
+    m.box(lx - 0.62, lx + 0.62, lz - 0.62, lz + 0.62, g + 6.6, top, BLUE);
+    for (let k = 0; k < COLUMN.cats; k++) {
+      const u = (k / COLUMN.cats) * Math.PI * 2 + Math.PI / 4, d = R - 0.75;
+      m.box(lx + Math.cos(u) * d - 0.25, lx + Math.cos(u) * d + 0.25, lz + Math.sin(u) * d - 0.25, lz + Math.sin(u) * d + 0.25, y1, y1 + COLUMN.catH, WHITE);
+    }
+    return m.mesh(ctx, 'cat-column');
+  }
   m.lathe(lx, lz, [[R, g - 0.4], [R, y1 - 0.1], [R - 0.15, y1]], 8, PLINTH, Math.PI / 8, false, true);
   m.lathe(lx, lz, [[0.95, y1], [0.95, y2 - 0.15], [0.7, y2]], 10, DRUM, 0, false, true);
   // shaft, in bands (the real one carries a key-pattern relief)
@@ -110,6 +120,16 @@ export const buildPaifang: LandmarkBuilder = ({ data, ctx }) => {
   let g = -Infinity;
   for (const s of p.piers) g = Math.max(g, ctx.height.sample(p.x + p.ux * s, p.z + p.uz * s));
   const [p0, p1, p2, p3] = p.piers, w = GATE.pier / 2, C = GATE.clear;
+  if (ctx.detail !== 'high') {
+    for (const s of p.piers) m.box(s - w, s + w, -w, w, g - 0.6, g + C, PIER, null);
+    m.box(p0 - 0.9, p3 + 0.9, -0.42, 0.42, g + C, g + 9.2, BEAM);
+    m.box(p0 - 3.3, p3 + 3.3, -1.9, 1.9, g + 9.2, g + GATE.top, TILE);
+    const cx = GREAT_CAT.x - ox, cz = GREAT_CAT.z - oz, cg = ctx.height.sample(GREAT_CAT.x, GREAT_CAT.z);
+    m.world();
+    disc(m, cx, cz, 0, CAT.bed, cg + 0.16, 8, BED);
+    m.box(cx - CAT.plinth, cx + CAT.plinth, cz - CAT.plinth, cz + CAT.plinth, cg + 0.1, cg + 0.18 + CAT.plinthH + CAT.height, WHITE);
+    return m.mesh(ctx, 'padungan-paifang');
+  }
   for (const s of p.piers) {
     m.box(s - w - 0.16, s + w + 0.16, -w - 0.16, w + 0.16, g - 0.6, g + 1.05, BASE);
     m.box(s - w, s + w, -w, w, g + 1.05, g + C, PIER, null);

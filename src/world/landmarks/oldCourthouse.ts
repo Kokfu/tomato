@@ -127,8 +127,10 @@ export const buildOldCourthouse: LandmarkBuilder = ({ data, ctx }) => {
 
   m.walls(loc, g - 0.6, eave, WHITE);
   for (const h of holes) m.walls(h, g - 0.6, eave, WHITE, true);
-  windowRing(m, loc, gTop + 0.5, gTop + 3.1, 3.3, 1.7, DARK);
-  for (const h of holes) windowRing(m, h, gTop + 0.5, gTop + 3.1, 3.3, 1.7, DARK, true);
+  if (ctx.detail === 'high' || !m5Enabled()) {
+    windowRing(m, loc, gTop + 0.5, gTop + 3.1, 3.3, 1.7, DARK);
+    for (const h of holes) windowRing(m, h, gTop + 0.5, gTop + 3.1, 3.3, 1.7, DARK, true);
+  }
 
   // Roof: sloping planes from every wall up to an inset outline, flat on top.
   const slope = (ring: number[], inner: number[], over: number[]) => {
@@ -146,8 +148,8 @@ export const buildOldCourthouse: LandmarkBuilder = ({ data, ctx }) => {
   holes.forEach((h, i) => slope(h, innerHoles[i], insetRing(h, 0.7)));
   m.cap(inner, innerHoles, eave + RISE, sh);
 
-  // N1-M5: the verified form of the verandahs and the clock tower (?m5=0 keeps the earlier plain tower below).
-  if (m5Enabled()) { verifiedCourthouse(m, loc, holes, inner, g, gTop, eave); return m.mesh(ctx, 'old-courthouse'); }
+  // N1-M5: the verified form of the verandahs and the clock tower (?m5=0 and 'low' detail keep the simple tower).
+  if (m5Enabled() && ctx.detail === 'high') { verifiedCourthouse(m, loc, holes, inner, g, gTop, eave); return m.mesh(ctx, 'old-courthouse'); }
   // Clock tower on the longest outer wall (approximate position).
   const n = loc.length / 2;
   let bi = 0, bl = 0;

@@ -36,6 +36,9 @@ interface Chunk {
   state: 'fetching' | 'loaded' | 'error';
   data?: ChunkData;
   group?: THREE.Group;
+  /** Near-detail prop mesh (India Street stalls, City Mosque graves) hidden beyond its sub-chunk radius. */
+  nearMesh?: THREE.Mesh;
+  nearSpec?: { x: number; z: number; maxDist: number };
   /** Detail level of the current mesh, if built. */
   built?: Detail;
   /** High-detail chunk whose decorations (trees, furniture, signs) are still to be added. */
@@ -207,6 +210,11 @@ export class ChunkManager {
       this.warming.shift()!.group.traverse((o) => {
         o.frustumCulled = true;
       });
+    }
+    for (const c of this.chunks.values()) {
+      if (c.nearMesh && c.nearSpec && !this.holdWarm) {
+        c.nearMesh.visible = Math.hypot(x - c.nearSpec.x, z - c.nearSpec.z) <= c.nearSpec.maxDist;
+      }
     }
     const cx = Math.floor(x / CHUNK_SIZE), cz = Math.floor(z / CHUNK_SIZE);
     // Prefetch (download only) the chunks the player is heading toward.
@@ -409,6 +417,14 @@ export class ChunkManager {
       m.receiveShadow = true;
       g.add(m);
     }
+    let nearMesh: THREE.Mesh | undefined;
+    if (roads.near) {
+      nearMesh = new THREE.Mesh(roads.near.geo, ctx.mats.structure);
+      nearMesh.name = 'hero-near-props';
+      nearMesh.castShadow = detail === 'high';
+      nearMesh.receiveShadow = true;
+      g.add(nearMesh);
+    }
     yield;
     j.stage = 'buildings';
     for (const o of yield* buildBuildings(data, ctx)) g.add(o);
@@ -436,6 +452,8 @@ export class ChunkManager {
     this.disposeMesh(c, false);
     this.warming.push({ group: g, frame: this.frame });
     c.group = g;
+    c.nearMesh = nearMesh;
+    c.nearSpec = roads.near ? { x: roads.near.x, z: roads.near.z, maxDist: roads.near.maxDist } : undefined;
     c.built = detail;
     c.decor = detail === 'high';
     this.group.add(g);
@@ -487,6 +505,8 @@ export class ChunkManager {
       }
     });
     c.group = undefined;
+    c.nearMesh = undefined;
+    c.nearSpec = undefined;
     c.built = undefined;
     c.decor = false;
     this.stats.disposed++;
