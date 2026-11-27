@@ -15,7 +15,7 @@ Claude Opus 5.5 took this over after Antigravity's usage limit.
 
 **Checks** (raw output in this folder)
 - Full e2e: 158 passed, 2 failed, 42.4 min (`e2e-full.txt`).
-- The 2 failures were in `gameplay.spec.ts`. They passed 4/4 on a re-run with `--repeat-each=2` (`e2e-gameplay-retest.txt`), so they are flaky, probably from ambient traffic pushing the walking player. The tests were not changed.
+- The 2 failures were in `gameplay.spec.ts`. They passed 4/4 on a re-run with `--repeat-each=2` (`e2e-gameplay-retest.txt`), so they are flaky, probably from ambient traffic pushing the walking player. On the owner's go, both now run with `?life=0`, and the whole file passed 16/16 with `--repeat-each=2` (`e2e-gameplay-life0.txt`).
 - `docs/screenshots` was restored after each run (`git checkout -- docs/screenshots`).
 
 **Not done:** no new shots in N2-M4; the report reuses N2-M2's and N2-M3's. The owner items are in REPORT.md: real-phone play, OSM edits, photos.

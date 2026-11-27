@@ -20,7 +20,11 @@ test.describe('gameplay', () => {
   });
 
   test('W/A/S/D move relative to the camera, Shift runs, Space jumps', async ({ page }) => {
-    await start(page);
+    // N2-M4: no ambient traffic here (?life=0): a passing vehicle pushes a walking player aside, which made W read as
+    // south in one full run (2026-11-28). This test is about the controls, not the traffic.
+    await seedCharacter(page);
+    await page.goto('./?life=0');
+    await start(page, { navigate: false });
     // Stand on Main Bazaar (open road) with the camera looking east along it.
     const mb = landmarks().find((l) => l.id === 'main-bazaar')!;
     await teleport(page, mb.x, mb.z);
@@ -232,7 +236,11 @@ test.describe('gameplay', () => {
     // leaves almost nothing of the default 180 s for loading the page.
     test.setTimeout(300_000);
     const issues = watch(page);
-    await start(page);
+    // N2-M4: no ambient traffic (?life=0): vehicles on the major road pushed the running player off the route in one
+    // full run (2026-11-28, reached=false). This test is about chunk streaming, not the traffic.
+    await seedCharacter(page);
+    await page.goto('./?life=0');
+    await start(page, { navigate: false });
     // Follow the longest mapped major road for well over a kilometre at running speed.
     const ov = overview();
     let bestRoad: number[] = [], bestLen = 0;

@@ -85,9 +85,9 @@ All 160 browser tests (Edge with GPU, 1 worker, `--project=desktop-1920`) on the
 - The 2 failures are both in `gameplay.spec.ts`:
   - "W/A/S/D move relative to the camera": W moved the player 3.56 m *south* in 0.9 s, where the test expects north.
   - "chunks stream in ahead of the player": the 1686 m run did not reach its end; no chunk was missing.
-- **Both passed 4 of 4 on a re-run** (`--repeat-each=2`, `m4/e2e-gameplay-retest.txt`), with no change. **Flaky, not fixed.**
+- **Both passed 4 of 4 on a re-run** (`--repeat-each=2`, `m4/e2e-gameplay-retest.txt`), with no change: flaky.
 - **Likely cause, not proven:** ambient traffic pushes a walking player aside, and both tests walk along open main roads (Main Bazaar, and the longest major road). N2-M3 sends more traffic to larger roads.
-- **Suggested fix:** do what night 1's M8 did for the picker specs, and what `signals.spec.ts` does: run these two with `?life=0`, or clear the traffic in the test.
+- **Fixed after the report, on the owner's go:** both tests now run with `?life=0`, as night 1's M8 did for the picker specs. The whole `gameplay.spec.ts` file then passed **16 of 16** (`--repeat-each=2`, `m4/e2e-gameplay-life0.txt`).
 
 ## Known issues
 1. **89 main roads (89.2 km) are still on default widths:** OpenStreetMap has no `lanes=*` on them
@@ -105,7 +105,7 @@ All 160 browser tests (Edge with GPU, 1 worker, `--project=desktop-1920`) on the
    - the `?v=` hash does not cover `drive-graph.json`;
    - 8 chunks have +1 draw call from N2-M2's road meshes;
    - one 36-69 ms sign-board shader compile on Low (N2-M0b).
-8. **Two flaky movement tests** (`gameplay.spec.ts`, see "Full test run"): probably traffic pushing the walking player.
+8. **A walking player is pushed aside by passing traffic** (this made two `gameplay.spec.ts` tests flaky, now run with `?life=0`). Expected behaviour since N1-M6, but stronger on main roads now that N2-M3 sends more traffic there.
 9. **Scenario E's other deck:** in N2-M0a, Scenario E also met a deck on Sungai Padungan / Lebuh Temple. N2-M2's footway split removed the Gambier and Main Bazaar decks and E now reaches its end. It was not re-checked separately.
 
 ## The owner's to-do (from the audit, `audit/OWNER_TODO.md`)

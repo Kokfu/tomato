@@ -1,0 +1,33 @@
+
+Running 16 tests using 1 worker
+
+[1/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:9:3 › gameplay › spawns on valid walkable ground with collision loaded
+[2/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:22:3 › gameplay › W/A/S/D move relative to the camera, Shift runs, Space jumps
+[3/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:80:3 › gameplay › camera follows the character and rotates with the mouse
+[4/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:116:3 › gameplay › cannot walk through buildings
+[5/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:145:3 › gameplay › the river blocks walking; only the bridge crosses it
+[6/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:158:3 › gameplay › Darul Hana Bridge is traversable end to end
+[7/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:190:3 › gameplay › movement is frame-rate independent
+[desktop-1920] › tests\e2e\gameplay.spec.ts:190:3 › gameplay › movement is frame-rate independent
+distance in 2.5 s at 15/30/60/144 fps: 11.631 / 11.458 / 11.458 / 11.428 m
+
+[8/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:234:3 › gameplay › chunks stream in ahead of the player and old ones are released
+[desktop-1920] › tests\e2e\gameplay.spec.ts:234:3 › gameplay › chunks stream in ahead of the player and old ones are released
+road length 1686 m, reached=true, fetched 74->129, disposed 110, loaded 47, max build 247.1 ms
+
+[9/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:9:3 › gameplay › spawns on valid walkable ground with collision loaded
+[10/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:22:3 › gameplay › W/A/S/D move relative to the camera, Shift runs, Space jumps
+[11/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:80:3 › gameplay › camera follows the character and rotates with the mouse
+[12/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:116:3 › gameplay › cannot walk through buildings
+[13/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:145:3 › gameplay › the river blocks walking; only the bridge crosses it
+[14/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:158:3 › gameplay › Darul Hana Bridge is traversable end to end
+[15/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:190:3 › gameplay › movement is frame-rate independent
+[desktop-1920] › tests\e2e\gameplay.spec.ts:190:3 › gameplay › movement is frame-rate independent
+distance in 2.5 s at 15/30/60/144 fps: 11.631 / 11.458 / 11.458 / 11.428 m
+
+[16/16] [desktop-1920] › tests\e2e\gameplay.spec.ts:234:3 › gameplay › chunks stream in ahead of the player and old ones are released
+[desktop-1920] › tests\e2e\gameplay.spec.ts:234:3 › gameplay › chunks stream in ahead of the player and old ones are released
+road length 1686 m, reached=true, fetched 74->129, disposed 110, loaded 47, max build 126.7 ms
+
+  16 passed (11.9m)
+exit 0
