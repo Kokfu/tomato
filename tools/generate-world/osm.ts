@@ -1,7 +1,7 @@
 // Shared helpers for reading the cached OSM extract and turning it into projected geometry.
 import { applyRoadAlignments } from './road-alignments.ts';
 import type { AlignmentResult } from './road-alignments.ts';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { geoToWorld } from '../../src/world/GeoProjection.ts';
 import type { RoadType } from '../../src/world/types.ts';
 import { ROAD_STYLE } from '../../src/world/types.ts';
@@ -21,12 +21,42 @@ export interface OsmEl {
 
 /** What the last loadOsm() call re-aligned (for the build report). */
 export let roadAlignments: AlignmentResult[] = [];
+/** Local way tag overrides from `data-src/overrides/roads.json` (keyed by OSM way id). */
+export let wayOverrides = new Map<number, Record<string, string>>();
+
+export function loadRoadOverrides(path = 'data-src/overrides/roads.json'): Map<number, Record<string, string>> {
+  const map = new Map<number, Record<string, string>>();
+  if (!existsSync(path)) return map;
+  const raw = JSON.parse(readFileSync(path, 'utf8')) as {
+    ways?: { id?: number; ids?: number[]; tags: Record<string, string> }[];
+  };
+  for (const entry of raw.ways ?? []) {
+    const ids = entry.ids ?? (entry.id !== undefined ? [entry.id] : []);
+    for (const id of ids) map.set(id, { ...(map.get(id) ?? {}), ...entry.tags });
+  }
+  return map;
+}
 
 export function loadOsm(path = 'data-src/osm/kuching.json'): { elements: OsmEl[]; timestamp: string | null } {
   const json = JSON.parse(readFileSync(path, 'utf8'));
+  wayOverrides = loadRoadOverrides();
+  // Apply non-width metadata overrides (e.g. missing bridge name/structure) directly so landmark matching sees them;
+  // lane/width overrides are consulted via `overriddenTags()` for `?roads=1` (`r.rw`) so `?roads=0` keeps Night 1 widths.
+  for (const el of json.elements as OsmEl[]) {
+    if (el.type !== 'way' || !el.tags) continue;
+    const ov = wayOverrides.get(el.id);
+    if (!ov) continue;
+    if (ov.name && !el.tags.name) el.tags.name = ov.name;
+    if (ov['bridge:structure'] && !el.tags['bridge:structure']) el.tags['bridge:structure'] = ov['bridge:structure'];
+  }
   // Derived local corrections of street centre lines (see road-alignments.ts); junction nodes stay put.
   roadAlignments = applyRoadAlignments(json.elements);
   return { elements: json.elements, timestamp: json.osm3s?.timestamp_osm_base ?? null };
+}
+
+export function overriddenTags(id: number, tags: Record<string, string>): Record<string, string> {
+  const ov = wayOverrides.get(id);
+  return ov ? { ...tags, ...ov } : tags;
 }
 
 /** Project a lat/lon list to world [x, z] metres. */
@@ -140,7 +170,7 @@ export function isTunnel(tags: Record<string, string>): boolean {
   return (!!tags.tunnel && tags.tunnel !== 'no') || tags.covered === 'yes';
 }
 
-/** Road width in metres; `inferred` is false only when OSM carries an explicit width. */
+/** Road width in metres (Night 1 / ?roads=0); `inferred` is false only when OSM carries an explicit width. */
 export function roadWidth(tags: Record<string, string>, type: RoadType): { w: number; inferred: boolean } {
   const w = parseFloat(tags.width ?? '');
   if (w > 0.5 && w < 60) return { w, inferred: false };
@@ -150,6 +180,43 @@ export function roadWidth(tags: Record<string, string>, type: RoadType): { w: nu
   if (tags.oneway === 'yes' && ROAD_STYLE[type].group === 3) d *= 0.75;
   if (type === 'footway' && tags.footway === 'sidewalk') d = 1.8;
   return { w: d, inferred: true };
+}
+
+const TRUE_ONEWAY_DEFAULTS: Partial<Record<RoadType, number>> = {
+  motorway: 7.2, trunk: 9.9, primary: 6.8, secondary: 6.6, tertiary: 6.0, residential: 6.0, service: 4.0,
+};
+const TRUE_TWOWAY_DEFAULTS: Partial<Record<RoadType, number>> = {
+  motorway: 13.2, trunk: 11.0, primary: 9.2, secondary: 7.6, tertiary: 6.8, residential: 6.0, service: 4.0,
+};
+const TRUE_ROUNDABOUT_DEFAULTS: Partial<Record<RoadType, number>> = {
+  motorway: 9.9, trunk: 9.9, primary: 6.6, secondary: 6.6, tertiary: 6.0, residential: 5.6, service: 4.5,
+};
+
+/**
+ * N2-M2 (?roads=1) Kuching road width in metres:
+ *  - explicit `width` tag when valid;
+ *  - `lanes * 3.3` m when `lanes` is mapped (clamped >= 3.6 m on single-lane drivable ways for kerb shyness);
+ *  - 4.2 m on untagged `*_link` slip lanes;
+ *  - retuned Kuching class defaults for untagged one-way dual carriageways, roundabouts and two-way streets.
+ */
+export function roadWidthTrue(tags: Record<string, string>, type: RoadType): { w: number; inferred: boolean; usedDefault: boolean } {
+  const w = parseFloat(tags.width ?? '');
+  if (w > 0.5 && w < 60) return { w, inferred: false, usedDefault: false };
+  const lanes = parseInt(tags.lanes ?? '', 10);
+  if (lanes > 0 && lanes < 12 && ROAD_STYLE[type].group >= 2) {
+    return { w: Math.max(3.6, +(lanes * 3.3).toFixed(2)), inferred: true, usedDefault: false };
+  }
+  if (tags.highway?.endsWith('_link')) return { w: 4.2, inferred: true, usedDefault: true };
+  if (tags.junction === 'roundabout' || tags.junction === 'circular') {
+    return { w: TRUE_ROUNDABOUT_DEFAULTS[type] ?? ROAD_STYLE[type].width, inferred: true, usedDefault: true };
+  }
+  const oneWay = tags.oneway === 'yes' || tags.oneway === '1' || tags.oneway === 'true' || tags.oneway === '-1' || tags.highway === 'motorway';
+  if (ROAD_STYLE[type].group >= 2) {
+    const d = (oneWay ? TRUE_ONEWAY_DEFAULTS[type] : TRUE_TWOWAY_DEFAULTS[type]) ?? ROAD_STYLE[type].width;
+    return { w: d, inferred: true, usedDefault: true };
+  }
+  const d = type === 'footway' && tags.footway === 'sidewalk' ? 1.8 : ROAD_STYLE[type].width;
+  return { w: d, inferred: true, usedDefault: false };
 }
 
 export function isWalkable(tags: Record<string, string>, type: RoadType): boolean {

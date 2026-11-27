@@ -1,0 +1,644 @@
+{
+  "generatedAt": "2026-11-27T10:57:47.984Z",
+  "elapsedS": 5.24,
+  "roundaboutGroups": 39,
+  "roundaboutIslands": 41,
+  "roundaboutIslandChunkPieces": 53,
+  "splitterIslands": 47,
+  "splitterChunkPieces": 49,
+  "giveWayLines": 138,
+  "medianPolygons": 299,
+  "medianChunkPieces": 495,
+  "medianTwinLamps": 936,
+  "tunnelPortals": 16,
+  "chunkBytes": {
+    "total": 5853360,
+    "avgKiB": 11.14,
+    "maxKiB": 31.43
+  },
+  "mainRoadsUsingClassDefaults": [
+    {
+      "name": "(unnamed)",
+      "type": "tertiary",
+      "km": 8.11,
+      "oneway": true,
+      "ways": 82
+    },
+    {
+      "name": "Jalan Astana",
+      "type": "secondary",
+      "km": 4.88,
+      "oneway": true,
+      "ways": 22
+    },
+    {
+      "name": "Jalan Green",
+      "type": "secondary",
+      "km": 4.79,
+      "oneway": true,
+      "ways": 21
+    },
+    {
+      "name": "Jalan Tun Salahuddin",
+      "type": "primary",
+      "km": 3.14,
+      "oneway": true,
+      "ways": 7
+    },
+    {
+      "name": "Jalan Merdeka",
+      "type": "tertiary",
+      "km": 3,
+      "oneway": false,
+      "ways": 4
+    },
+    {
+      "name": "Jalan Pending",
+      "type": "primary",
+      "km": 2.82,
+      "oneway": true,
+      "ways": 4
+    },
+    {
+      "name": "Jalan Padungan",
+      "type": "primary",
+      "km": 2.7,
+      "oneway": true,
+      "ways": 10
+    },
+    {
+      "name": "Jalan Tabuan",
+      "type": "primary",
+      "km": 2.62,
+      "oneway": true,
+      "ways": 9
+    },
+    {
+      "name": "Jalan Foochow 1",
+      "type": "tertiary",
+      "km": 2.49,
+      "oneway": true,
+      "ways": 16
+    },
+    {
+      "name": "Jalan Demak",
+      "type": "trunk",
+      "km": 2.28,
+      "oneway": true,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Batu Lintang",
+      "type": "secondary",
+      "km": 2.01,
+      "oneway": true,
+      "ways": 4
+    },
+    {
+      "name": "Jalan Sekama",
+      "type": "secondary",
+      "km": 1.78,
+      "oneway": true,
+      "ways": 14
+    },
+    {
+      "name": "Jalan Mendu",
+      "type": "secondary",
+      "km": 1.65,
+      "oneway": true,
+      "ways": 2
+    },
+    {
+      "name": "(unnamed)",
+      "type": "secondary",
+      "km": 1.58,
+      "oneway": true,
+      "ways": 34
+    },
+    {
+      "name": "Jalan Ban Hock",
+      "type": "secondary",
+      "km": 1.56,
+      "oneway": true,
+      "ways": 8
+    },
+    {
+      "name": "Jalan Stapok",
+      "type": "primary",
+      "km": 1.53,
+      "oneway": true,
+      "ways": 4
+    },
+    {
+      "name": "Jalan Muhibbah",
+      "type": "secondary",
+      "km": 1.53,
+      "oneway": true,
+      "ways": 5
+    },
+    {
+      "name": "Jalan Abell",
+      "type": "primary",
+      "km": 1.53,
+      "oneway": true,
+      "ways": 11
+    },
+    {
+      "name": "Jalan Patinggan",
+      "type": "secondary",
+      "km": 1.49,
+      "oneway": false,
+      "ways": 2
+    },
+    {
+      "name": "Jalan Central Timur",
+      "type": "secondary",
+      "km": 1.49,
+      "oneway": true,
+      "ways": 8
+    },
+    {
+      "name": "Jalan Tan Sri Datuk Ong Kee Hui",
+      "type": "secondary",
+      "km": 1.47,
+      "oneway": true,
+      "ways": 5
+    },
+    {
+      "name": "Jalan Bampfylde",
+      "type": "tertiary",
+      "km": 1.44,
+      "oneway": true,
+      "ways": 3
+    },
+    {
+      "name": "Jalan Matang",
+      "type": "primary",
+      "km": 1.37,
+      "oneway": true,
+      "ways": 4
+    },
+    {
+      "name": "Jalan Tan Sri Datuk William Tan",
+      "type": "tertiary",
+      "km": 1.37,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Depo",
+      "type": "tertiary",
+      "km": 1.36,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Datuk Ajibah Abol",
+      "type": "secondary",
+      "km": 1.34,
+      "oneway": false,
+      "ways": 6
+    },
+    {
+      "name": "Jalan Sungai Maong Tengah",
+      "type": "tertiary",
+      "km": 1.31,
+      "oneway": false,
+      "ways": 3
+    },
+    {
+      "name": "Jalan Padungan",
+      "type": "secondary",
+      "km": 1.26,
+      "oneway": true,
+      "ways": 2
+    },
+    {
+      "name": "Jalan Pisang Barat",
+      "type": "tertiary",
+      "km": 1.21,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Datuk Abang Abdul Rahim",
+      "type": "tertiary",
+      "km": 1.19,
+      "oneway": true,
+      "ways": 5
+    },
+    {
+      "name": "Jalan Petanak",
+      "type": "tertiary",
+      "km": 1.08,
+      "oneway": true,
+      "ways": 13
+    },
+    {
+      "name": "Jalan Ellis",
+      "type": "secondary",
+      "km": 0.92,
+      "oneway": true,
+      "ways": 3
+    },
+    {
+      "name": "Jalan Satok",
+      "type": "primary",
+      "km": 0.86,
+      "oneway": true,
+      "ways": 3
+    },
+    {
+      "name": "Jalan Taman Budaya",
+      "type": "secondary",
+      "km": 0.83,
+      "oneway": true,
+      "ways": 9
+    },
+    {
+      "name": "Jalan Three Hills Park",
+      "type": "tertiary",
+      "km": 0.83,
+      "oneway": false,
+      "ways": 2
+    },
+    {
+      "name": "Jalan Song Thian Cheok",
+      "type": "secondary",
+      "km": 0.82,
+      "oneway": true,
+      "ways": 8
+    },
+    {
+      "name": "Jalan Bukit Siol",
+      "type": "tertiary",
+      "km": 0.81,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Rubber",
+      "type": "secondary",
+      "km": 0.8,
+      "oneway": true,
+      "ways": 7
+    },
+    {
+      "name": "Jalan Nanas",
+      "type": "secondary",
+      "km": 0.79,
+      "oneway": true,
+      "ways": 7
+    },
+    {
+      "name": "Jalan Semarak",
+      "type": "secondary",
+      "km": 0.78,
+      "oneway": true,
+      "ways": 2
+    },
+    {
+      "name": "Jalan Pisang",
+      "type": "tertiary",
+      "km": 0.76,
+      "oneway": true,
+      "ways": 7
+    },
+    {
+      "name": "Jalan Rubber Barat",
+      "type": "secondary",
+      "km": 0.71,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Hashim Jaafar",
+      "type": "tertiary",
+      "km": 0.7,
+      "oneway": false,
+      "ways": 3
+    },
+    {
+      "name": "Jalan Rengas",
+      "type": "tertiary",
+      "km": 0.64,
+      "oneway": true,
+      "ways": 6
+    },
+    {
+      "name": "Jalan Gersik",
+      "type": "tertiary",
+      "km": 0.57,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan P. Ramlee",
+      "type": "secondary",
+      "km": 0.53,
+      "oneway": true,
+      "ways": 10
+    },
+    {
+      "name": "Lorong Pisang Barat 11",
+      "type": "tertiary",
+      "km": 0.52,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Jambu",
+      "type": "tertiary",
+      "km": 0.51,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Muda Hashim",
+      "type": "tertiary",
+      "km": 0.49,
+      "oneway": false,
+      "ways": 3
+    },
+    {
+      "name": "Jalan Patinggi Ali",
+      "type": "tertiary",
+      "km": 0.49,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Lorong Datuk Temenggong Tan Meng Chong 8",
+      "type": "tertiary",
+      "km": 0.48,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Hospital",
+      "type": "tertiary",
+      "km": 0.46,
+      "oneway": true,
+      "ways": 11
+    },
+    {
+      "name": "Lorong Park",
+      "type": "tertiary",
+      "km": 0.4,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Persiaran Spring",
+      "type": "tertiary",
+      "km": 0.4,
+      "oneway": false,
+      "ways": 2
+    },
+    {
+      "name": "Jalan Deshon",
+      "type": "secondary",
+      "km": 0.39,
+      "oneway": true,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Chawan",
+      "type": "tertiary",
+      "km": 0.39,
+      "oneway": true,
+      "ways": 2
+    },
+    {
+      "name": "(unnamed)",
+      "type": "primary",
+      "km": 0.35,
+      "oneway": true,
+      "ways": 15
+    },
+    {
+      "name": "Jalan Rock",
+      "type": "primary",
+      "km": 0.32,
+      "oneway": true,
+      "ways": 2
+    },
+    {
+      "name": "Jalan Padungan Utara",
+      "type": "tertiary",
+      "km": 0.31,
+      "oneway": true,
+      "ways": 9
+    },
+    {
+      "name": "Lorong Central Timur 3",
+      "type": "tertiary",
+      "km": 0.3,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Lorong Jambatan Gantung 1",
+      "type": "secondary",
+      "km": 0.29,
+      "oneway": false,
+      "ways": 3
+    },
+    {
+      "name": "Jalan Taman Riverview",
+      "type": "tertiary",
+      "km": 0.29,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Kulas",
+      "type": "trunk",
+      "km": 0.28,
+      "oneway": true,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Lumba Kuda",
+      "type": "tertiary",
+      "km": 0.27,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Perbadanan",
+      "type": "tertiary",
+      "km": 0.27,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Khoo Hun Yeang",
+      "type": "primary",
+      "km": 0.25,
+      "oneway": true,
+      "ways": 3
+    },
+    {
+      "name": "Jalan Tanjung",
+      "type": "secondary",
+      "km": 0.24,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan McDougall",
+      "type": "primary",
+      "km": 0.23,
+      "oneway": true,
+      "ways": 4
+    },
+    {
+      "name": "Jalan Rumbia",
+      "type": "tertiary",
+      "km": 0.23,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Satok-Kulas Interchange",
+      "type": "secondary",
+      "km": 0.21,
+      "oneway": false,
+      "ways": 3
+    },
+    {
+      "name": "Lorong Datuk Temenggong Tan Meng Chong 8F",
+      "type": "tertiary",
+      "km": 0.19,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Satok",
+      "type": "secondary",
+      "km": 0.19,
+      "oneway": true,
+      "ways": 2
+    },
+    {
+      "name": "Jalan Badruddin",
+      "type": "secondary",
+      "km": 0.19,
+      "oneway": true,
+      "ways": 2
+    },
+    {
+      "name": "(unnamed)",
+      "type": "trunk",
+      "km": 0.19,
+      "oneway": true,
+      "ways": 4
+    },
+    {
+      "name": "Jalan Kueh Siak Hong",
+      "type": "tertiary",
+      "km": 0.17,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Haji Mataim",
+      "type": "tertiary",
+      "km": 0.16,
+      "oneway": false,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Khoo Hun Yeang",
+      "type": "secondary",
+      "km": 0.14,
+      "oneway": true,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Kulas",
+      "type": "secondary",
+      "km": 0.12,
+      "oneway": true,
+      "ways": 1
+    },
+    {
+      "name": "Jalan P. Ramlee",
+      "type": "primary",
+      "km": 0.12,
+      "oneway": true,
+      "ways": 1
+    },
+    {
+      "name": "Lebuh Temple",
+      "type": "primary",
+      "km": 0.12,
+      "oneway": true,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Market",
+      "type": "primary",
+      "km": 0.12,
+      "oneway": true,
+      "ways": 2
+    },
+    {
+      "name": "Jalan Bukit Mata",
+      "type": "secondary",
+      "km": 0.1,
+      "oneway": true,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Gartak",
+      "type": "primary",
+      "km": 0.1,
+      "oneway": true,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Tan Sri Datuk Amar Sim Kheng Hong",
+      "type": "tertiary",
+      "km": 0.06,
+      "oneway": true,
+      "ways": 2
+    },
+    {
+      "name": "Jalan Tunku Abdul Rahman",
+      "type": "primary",
+      "km": 0.03,
+      "oneway": true,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Taman Budaya",
+      "type": "primary",
+      "km": 0.03,
+      "oneway": true,
+      "ways": 2
+    },
+    {
+      "name": "Jalan Satok",
+      "type": "trunk",
+      "km": 0.02,
+      "oneway": true,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Bukit Mata Kuching",
+      "type": "tertiary",
+      "km": 0.02,
+      "oneway": true,
+      "ways": 1
+    },
+    {
+      "name": "Jalan Nanas Barat",
+      "type": "secondary",
+      "km": 0.01,
+      "oneway": true,
+      "ways": 1
+    }
+  ]
+}

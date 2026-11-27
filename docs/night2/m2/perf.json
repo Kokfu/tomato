@@ -1,0 +1,78 @@
+{
+  "baseline": "n1-final (1139856 / 1c0276e)",
+  "candidate": "n2-m2",
+  "loadProbe": {
+    "n1Final": {
+      "loadMs": [4314, 4537, 3918],
+      "loadMsMedian": 4314,
+      "interactiveMs": [4726, 4988, 4144],
+      "interactiveMsMedian": 4726,
+      "progsReady": 73,
+      "panOver200": [0, 0, 0],
+      "panSlowMs": [546, 504, 318],
+      "panSlowMsMedian": 504
+    },
+    "n2M2": {
+      "loadMs": [4677, 4339, 4008],
+      "loadMsMedian": 4339,
+      "loadMsDeltaPct": 0.58,
+      "interactiveMs": [4976, 4520, 4350],
+      "interactiveMsMedian": 4520,
+      "interactiveMsDeltaPct": -4.36,
+      "progsReady": 80,
+      "panOver200": [0, 0, 0],
+      "panSlowMs": [402, 427, 571],
+      "panSlowMsMedian": 427
+    }
+  },
+  "phoneCold3Pairs": {
+    "A": {
+      "n1P95Ms": [43.7, 41.5, 36.1],
+      "n1P95Median": 41.5,
+      "m2P95Ms": [42.0, 42.8, 37.5],
+      "m2P95Median": 42.0,
+      "deltaPct": 1.2,
+      "n1MaxCalls": 121,
+      "m2MaxCalls": 123,
+      "n1MaxTrisK": 455,
+      "m2MaxTrisK": 444,
+      "m2Over200": [0, 0, 0]
+    },
+    "C": {
+      "n1P95Ms": [40.2, 47.3, 50.1],
+      "n1P95Median": 47.3,
+      "m2P95Ms": [41.6, 39.1, 38.5],
+      "m2P95Median": 39.1,
+      "deltaPct": -17.34,
+      "n1MaxCalls": 161,
+      "m2MaxCalls": 161,
+      "n1MaxTrisK": 508,
+      "m2MaxTrisK": 484,
+      "m2Over200": [0, 0, 0]
+    },
+    "E": {
+      "n1P95Ms": [36.6, 44.3, 34.1],
+      "n1P95Median": 36.6,
+      "m2P95Ms": [33.6, 33.6, 33.9],
+      "m2P95Median": 33.6,
+      "deltaPct": -8.2,
+      "n1MaxCalls": 176,
+      "m2MaxCalls": 176,
+      "n1MaxTrisK": 580,
+      "m2MaxTrisK": 572,
+      "n1Over200": [0, 1, 0],
+      "m2Over200": [0, 0, 0],
+      "n1Reached": [false, false, false],
+      "m2Reached": [true, true, true],
+      "m2CompileMaxMs": 36.7
+    }
+  },
+  "chunkBudgets": {
+    "chunkJsonTotalBytes": 5853360,
+    "chunkJsonAvgKiB": 11.14,
+    "chunkJsonMaxKiB": 31.43,
+    "chunkJsonDeltaPct": 6.3,
+    "maxChunkTriDeltaPct": 14.55,
+    "worstChunk": "-6_-9 (32076 -> 36744 tris, calls 19 -> 18)"
+  }
+}

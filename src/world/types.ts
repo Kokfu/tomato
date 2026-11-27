@@ -5,11 +5,16 @@
 export interface RoadData {
   /** Index into ROAD_TYPES. */
   t: number;
-  /** Width in centimetres. */
+  /** Width in centimetres (Night 1 / ?roads=0). */
   w: number;
+  /** N2-M2 true Kuching width in centimetres (?roads=1), omitted when equal to `w`. */
+  rw?: number;
   /** Polyline, clipped to the chunk. */
   p: number[];
-  /** Flags: 1 = bridge, 2 = tunnel/covered, 4 = width inferred (not tagged), 8 = one-way. */
+  /**
+   * Flags: 1 = bridge, 2 = tunnel/covered, 4 = width inferred (not tagged), 8 = one-way,
+   * 16 = roundabout, 32 = *_link slip lane, 64 = suspension bridge, 128 = deep underground road tunnel.
+   */
   f: number;
   /** Absolute deck elevation per vertex in cm (bridges only). */
   e?: number[];
@@ -113,6 +118,16 @@ export interface ChunkData {
   furn?: number[];
   /** River-bank polylines (cm, chunk-local) that get a promenade railing. */
   rail?: number[][];
+  /** N2-M2 (?roads=1): roundabout central island polygons clipped to chunk ([outer, ...holes] in cm). */
+  rbi?: number[][][];
+  /** N2-M2 (?roads=1): roundabout entry splitter & slip-lane gore polygons clipped to chunk (cm). */
+  spl?: number[][][];
+  /** N2-M2 (?roads=1): dual-carriageway median polygons clipped to chunk ([outer, ...holes] in cm). */
+  med?: number[][][];
+  /** N2-M2 (?roads=1): roundabout give-way lines, 4 ints each [ax, az, bx, bz] (cm, left-to-right of approach). */
+  gwl?: number[];
+  /** N2-M2 (?roads=1): underground road tunnel portals, 6 ints each [x, z, dx*1000, dz*1000, hwCm, lenCm]. */
+  tpr?: number[];
   names: string[];
 }
 

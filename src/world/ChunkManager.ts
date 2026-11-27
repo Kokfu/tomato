@@ -355,7 +355,7 @@ export class ChunkManager {
         if (this.chunks.get(key) !== c) return; // unloaded while in flight
         c.data = JSON.parse(text) as ChunkData;
         // District carriageway widths estimated from photographs (see district/mainBazaar.ts).
-        for (const r of c.data.roads) if (ROAD_WIDTHS[r.id]) r.w = Math.round(ROAD_WIDTHS[r.id] * QUANT);
+        for (const r of c.data.roads) if (ROAD_WIDTHS[r.id]) r.w = r.rw = Math.round(ROAD_WIDTHS[r.id] * QUANT);
         // N1-M5: India Street's rows get their street frontage (district/indiaStreet.ts; nothing happens with ?m5=0).
         patchHeroData(c.data);
         c.state = 'loaded';

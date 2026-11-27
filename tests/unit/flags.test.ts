@@ -5,6 +5,7 @@ import { getFlags, parseFlags, resetFlags } from '../../src/flags.ts';
 import { setV9, v9Enabled } from '../../src/world/district/v9flag.ts';
 import { ux1Enabled } from '../../src/ui/QuickGuide.ts';
 import { charEnabled } from '../../src/player/character/CharacterProfile.ts';
+import { roadsEnabled, setRoads } from '../../src/world/roadsFlag.ts';
 
 const TABLE: [string, boolean, boolean, boolean, boolean][] = [
   // search,               v9,    ux1,   c1,    char
@@ -44,7 +45,11 @@ test('the result is frozen; getFlags reads location once; no location means all 
   const had = g.location;
   delete g.location;
   resetFlags();
-  assert.deepEqual({ ...getFlags() }, { v9: false, ux1: false, c1: false, char: false, m5: false, life: false, m7: false, lab: false });
+  assert.deepEqual({ ...getFlags() }, { v9: false, ux1: false, c1: false, char: false, m5: false, life: false, m7: false, roads: false, lab: false });
+  assert.equal(roadsEnabled(), false);
+  setRoads(true);
+  assert.equal(roadsEnabled(), true);
+  setRoads(null);
   g.location = { search: '' };
   assert.equal(getFlags().v9, false, 'cached until reset');
   resetFlags();

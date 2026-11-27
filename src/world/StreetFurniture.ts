@@ -8,6 +8,7 @@ import type { BuildContext } from './ChunkManager.ts';
 import { stationOf } from './district/mainBazaar.ts';
 import { signUv } from './arch/SignAtlas.ts';
 import { PAINT_WHITE, PAINT_YELLOW } from './StreetEdges.ts';
+import { roadsEnabled } from './roadsFlag.ts';
 
 // Lamp posts, traffic signals, street-sign posts, benches and bollards, merged into one mesh per
 // chunk (plus one tiny unlit mesh for lamp heads and signal lenses). Positions come from
@@ -129,6 +130,20 @@ export function buildFurniture(data: ChunkData, ctx: BuildContext): THREE.Object
     const y = ground(x, z);
     switch (furn[i]) {
       case FURN.lamp: {
+        // N2-M2: extra === 2 is a central dual-carriageway twin-arm median lamp (?roads=1 only).
+        if (extra === 2) {
+          if (!roadsEnabled()) break;
+          const H = 9.2, arm = 2.05;
+          box(solid, x, y - 0.1, y + 0.65, z, a, -0.12, 0.12, -0.12, 0.12, POLE);
+          box(solid, x, y + 0.65, y + H, z, a, -0.065, 0.065, -0.065, 0.065, POLE_LIGHT);
+          box(solid, x, y + H - 0.1, y + H, z, a, -0.04, 0.04, -arm, arm, POLE_LIGHT);
+          for (const sgn of [-1, 1]) {
+            box(solid, x, y + H - 0.18, y + H - 0.08, z, a, -0.14, 0.14, sgn * arm - 0.3, sgn * arm + 0.3, POLE);
+            box(glow, x, y + H - 0.22, y + H - 0.18, z, a, -0.11, 0.11, sgn * arm - 0.25, sgn * arm + 0.25, WHITE);
+            lightPool(pools, ground, x + sgn * (arm + 1.4) * Math.sin(a), z + sgn * (arm + 1.4) * Math.cos(a), 10.5, low);
+          }
+          break;
+        }
         // The district draws its own median and promenade lamps (district/Dressing.ts).
         if (stationOf(ox + x, oz + z).d < 16) break;
         // Tapered steel column with a single arm reaching over the carriageway (local +Z). N1-M4: the larger roads

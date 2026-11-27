@@ -25,6 +25,7 @@ import { CHUNK_SIZE, QUANT } from '../config.ts';
 import type { BuildingData, ChunkData } from '../types.ts';
 import { ROAD_STYLE, ROAD_TYPES } from '../types.ts';
 import { edgeOutward, hash3, unitsAlong } from '../arch/frontage.ts';
+import { onRoadsFlagChange, roadWidthCm } from '../roadsFlag.ts';
 import { m5Enabled } from './m5.ts';
 
 /** OSM node 2404396149 ("Cat Statue"), world metres: the Cat Column. Same point as `cat-statue` in landmarks.json. */
@@ -86,7 +87,7 @@ const segDist = (p: number[], x: number, z: number): number => {
   return best;
 };
 const carriageways = (data: ChunkData): { p: number[]; hw: number }[] =>
-  data.roads.filter((r) => ROAD_STYLE[ROAD_TYPES[r.t]].group >= 2).map((r) => ({ p: world(data, r.p), hw: r.w / QUANT / 2 }));
+  data.roads.filter((r) => ROAD_STYLE[ROAD_TYPES[r.t]].group >= 2).map((r) => ({ p: world(data, r.p), hw: roadWidthCm(r) / QUANT / 2 }));
 
 export interface Front { b: BuildingData; edge: number; ring: number[]; lots: number }
 /** The Padungan frontages of this chunk: world ring of the block, edge, lot count. */
@@ -143,6 +144,7 @@ export interface Paifang {
   fx: number; fz: number;
 }
 let gate: Paifang | null = null;
+onRoadsFlagChange(() => { bikeCache.clear(); gate = null; });
 /**
  * The gate's frame from the mapped outline, and its four piers from where the two mapped carriageways cross it: one
  * pier outside each carriageway, two on the island between them.

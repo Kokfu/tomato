@@ -1,0 +1,15 @@
+01-waterfront {"fps":60,"calls":221,"tris":570477,"geo":391,"tex":76,"chunks":44,"pos":[-188.9,1.8,-202]}
+02-main-bazaar {"fps":60,"calls":225,"tris":995586,"geo":410,"tex":78,"chunks":48,"pos":[285.5,2.1,-8.9]}
+03-carpenter-street {"fps":60,"calls":311,"tris":1197555,"geo":480,"tex":84,"chunks":51,"pos":[166.4,8.3,28.4]}
+04-india-street {"fps":60,"calls":185,"tris":333114,"geo":483,"tex":85,"chunks":51,"pos":[-134.1,5.4,-110.1]}
+05-jalan-gambier {"fps":60,"calls":348,"tris":957648,"geo":491,"tex":85,"chunks":51,"pos":[-45.8,1.8,-222.4]}
+06-plaza-merdeka {"fps":60,"calls":311,"tris":768854,"geo":515,"tex":89,"chunks":54,"pos":[-91.4,3,40.5]}
+07-padungan-cat-statue {"fps":60,"calls":149,"tris":194612,"geo":417,"tex":79,"chunks":47,"pos":[1074.8,6,239.2]}
+08-kuching-mosque {"fps":60,"calls":116,"tris":174802,"geo":443,"tex":83,"chunks":51,"pos":[-406.2,4.9,26.2]}
+09-satok {"fps":60,"calls":116,"tris":184483,"geo":326,"tex":65,"chunks":34,"pos":[-2533.1,1.8,492.1]}
+10-the-spring {"fps":60,"calls":100,"tris":236818,"geo":232,"tex":52,"chunks":22,"pos":[1622.9,20.1,2536.8]}
+11-residential-overture {"fps":60,"calls":136,"tris":183045,"geo":337,"tex":70,"chunks":37,"pos":[-1610,5.2,1003]}
+12-trunk-road-openg {"fps":60,"calls":189,"tris":377907,"geo":353,"tex":76,"chunks":44,"pos":[-321,10.9,1290]}
+13-river-to-dun {"fps":60,"calls":204,"tris":695027,"geo":406,"tex":72,"chunks":44,"pos":[274.4,1.8,-38.7]}
+14-jalan-china-control {"fps":60,"calls":237,"tris":652909,"geo":474,"tex":82,"chunks":49,"pos":[156.6,8,17.2]}
+fps {"01-waterfront":{"median":60,"min":59.5,"max":60.5,"n":50},"02-main-bazaar":{"median":60,"min":59.9,"max":60,"n":50},"03-carpenter-street":{"median":60,"min":60,"max":60.1,"n":50},"04-india-street":{"median":60,"min":59.9,"max":60,"n":50},"05-jalan-gambier":{"median":60,"min":59.9,"max":60.1,"n":50},"06-plaza-merdeka":{"median":60,"min":59.9,"max":60.1,"n":50},"07-padungan-cat-statue":{"median":60,"min":60,"max":60,"n":50},"08-kuching-mosque":{"median":60,"min":59.9,"max":60.1,"n":50},"09-satok":{"median":60,"min":57.9,"max":60.1,"n":50},"10-the-spring":{"median":60,"min":59.9,"max":60.1,"n":50},"11-residential-overture":{"median":60,"min":60,"max":60,"n":50},"12-trunk-road-openg":{"median":60,"min":60,"max":60,"n":50},"13-river-to-dun":{"median":60,"min":59.9,"max":60.1,"n":50},"14-jalan-china-control":{"median":60,"min":60,"max":60.1,"n":50}}

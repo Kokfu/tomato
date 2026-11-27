@@ -300,6 +300,18 @@
   "approx": true
  },
  {
+  "id": "satok-bridge",
+  "name": "Satok Bridge",
+  "kind": "bridge",
+  "lat": 1.5543202,
+  "lon": 110.3247429,
+  "x": -2198.55,
+  "z": 462.18,
+  "osm": "way/1104674947",
+  "priority": 3,
+  "approx": true
+ },
+ {
   "id": "kubah-ria",
   "name": "Kubah Ria",
   "kind": "landmark",

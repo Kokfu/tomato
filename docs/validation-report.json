@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-25T07:01:05.244Z",
+ "generatedAt": "2026-11-27T10:58:01.778Z",
  "osmTimestamp": "2026-11-14T16:38:21Z",
  "overtureRelease": "2026-10-21.0",
  "checks": [
@@ -53,7 +53,7 @@
   {
    "name": "landmark positions",
    "pass": true,
-   "detail": "33/33 landmarks lie within their mapped OSM feature"
+   "detail": "34/34 landmarks lie within their mapped OSM feature"
   },
   {
    "name": "Darul Hana Bridge spans the river",
@@ -63,7 +63,7 @@
   {
    "name": "bridge collision decks emitted",
    "pass": true,
-   "detail": "318 traversable deck segments across all chunks"
+   "detail": "452 traversable deck segments across all chunks"
   },
   {
    "name": "spawn on dry open ground",

@@ -1,0 +1,135 @@
+[
+  {
+    "id": "01-padungan-roundabout",
+    "label": "Padungan / Abell / Central Timur Roundabout",
+    "cx": 1643.4,
+    "cz": 546.2,
+    "topAbove": 145,
+    "ex": 1568,
+    "ez": 547,
+    "eyeAbove": 6.5,
+    "eyePitch": -0.14
+  },
+  {
+    "id": "02-dual-openg",
+    "label": "Jalan Tun Abang Haji Openg Dual Carriageway",
+    "cx": -245,
+    "cz": 830,
+    "topAbove": 95,
+    "ex": -212,
+    "ez": 775,
+    "eyeAbove": 5.5,
+    "eyePitch": -0.12
+  },
+  {
+    "id": "03-dual-padungan",
+    "label": "Jalan Padungan Dual Carriageway & Paifang",
+    "cx": 1555,
+    "cz": 542,
+    "topAbove": 85,
+    "ex": 1502,
+    "ez": 518,
+    "eyeAbove": 5.5,
+    "eyePitch": -0.1
+  },
+  {
+    "id": "04-matang-roundabout",
+    "label": "Jalan Matang Roundabout & Satok Flyover",
+    "cx": -2248,
+    "cz": 236,
+    "topAbove": 120,
+    "ex": -2248,
+    "ez": 296,
+    "eyeAbove": 6.5,
+    "eyePitch": -0.15
+  },
+  {
+    "id": "05-ong-kee-hui-roundabout",
+    "label": "Ong Kee Hui / Taman Budaya Roundabout",
+    "cx": 87.1,
+    "cz": 1096.8,
+    "topAbove": 95,
+    "ex": 87.1,
+    "ez": 1146,
+    "eyeAbove": 6,
+    "eyePitch": -0.15
+  },
+  {
+    "id": "06-bulatan-engleham",
+    "label": "Bulatan Engleham (Transit Inn preserved inside)",
+    "cx": 529.1,
+    "cz": 664.1,
+    "topAbove": 185,
+    "ex": 510,
+    "ez": 772,
+    "eyeAbove": 7.5,
+    "eyePitch": -0.14,
+    "yaw": -0.18
+  },
+  {
+    "id": "07-bulatan-kipali-underpass",
+    "label": "Bulatan Abang Kipali & Trunk Underpass Portals",
+    "cx": -2623.9,
+    "cz": -1149.3,
+    "topAbove": 215,
+    "ex": -2623.9,
+    "ez": -1028,
+    "eyeAbove": 10,
+    "eyePitch": -0.15
+  },
+  {
+    "id": "08-demak-roundabout",
+    "label": "Demak / Tun Salahuddin Trunk Roundabout",
+    "cx": 1318.4,
+    "cz": -832.4,
+    "topAbove": 185,
+    "ex": 1318.4,
+    "ez": -735,
+    "eyeAbove": 9,
+    "eyePitch": -0.15
+  },
+  {
+    "id": "09-bulatan-abdillah",
+    "label": "Bulatan Datuk Patinggi Abang Haji Abdillah",
+    "cx": 754.1,
+    "cz": -1452.8,
+    "topAbove": 205,
+    "ex": 754.1,
+    "ez": -1340,
+    "eyeAbove": 9.5,
+    "eyePitch": -0.15
+  },
+  {
+    "id": "10-main-bazaar-crossing",
+    "label": "Jalan Main Bazaar by Square Tower (false deck fixed)",
+    "cx": 125.2,
+    "cz": -143,
+    "topAbove": 65,
+    "ex": 100,
+    "ez": -131,
+    "eyeAbove": 3.8,
+    "eyePitch": -0.08
+  },
+  {
+    "id": "11-satok-bridges",
+    "label": "Satok Suspension Bridge & Tun Abdul Rahman Ya'kub",
+    "cx": -2145,
+    "cz": 485,
+    "topAbove": 250,
+    "ex": -2045,
+    "ez": 605,
+    "eyeAbove": 16,
+    "eyePitch": -0.1
+  },
+  {
+    "id": "12-hospital-roundabout",
+    "label": "Tertiary Roundabout (Jalan Hospital)",
+    "cx": -577,
+    "cz": 1504,
+    "topAbove": 68,
+    "ex": -577,
+    "ez": 1536,
+    "eyeAbove": 5.5,
+    "eyePitch": -0.18
+  }
+]

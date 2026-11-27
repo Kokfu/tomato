@@ -1,6 +1,6 @@
 {
  "stats": {
-  "roads": 7310,
+  "roads": 7320,
   "roadKm": 723.1,
   "roadWidthTagged": 6,
   "buildings": 29598,
@@ -78,9 +78,7 @@
   "verticesBeforeSimplify": 134946,
   "verticesAfterSimplify": 134562
  },
- "missingLandmarks": [
-  "Satok Bridge"
- ],
+ "missingLandmarks": [],
  "roadAlignments": [
   {
    "way": 196054157,
@@ -162,7 +160,7 @@
   }
  ],
  "chunkBytes": {
-  "total": 5445898,
-  "max": 30055
+  "total": 5471761,
+  "max": 31055
  }
 }

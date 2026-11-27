@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T07:01:02.558Z",
+  "generatedAt": "2026-11-27T10:57:42.303Z",
   "heritageStreets": [
     "Jalan Main Bazaar",
     "Jalan Gambier",
@@ -32,7 +32,7 @@
     "streetSigns": 1600,
     "benches": 5,
     "bollards": 7,
-    "railMetres": 5024,
+    "railMetres": 5558,
     "zebras": 17,
     "boxJunctions": 42,
     "busStops": 32,

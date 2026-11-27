@@ -12,7 +12,7 @@
     "models:build": "node tools/landmarks/build-models.ts",
     "data:fetch": "node tools/extract-map-data/fetch-osm.ts && node tools/extract-map-data/fetch-pois.ts && node tools/extract-map-data/fetch-overture.ts && node tools/extract-map-data/fetch-dem.ts",
     "data:build": "node tools/generate-world/build.ts && npm run data:streetscape && npm run data:graph && npm run data:places && npm run data:jobs",
-    "data:streetscape": "node tools/generate-world/build-streetscape.ts",
+    "data:streetscape": "node tools/generate-world/build-streetscape.ts && node tools/generate-world/build-roads-true.ts",
     "data:graph": "node tools/generate-world/build-graph.ts --decks && node tools/generate-world/build-graph.ts --drive",
     "data:places": "node tools/generate-world/build-places.ts",
     "data:jobs": "node tools/generate-world/build-jobs.ts",

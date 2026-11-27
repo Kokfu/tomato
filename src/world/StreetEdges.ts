@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { v5Exclusion } from '../v5/geo.ts';
 import { inDistrict } from './district/mainBazaar.ts';
+import { roadsEnabled, ROAD_LINK, ROAD_ROUNDABOUT } from './roadsFlag.ts';
 import type { RoadData, RoadType } from './types.ts';
 import type { GeoBuf } from './Materials.ts';
 import type { BuildContext } from './ChunkManager.ts';
@@ -77,17 +78,19 @@ const hash = (a: number, b: number): number => {
  */
 export function streetEdges(
   r: RoadData, type: RoadType, pts: Sample[], hw: number, ox: number, oz: number, ctx: BuildContext, out: EdgeBuffers,
-  offsets: (d: number) => Offsets, blocked: Blocked,
+  offsets: (d: number) => Offsets, blocked: Blocked, inIsland?: (x: number, z: number) => boolean,
 ): void {
   const reach = EDGE_REACH[type];
   if (!reach || pts.length < 2) return;
   const low = ctx.quality.name === 'low';
-  if (type === 'service' && low) return;
+  const trueRoads = roadsEnabled();
+  const isLink = trueRoads && (r.f & ROAD_LINK) !== 0;
+  if ((type === 'service' || isLink) && low) return;
   const small = type === 'residential';
   const ground = (x: number, z: number) => ctx.height.sample(ox + x, oz + z);
   // A one-way main road with another one-way main road close on its right (traffic keeps left) is one half of a dual
   // carriageway: that side is the median, which gets the black-and-white kerb of Kuching's medians and no footpath.
-  const oneWay = (r.f & 8) !== 0 && type !== 'residential';
+  const oneWay = ((r.f & 8) !== 0 || (trueRoads && (r.f & (ROAD_ROUNDABOUT | ROAD_LINK)) !== 0)) && type !== 'residential';
   for (const sgn of [0, 1] as const) {
     // Per sample: which layout applies (old-town streets keep the narrow one), or none.
     const lay: (Layout | null)[] = [];
@@ -99,13 +102,14 @@ export function streetEdges(
       const inside = (x: number, z: number) => ctx.collision.insideBuilding(ox + x, oz + z, ground(x, z) + 1, false);
       // Where a building stands too close to the road for the footpath, the street keeps the narrow layout.
       let pick: Layout | null = null;
-      const [kx, kz] = at(0.08, i);
-      if (!blocked(kx, kz) && !(v5Exclusion.active && v5Exclusion.inCorridor(ox + kx, oz + kz))) {
+      const [kx, kz] = at(0.08, i), [ix, iz] = at(0.55, i);
+      // N2-M2: skip roadside footpath/drain where a kerbed roundabout island, splitter or median already stands.
+      if (!blocked(kx, kz) && !(inIsland && (inIsland(kx, kz) || inIsland(ix, iz))) && !(v5Exclusion.active && v5Exclusion.inCorridor(ox + kx, oz + kz))) {
         // The widest layout that fits: clear of the next carriageway (a narrow median, a service road alongside), of
         // buildings and of water. A kerb stone alone is the last resort.
-        for (const L of type === 'service' ? [LAYOUT_KERB] : small || inDistrict(wx, wz) ? [LAYOUT_SMALL, LAYOUT_KERB] : [type === 'tertiary' ? LAYOUT_TERTIARY : LAYOUT_BIG, LAYOUT_SMALL, LAYOUT_KERB]) {
+        for (const L of type === 'service' || isLink ? [LAYOUT_KERB] : small || inDistrict(wx, wz) ? [LAYOUT_SMALL, LAYOUT_KERB] : [type === 'tertiary' ? LAYOUT_TERTIARY : LAYOUT_BIG, LAYOUT_SMALL, LAYOUT_KERB]) {
           const [fx, fz] = at(L.lip, i), [mx, mz] = at((L.kerb + L.lip) / 2, i);
-          if (blocked(fx, fz) || blocked(mx, mz) || inside(mx, mz) || inside(fx, fz) || ctx.collision.inWater(ox + fx, oz + fz)) continue;
+          if (blocked(fx, fz) || blocked(mx, mz) || (inIsland && (inIsland(fx, fz) || inIsland(mx, mz))) || inside(mx, mz) || inside(fx, fz) || ctx.collision.inWater(ox + fx, oz + fz)) continue;
           pick = L;
           break;
         }
@@ -232,8 +236,10 @@ export function streetEdges(
  */
 export function laneMarkings(r: RoadData, type: RoadType, pts: Sample[], hw: number, marks: GeoBuf, offsets: (d: number) => Offsets, edgeY: [number, number][], low: boolean, blocked: Blocked = () => false): void {
   const group3 = type === 'motorway' || type === 'trunk' || type === 'primary' || type === 'secondary' || type === 'tertiary';
-  if (!group3 || hw < 2.6 || pts.length < 2) return;
-  const oneWay = (r.f & 8) !== 0, w = hw * 2;
+  const trueRoads = roadsEnabled();
+  const isLink = trueRoads && (r.f & ROAD_LINK) !== 0;
+  if (!group3 || (hw < 2.6 && !isLink) || pts.length < 2) return;
+  const oneWay = (r.f & 8) !== 0 || (trueRoads && (r.f & (ROAD_ROUNDABOUT | ROAD_LINK)) !== 0), w = hw * 2;
   /** The line at signed lateral offset `lat` (positive = the offsets' left side) as a polyline on the road surface. */
   const lineAt = (lat: number): Sample[] => {
     const o = lat === 0 ? null : offsets(Math.abs(lat)), t = (lat + hw) / w;
@@ -264,13 +270,14 @@ export function laneMarkings(r: RoadData, type: RoadType, pts: Sample[], hw: num
     }
   };
   if (oneWay) {
-    const lanes = Math.max(1, Math.round(w / 3.5));
+    const laneW = trueRoads ? 3.3 : 3.5;
+    const lanes = Math.max(1, Math.round(w / laneW));
     for (let k = 1; k < lanes; k++) paint(-hw + (k * w) / lanes, 0.06, 3, 9);
   } else if (w >= 12.5) {
     paint(0.14, 0.05, 0, 0); paint(-0.14, 0.05, 0, 0);
     paint(hw / 2, 0.06, 3, 9); paint(-hw / 2, 0.06, 3, 9);
   } else if (hw >= 3) paint(0, 0.07, 3, 9);
-  if (!low && type !== 'tertiary' && type !== 'motorway') { paint(hw - 0.28, 0.05, 0, 0); paint(-(hw - 0.28), 0.05, 0, 0); }
+  if (!low && (isLink || (type !== 'tertiary' && type !== 'motorway'))) { paint(hw - 0.28, 0.05, 0, 0); paint(-(hw - 0.28), 0.05, 0, 0); }
 }
 
 /**

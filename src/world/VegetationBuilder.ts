@@ -8,6 +8,7 @@ import type { GeoBuf } from './Materials.ts';
 import { pointInRing } from './CollisionWorld.ts';
 import { inDistrict } from './district/mainBazaar.ts';
 import { statueKeepOut } from './district/padungan.ts';
+import { roadsEnabled, roadWidthCm, ROAD_DEEP_TUNNEL, ROAD_ROUNDABOUT } from './roadsFlag.ts';
 import { v5Exclusion } from '../v5/geo.ts';
 
 /** Tree forms (N1-M2). Species are not mapped anywhere: the mix stands in for Kuching's planting (inferred appearance). */
@@ -137,11 +138,12 @@ export function treeSites(data: ChunkData, ctx: BuildContext): TreeSite[] {
   }
 
   // --- inferred planting ---
-  const roads = data.roads.filter((r) => ROAD_STYLE[ROAD_TYPES[r.t]].group >= 1 && ROAD_TYPES[r.t] !== 'rail' && r.p.length >= 4)
+  const trueRoads = roadsEnabled();
+  const roads = data.roads.filter((r) => ROAD_STYLE[ROAD_TYPES[r.t]].group >= 1 && ROAD_TYPES[r.t] !== 'rail' && !(trueRoads && (r.f & ROAD_DEEP_TUNNEL)) && r.p.length >= 4)
     .map((r) => {
       let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
       for (let i = 0; i < r.p.length; i += 2) { x0 = Math.min(x0, r.p[i]); x1 = Math.max(x1, r.p[i]); z0 = Math.min(z0, r.p[i + 1]); z1 = Math.max(z1, r.p[i + 1]); }
-      return { p: r.p, hw: r.w / QUANT / 2, x0: x0 / QUANT, z0: z0 / QUANT, x1: x1 / QUANT, z1: z1 / QUANT };
+      return { p: r.p, hw: roadWidthCm(r) / QUANT / 2, x0: x0 / QUANT, z0: z0 / QUANT, x1: x1 / QUANT, z1: z1 / QUANT };
     });
   const builds = data.buildings.map((b) => {
     const r = b.r[0];
@@ -177,21 +179,92 @@ export function treeSites(data: ChunkData, ctx: BuildContext): TreeSite[] {
     return !ctx.collision.insideBuilding(wx, wz, ctx.height.sample(wx, wz) + 1, false) && !ctx.collision.inWater(wx, wz);
   };
   // Along the kerb: every `step` metres on both sides, staggered. One road keeps one species, as a planted avenue does.
+  const inPolyLocal = (xCm: number, zCm: number, poly: number[][]): boolean => {
+    if (!pointInRing(xCm, zCm, poly[0])) return false;
+    for (let k = 1; k < poly.length; k++) if (pointInRing(xCm, zCm, poly[k])) return false;
+    return true;
+  };
   for (const r of data.roads) {
     const type = ROAD_TYPES[r.t], step = ROADSIDE[type];
-    if (!step || r.f & 3) continue;
-    const minor = type === 'residential', off = r.w / QUANT / 2 + (minor ? 2.6 : 3.4), palms = hash(r.id, 7) < 0.28;
+    if (!step || r.f & 3 || (trueRoads && (r.f & (ROAD_DEEP_TUNNEL | ROAD_ROUNDABOUT)))) continue;
+    const minor = type === 'residential', off = roadWidthCm(r) / QUANT / 2 + (minor ? 2.6 : 3.4), palms = hash(r.id, 7) < 0.28;
     let run = hash(r.id, 3) * step, n = 0;
     for (let i = 0; i + 3 < r.p.length; i += 2) {
       const ax = r.p[i] / QUANT, az = r.p[i + 1] / QUANT, dx = r.p[i + 2] / QUANT - ax, dz = r.p[i + 3] / QUANT - az, len = Math.hypot(dx, dz);
       if (len < 0.01) continue;
       for (; run < len; run += step / 2, n++) {
         const side = n % 2 ? 1 : -1, t = run / len, x = ax + dx * t + (-dz / len) * off * side, z = az + dz * t + (dx / len) * off * side;
+        if (trueRoads && data.med?.some((m) => inPolyLocal(x * QUANT, z * QUANT, m))) continue; // medians get their own row below
         const k = hash(Math.round((ox + x) * 4), Math.round((oz + z) * 4));
         if (k > (minor ? 0.5 : 0.92) * Math.min(1, density + 0.25)) continue;
         if (free(x, z, minor ? 1.4 : 1.9)) out.push({ x, z, kind: minor ? (k < 0.2 ? TREE.palm : TREE.small) : palms ? TREE.palm : TREE.rain, a: hash(Math.round(x * 9) + 5, Math.round(z * 9)), b: hash(Math.round(z * 7), Math.round(x * 7) + 3) });
       }
       run -= len;
+    }
+  }
+  // N2-M2 (?roads=1): palms and ornamental trees on roundabout central islands (`rbi`) and dual-carriageway medians (`med`).
+  if (trueRoads && (data.rbi?.length || data.med?.length)) {
+    const ringEdgeDist = (x: number, z: number, ring: number[]): number => {
+      let best = Infinity;
+      for (let i = 0, j = ring.length - 2; i < ring.length; j = i, i += 2) {
+        const ax = ring[j] / QUANT, az = ring[j + 1] / QUANT, vx = ring[i] / QUANT - ax, vz = ring[i + 1] / QUANT - az;
+        const u = Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / (vx * vx + vz * vz || 1)));
+        best = Math.min(best, Math.hypot(ax + vx * u - x, az + vz * u - z));
+      }
+      return best;
+    };
+    const clearInIsland = (x: number, z: number, poly: number[][], margin: number): boolean => {
+      if (x < 1 || z < 1 || x > CHUNK_SIZE - 1 || z > CHUNK_SIZE - 1) return false;
+      const wx = ox + x, wz = oz + z;
+      if (inDistrict(wx, wz) || statueKeepOut(wx, wz) || (v5Exclusion.active && v5Exclusion.inCorridor(wx, wz))) return false;
+      if (!inPolyLocal(x * QUANT, z * QUANT, poly)) return false;
+      for (const ring of poly) if (ringEdgeDist(x, z, ring) < margin) return false;
+      return !ctx.collision.insideBuilding(wx, wz, ctx.height.sample(wx, wz) + 1, false) && !ctx.collision.inWater(wx, wz);
+    };
+    // Roundabout islands: always try a central palm/cluster, plus a 13 m grid of palms and shrubs on larger islands.
+    for (const poly of data.rbi ?? []) {
+      let sx = 0, sz = 0, x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+      const r0 = poly[0], nv = r0.length / 2;
+      for (let i = 0; i < r0.length; i += 2) {
+        const px = r0[i] / QUANT, pz = r0[i + 1] / QUANT;
+        sx += px / nv; sz += pz / nv;
+        x0 = Math.min(x0, px); x1 = Math.max(x1, px); z0 = Math.min(z0, pz); z1 = Math.max(z1, pz);
+      }
+      if (clearInIsland(sx, sz, poly, 0.9)) {
+        const k = hash(Math.round((ox + sx) * 5), Math.round((oz + sz) * 5));
+        out.push({ x: sx, z: sz, kind: TREE.palm, a: k, b: hash(Math.round((oz + sz) * 7), Math.round((ox + sx) * 3)) });
+      }
+      const step = 13;
+      for (let gz = Math.floor((oz + z0) / step); gz <= Math.floor((oz + z1) / step); gz++) {
+        for (let gx = Math.floor((ox + x0) / step); gx <= Math.floor((ox + x1) / step); gx++) {
+          const k = hash(gx * 7 + 3, gz * 11 + 5);
+          if (density < 1 && k > density + 0.15) continue;
+          const wx = (gx + 0.2 + 0.6 * hash(gx, gz + 19)) * step, wz = (gz + 0.2 + 0.6 * hash(gx + 23, gz)) * step;
+          const lx = wx - ox, lz = wz - oz;
+          if (Math.hypot(lx - sx, lz - sz) < 5.5 || !clearInIsland(lx, lz, poly, 1.5)) continue;
+          out.push({ x: lx, z: lz, kind: k < 0.68 ? TREE.palm : TREE.small, a: hash(gx + 5, gz), b: hash(gx, gz + 9) });
+        }
+      }
+    }
+    // Dual-carriageway medians: planted every ~18 m where clear width >= 2.0 m.
+    const mStep = 18;
+    for (const poly of data.med ?? []) {
+      let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+      for (let i = 0; i < poly[0].length; i += 2) {
+        const px = poly[0][i] / QUANT, pz = poly[0][i + 1] / QUANT;
+        x0 = Math.min(x0, px); x1 = Math.max(x1, px); z0 = Math.min(z0, pz); z1 = Math.max(z1, pz);
+      }
+      for (let gz = Math.floor((oz + z0) / mStep); gz <= Math.floor((oz + z1) / mStep); gz++) {
+        for (let gx = Math.floor((ox + x0) / mStep); gx <= Math.floor((ox + x1) / mStep); gx++) {
+          const k = hash(gx * 13 + 7, gz * 17 + 3);
+          if (k > 0.78 * Math.min(1, density + 0.2)) continue;
+          const wx = (gx + 0.22 + 0.56 * hash(gx + 3, gz + 41)) * mStep, wz = (gz + 0.22 + 0.56 * hash(gx + 53, gz + 7)) * mStep;
+          const lx = wx - ox, lz = wz - oz;
+          if (!clearInIsland(lx, lz, poly, 0.95)) continue;
+          const s = hash(gx + 29, gz + 11);
+          out.push({ x: lx, z: lz, kind: s < 0.62 ? TREE.palm : s < 0.88 ? TREE.small : TREE.rain, a: hash(gx + 1, gz), b: hash(gx, gz + 2) });
+        }
+      }
     }
   }
   // Scattered on open green ground: one candidate per 30 m cell.

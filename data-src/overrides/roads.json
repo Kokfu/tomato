@@ -1,0 +1,50 @@
+{
+  "description": "Local OpenStreetMap tag overrides for Kuching 3D (docs/MAP_SOURCES.md row 6). Applied by tools/generate-world/osm.ts when generating ?roads=1 widths and bridge structures until fixed upstream in OpenStreetMap (docs/night2/audit/OWNER_TODO.md). Zero Google imagery or Street View was used.",
+  "ways": [
+    {
+      "id": 1104674947,
+      "tags": {
+        "name": "Jambatan Gantung Satok",
+        "bridge:structure": "suspension"
+      },
+      "reason": "205 m Satok Suspension Bridge across Sarawak River lacks name and suspension structure tags in OSM.",
+      "source": "OSM topology (connects way/233952128 'Lorong Jambatan Gantung 1' across Sarawak River) and Wikimedia Commons Satok Bridge references."
+    },
+    {
+      "ids": [69063568, 1198221689, 1198221690, 1198221691, 1198221694, 1368595980, 1368616469, 1368616470],
+      "tags": { "lanes": "3" },
+      "reason": "105.3 m Padungan / Abell / Central Timur primary roundabout lacks lanes on all 8 ring ways despite 16 one-way entry/exit arms.",
+      "source": "OSM ring diameter (105.3 m) and connecting dual-carriageway arm geometry."
+    },
+    {
+      "id": 129145455,
+      "tags": { "lanes": "3" },
+      "reason": "163.4 m Bulatan Datuk Patinggi Abang Haji Abdillah lacks lanes tag.",
+      "source": "OSM ring diameter (163.4 m) and continuity with adjacent 3-lane Petra Jaya roundabouts (ways 54244417, 129613869)."
+    },
+    {
+      "id": 54254288,
+      "tags": { "lanes": "3" },
+      "reason": "171.9 m Bulatan Datuk Amar Abang Haji Suleiman trunk roundabout lacks lanes tag.",
+      "source": "OSM trunk corridor continuity (connecting trunk ways carry lanes=3)."
+    },
+    {
+      "id": 68323813,
+      "tags": { "lanes": "2" },
+      "reason": "50.8 m Ong Kee Hui / Taman Budaya secondary roundabout lacks lanes tag.",
+      "source": "OSM ring diameter (50.8 m) and paired dual-carriageway entry arms."
+    },
+    {
+      "id": 187775282,
+      "tags": { "lanes": "2" },
+      "reason": "29.1 m Jalan Pending primary roundabout is tagged lanes=1 (3.3 m) despite 6 primary one-way arms.",
+      "source": "OSM connecting primary dual-carriageway arms."
+    },
+    {
+      "ids": [1270318171, 1186659753, 1270362185, 1270362184, 1270358626, 1270358625, 1270358624],
+      "tags": { "lanes": "2" },
+      "reason": "Seven ~15 m Darul Hana residential roundabouts are tagged lanes=1 while adjacent identical rings (ways 1270315300, 1270320592, 1270356141) and two-way entry arms are lanes=2.",
+      "source": "OSM Darul Hana estate ring and entry-arm consistency."
+    }
+  ]
+}

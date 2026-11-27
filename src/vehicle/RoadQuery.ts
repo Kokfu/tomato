@@ -4,6 +4,7 @@
 // Nothing here invents geometry: a "road" is a mapped OpenStreetMap carriageway exactly as stored in
 // the chunk files (polyline, class, width, one-way flag, bridge elevations).
 import { CHUNK_SIZE, QUANT } from '../world/config.ts';
+import { roadWidthCm, ROAD_DEEP_TUNNEL, roadsEnabled } from '../world/roadsFlag.ts';
 import type { ChunkData, RoadData } from '../world/types.ts';
 import { ROAD_TYPES } from '../world/types.ts';
 
@@ -14,7 +15,8 @@ export const DRIVABLE_CLASSES: ReadonlySet<string> = new Set(['motorway', 'trunk
 export const SIDE_CLEARANCE = 0.4;
 
 export function isDrivable(r: RoadData, carWidth: number): boolean {
-  return DRIVABLE_CLASSES.has(ROAD_TYPES[r.t]) && r.w / QUANT >= carWidth + 2 * SIDE_CLEARANCE;
+  if (roadsEnabled() && (r.f & ROAD_DEEP_TUNNEL) !== 0) return false;
+  return DRIVABLE_CLASSES.has(ROAD_TYPES[r.t]) && roadWidthCm(r) / QUANT >= carWidth + 2 * SIDE_CLEARANCE;
 }
 
 export interface RoadHit {
@@ -67,7 +69,7 @@ export function nearestDrivable(dataAt: ChunkLookup, x: number, z: number, carWi
           best = dist;
           const l = Math.sqrt(l2);
           hit = {
-            id: r.id, name: r.n !== undefined ? d.names[r.n] : null, type: ROAD_TYPES[r.t], width: r.w / QUANT, dist,
+            id: r.id, name: r.n !== undefined ? d.names[r.n] : null, type: ROAD_TYPES[r.t], width: roadWidthCm(r) / QUANT, dist,
             x: cx * CHUNK_SIZE + qx / QUANT, z: cz * CHUNK_SIZE + qz / QUANT, dx: vx / l, dz: vz / l,
             oneWay: (r.f & 8) !== 0, bridge: (r.f & 1) !== 0,
           };

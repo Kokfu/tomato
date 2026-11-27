@@ -15,7 +15,7 @@ import { SYNTHETIC_ID_BASE } from '../../src/world/landmarks/registry.ts';
 import { deriveSites, carve, siteToWorld } from './landmark-sites.ts';
 import type { ChunkData, RoadData, BuildingData, AreaData, Manifest, RoadType, Landmark } from '../../src/world/types.ts';
 import { roadAlignments } from './osm.ts';
-import { loadOsm, project, polygonsOf, cleanRing, ringArea, pointInPoly, roadTypeOf, roadWidth, isBridge, isTunnel, isWalkable, isClosedWay } from './osm.ts';
+import { loadOsm, project, polygonsOf, cleanRing, ringArea, pointInPoly, roadTypeOf, roadWidth, roadWidthTrue, overriddenTags, isBridge, isTunnel, isWalkable, isClosedWay } from './osm.ts';
 import type { OsmEl, Pt } from './osm.ts';
 import { LANDMARK_DEFS } from './landmark-defs.ts';
 import { readOverture, conflate, SOURCE_NAMES, ML_SIMPLIFY_TOL, ML_MIN_AREA } from './overture.ts';
@@ -47,7 +47,7 @@ const AREA = { minX: CX0 * CHUNK_SIZE, maxX: (CX1 + 1) * CHUNK_SIZE, minZ: CZ0 *
 log(`Chunks x ${CX0}..${CX1}, z ${CZ0}..${CZ1} (${(CX1 - CX0 + 1) * (CZ1 - CZ0 + 1)} chunks), area ${(AREA.maxX - AREA.minX) / 1000} x ${(AREA.maxZ - AREA.minZ) / 1000} km`);
 
 interface Road {
-  id: number; type: RoadType; w: number; inferred: boolean; pts: Pt[]; nodes: number[]; tags: Record<string, string>;
+  id: number; type: RoadType; w: number; rw: number; inferred: boolean; pts: Pt[]; nodes: number[]; tags: Record<string, string>;
   bridge: boolean; tunnel: boolean; elev?: number[]; walk: boolean;
 }
 /** s: footprint source, 0 = OpenStreetMap, 1 = Microsoft ML Buildings, 2 = Google Open Buildings (both via Overture). */
@@ -153,12 +153,16 @@ for (const el of elements) {
     if (t.waterway && WATERWAY_LINES[t.waterway] && !isTunnel(t)) {
       const pts = project(el.geometry);
       const w = parseFloat(t.width ?? '') || WATERWAY_LINES[t.waterway];
-      roads.push({ id: el.id, type: 'stream', w: Math.min(w, 12), inferred: !t.width, pts, nodes: el.nodes!, tags: t, bridge: false, tunnel: false, walk: false });
+      const cw = Math.min(w, 12);
+      roads.push({ id: el.id, type: 'stream', w: cw, rw: cw, inferred: !t.width, pts, nodes: el.nodes!, tags: t, bridge: false, tunnel: false, walk: false });
       continue;
     }
     if (t.man_made === 'pier') {
       if (isClosedWay(el)) { for (const p of polygonsOf(el)) pierPolys.push(p); }
-      else roads.push({ id: el.id, type: 'pier', w: parseFloat(t.width ?? '') || 3, inferred: !t.width, pts: project(el.geometry), nodes: el.nodes!, tags: t, bridge: true, tunnel: false, walk: true });
+      else {
+        const pw = parseFloat(t.width ?? '') || 3;
+        roads.push({ id: el.id, type: 'pier', w: pw, rw: pw, inferred: !t.width, pts: project(el.geometry), nodes: el.nodes!, tags: t, bridge: true, tunnel: false, walk: true });
+      }
       continue;
     }
     if (t.railway === 'rail' || t.railway === 'light_rail') continue;
@@ -172,7 +176,8 @@ for (const el of elements) {
       const type = roadTypeOf(t);
       if (!type) continue;
       const { w, inferred } = roadWidth(t, type);
-      roads.push({ id: el.id, type, w, inferred, pts: project(el.geometry), nodes: el.nodes!, tags: t, bridge: isBridge(t), tunnel: isTunnel(t), walk: isWalkable(t, type) });
+      const { w: rw } = roadWidthTrue(overriddenTags(el.id, t), type);
+      roads.push({ id: el.id, type, w, rw, inferred, pts: project(el.geometry), nodes: el.nodes!, tags: t, bridge: isBridge(t), tunnel: isTunnel(t), walk: isWalkable(t, type) });
       continue;
     }
   }
@@ -471,8 +476,48 @@ for (let i = 0; i < heights.length; i++) { heightI16[i] = Math.round(heights[i] 
 // ---------------------------------------------------------------------------------------------
 {
   const nonBridgeNodes = new Set<number>();
-  for (const r of roads) if (!r.bridge && r.type !== 'stream') for (const n of r.nodes) nonBridgeNodes.add(n);
+  interface GroundSeg { ax: number; az: number; bx: number; bz: number; na: number; nb: number }
+  const drivableSegs: GroundSeg[] = [];
+  for (const r of roads) {
+    if (!r.bridge && r.type !== 'stream') for (const n of r.nodes) nonBridgeNodes.add(n);
+    if (!r.bridge && !r.tunnel && ROAD_STYLE[r.type].group >= 2) {
+      for (let i = 1; i < r.pts.length; i++) {
+        drivableSegs.push({ ax: r.pts[i - 1][0], az: r.pts[i - 1][1], bx: r.pts[i][0], bz: r.pts[i][1], na: r.nodes[i - 1], nb: r.nodes[i] });
+      }
+    }
+  }
+  const segCross = (ax: number, az: number, bx: number, bz: number, cx: number, cz: number, dx: number, dz: number): Pt | null => {
+    const ux = bx - ax, uz = bz - az, vx = dx - cx, vz = dz - cz;
+    const den = ux * vz - uz * vx;
+    if (Math.abs(den) < 1e-8) return null;
+    const t = ((cx - ax) * vz - (cz - az) * vx) / den;
+    const u = ((cx - ax) * uz - (cz - az) * ux) / den;
+    if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+    return [ax + ux * t, az + uz * t];
+  };
   const bridges = roads.filter((r) => r.bridge);
+  // Subdivide sparse bridge segments (> 16 m) with synthetic interior node ids before computing deck
+  // elevations so 2-vertex bridges (e.g. Satok southbound way/113702301, 28 m footbridges) arch cleanly
+  // over rivers and crossed roads while keeping every original OSM vertex intact.
+  let synthBridgeNode = -1_000_000;
+  for (const r of bridges) {
+    if (r.type === 'pier' || r.pts.length < 2) continue;
+    const newPts: Pt[] = [r.pts[0]], newNodes: number[] = [r.nodes[0]];
+    for (let i = 1; i < r.pts.length; i++) {
+      const a = r.pts[i - 1], b = r.pts[i];
+      const segLen = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const steps = Math.max(1, Math.ceil(segLen / 14));
+      for (let s = 1; s < steps; s++) {
+        const t = s / steps;
+        newPts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+        newNodes.push(--synthBridgeNode);
+      }
+      newPts.push(b);
+      newNodes.push(r.nodes[i]);
+    }
+    r.pts = newPts;
+    r.nodes = newNodes;
+  }
   const parent = new Map<Road, Road>();
   const find = (r: Road): Road => { let p = parent.get(r)!; while (p !== parent.get(p)) p = parent.get(p)!; parent.set(r, p); return p; };
   const byNode = new Map<number, Road>();
@@ -514,17 +559,48 @@ for (let i = 0; i < heights.length; i++) { heightI16[i] = Math.round(heights[i] 
     const span = dmax * 2;
     const layer = Math.max(...grp.map((r) => parseInt(r.tags.layer ?? '1', 10) || 1));
     const isPier = grp.every((r) => r.type === 'pier');
-    let H = isPier ? 0.35 : Math.max(0.6, Math.min(10, (span - 20) * 0.06));
-    if (!isPier && span > 60 && layer >= 1) H = Math.max(H, 5.5);
-    if (!isPier && layer >= 2) H = Math.max(H, Math.min(12, span * 0.045));
-    const ramp = Math.max(1, Math.min(110, dmax));
-    for (const r of grp) {
-      r.elev = r.nodes.map((n, i) => {
-        const t = Math.min(1, (dist.get(n) ?? 0) / ramp);
-        const s = isPier ? 1 : t * t * (3 - 2 * t);
-        return groundH(r.pts[i][0], r.pts[i][1]) + H * s;
-      });
+    const isSuspension = grp.some((r) => r.tags['bridge:structure'] === 'suspension');
+    const crossings: { n0: number; n1: number; clearElev: number }[] = [];
+    if (!isPier) {
+      for (const r of grp) for (let i = 1; i < r.pts.length; i++) {
+        const a = r.pts[i - 1], b = r.pts[i], n0 = r.nodes[i - 1], n1 = r.nodes[i];
+        const x0 = Math.min(a[0], b[0]), x1 = Math.max(a[0], b[0]), z0 = Math.min(a[1], b[1]), z1 = Math.max(a[1], b[1]);
+        for (const ds of drivableSegs) {
+          if (ds.na === n0 || ds.na === n1 || ds.nb === n0 || ds.nb === n1) continue;
+          if (Math.max(ds.ax, ds.bx) < x0 || Math.min(ds.ax, ds.bx) > x1 || Math.max(ds.az, ds.bz) < z0 || Math.min(ds.az, ds.bz) > z1) continue;
+          const hit = segCross(a[0], a[1], b[0], b[1], ds.ax, ds.az, ds.bx, ds.bz);
+          if (hit) crossings.push({ n0, n1, clearElev: groundH(hit[0], hit[1]) + 5.6 });
+        }
+      }
     }
+    let H = isPier ? 0.35 : Math.max(0.6, Math.min(10, (span - 20) * 0.06));
+    if (!isPier && (span > 60 || crossings.length > 0) && layer >= 1) H = Math.max(H, 5.6);
+    if (isSuspension) H = Math.max(H, 8.5);
+    if (!isPier && layer >= 2) H = Math.max(H, Math.min(12, Math.max(9.0, span * 0.045)));
+    const ramp = Math.max(1, Math.min(crossings.length ? 48 : 110, dmax * (crossings.length ? 0.65 : 1)));
+    const nodeElev = new Map<number, number>();
+    for (const [n, p] of pos) {
+      const t = Math.min(1, (dist.get(n) ?? 0) / ramp);
+      const s = isPier ? 1 : t * t * (3 - 2 * t);
+      nodeElev.set(n, groundH(p[0], p[1]) + H * s);
+    }
+    if (!isPier && crossings.length) {
+      const anchorSet = new Set(anchors);
+      for (const c of crossings) {
+        if (!anchorSet.has(c.n0)) nodeElev.set(c.n0, Math.max(nodeElev.get(c.n0) ?? 0, c.clearElev));
+        if (!anchorSet.has(c.n1)) nodeElev.set(c.n1, Math.max(nodeElev.get(c.n1) ?? 0, c.clearElev));
+      }
+      // Smooth approach ramps along the bridge graph at <= 15 % max grade while keeping ground anchors fixed.
+      for (let pass = 0; pass < 12; pass++) {
+        for (const [u, nbrs] of adj) {
+          if (anchorSet.has(u)) continue;
+          let want = nodeElev.get(u)!;
+          for (const [v, edgeLen] of nbrs) want = Math.max(want, (nodeElev.get(v) ?? 0) - edgeLen * 0.15);
+          nodeElev.set(u, want);
+        }
+      }
+    }
+    for (const r of grp) r.elev = r.nodes.map((n, i) => nodeElev.get(n) ?? groundH(r.pts[i][0], r.pts[i][1]));
     // Short dead-end spurs (viewing platforms, e.g. on the Darul Hana Bridge) stay level with the
     // deck they branch from instead of following the ramp profile.
     for (const r of grp) {
@@ -539,27 +615,66 @@ for (let i = 0; i < heights.length; i++) { heightI16[i] = Math.round(heights[i] 
     }
     stats.bridges++;
   }
-  // Mapped paths that cross water without a bridge tag (jetties, pontoons): keep them traversable.
-  for (const r of roads) {
-    if (r.bridge || r.type === 'stream' || r.tunnel) continue;
+  // Mapped paths that cross water without a bridge tag (jetties, pontoons): elevate ONLY the sub-polylines
+  // that actually cross water, never inland stretches across dry carriageways (fixes Main Bazaar & Gambier).
+  const splitExtra: Road[] = [];
+  for (let ri = 0; ri < roads.length; ri++) {
+    const r = roads[ri];
+    if (r.bridge || r.type === 'stream' || r.tunnel || r.pts.length < 2) continue;
     let wet = 0;
     for (const [x, z] of r.pts) if (inWater(x, z)) wet++;
-    // Foot paths: any stretch over the water polygon (boardwalks, promenades built over the bank)
-    // makes the way a low deck, so the mapped path stays continuous.
-    let footWet = false;
     if (r.walk && ['footway', 'path', 'pedestrian', 'steps', 'cycleway'].includes(r.type)) {
-      for (let i = 1; i < r.pts.length && !footWet; i++) {
+      const segWet: boolean[] = [];
+      for (let i = 1; i < r.pts.length; i++) {
         const a = r.pts[i - 1], c = r.pts[i];
-        const n = Math.max(1, Math.ceil(Math.hypot(c[0] - a[0], c[1] - a[1]) / 2));
-        for (let k = 0; k <= n; k++) if (inWater(a[0] + ((c[0] - a[0]) * k) / n, a[1] + ((c[1] - a[1]) * k) / n)) { footWet = true; break; }
+        const n = Math.max(1, Math.ceil(Math.hypot(c[0] - a[0], c[1] - a[1]) / 1.5));
+        let sw = false;
+        for (let k = 0; k <= n; k++) {
+          if (inWater(a[0] + ((c[0] - a[0]) * k) / n, a[1] + ((c[1] - a[1]) * k) / n)) { sw = true; break; }
+        }
+        if (sw) {
+          // Never turn a segment that crosses an inland carriageway into a grade-level railed bridge deck.
+          const x0 = Math.min(a[0], c[0]), x1 = Math.max(a[0], c[0]), z0 = Math.min(a[1], c[1]), z1 = Math.max(a[1], c[1]);
+          for (const ds of drivableSegs) {
+            if (Math.max(ds.ax, ds.bx) < x0 || Math.min(ds.ax, ds.bx) > x1 || Math.max(ds.az, ds.bz) < z0 || Math.min(ds.az, ds.bz) > z1) continue;
+            if (segCross(a[0], a[1], c[0], c[1], ds.ax, ds.az, ds.bx, ds.bz)) { sw = false; break; }
+          }
+        }
+        segWet.push(sw);
       }
+      if (!segWet.some(Boolean)) continue;
+      if (segWet.every(Boolean)) {
+        r.bridge = true;
+        r.elev = r.pts.map(([x, z]) => groundH(x, z) + 0.3);
+        stats.untaggedWaterCrossings = (stats.untaggedWaterCrossings ?? 0) + 1;
+        continue;
+      }
+      // Mixed wet/dry footway: split into contiguous wet (deck) and dry (ground) pieces preserving every vertex.
+      const pieces: Road[] = [];
+      let s0 = 0;
+      while (s0 < segWet.length) {
+        const wFlag = segWet[s0];
+        let s1 = s0;
+        while (s1 + 1 < segWet.length && segWet[s1 + 1] === wFlag) s1++;
+        const pts = r.pts.slice(s0, s1 + 2), nodes = r.nodes.slice(s0, s1 + 2);
+        pieces.push({
+          ...r, pts, nodes, bridge: wFlag,
+          elev: wFlag ? pts.map(([x, z]) => groundH(x, z) + 0.3) : undefined,
+        });
+        if (wFlag) stats.untaggedWaterCrossings = (stats.untaggedWaterCrossings ?? 0) + 1;
+        s0 = s1 + 1;
+      }
+      roads[ri] = pieces[0];
+      for (let k = 1; k < pieces.length; k++) splitExtra.push(pieces[k]);
+      continue;
     }
-    if (footWet || (wet >= 2 && wet >= r.pts.length * 0.5)) {
+    if (wet >= 2 && wet >= r.pts.length * 0.5) {
       r.bridge = true;
       r.elev = r.pts.map(([x, z]) => groundH(x, z) + 0.3);
       stats.untaggedWaterCrossings = (stats.untaggedWaterCrossings ?? 0) + 1;
     }
   }
+  if (splitExtra.length) roads.push(...splitExtra);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -618,10 +733,17 @@ for (const r of roads) {
     let cur: number[] = [], curE: number[] = [];
     const flush = () => {
       if (cur.length >= 4) {
+        const isRoundabout = r.tags.junction === 'roundabout' || r.tags.junction === 'circular';
+        const isLink = !!r.tags.highway?.endsWith('_link');
+        const isSusp = r.tags['bridge:structure'] === 'suspension';
+        const isDeepTunnel = r.tunnel && r.tags.tunnel === 'yes' && parseInt(r.tags.layer ?? '0', 10) <= -1;
+        const wCm = q(r.w), rwCm = q(r.rw);
         const rd: RoadData = {
-          t: ROAD_TYPES.indexOf(r.type), w: q(r.w), p: cur, id: r.id,
-          f: (r.bridge ? 1 : 0) | (r.tunnel ? 2 : 0) | (r.inferred ? 4 : 0) | (r.tags.oneway === 'yes' ? 8 : 0),
+          t: ROAD_TYPES.indexOf(r.type), w: wCm, p: cur, id: r.id,
+          f: (r.bridge ? 1 : 0) | (r.tunnel ? 2 : 0) | (r.inferred ? 4 : 0) | (r.tags.oneway === 'yes' ? 8 : 0)
+            | (isRoundabout ? 16 : 0) | (isLink ? 32 : 0) | (isSusp ? 64 : 0) | (isDeepTunnel ? 128 : 0),
         };
+        if (rwCm !== wCm) rd.rw = rwCm;
         if (r.elev) rd.e = curE;
         const n = nameOf(b, r.tags.name);
         if (n !== undefined) rd.n = n;
@@ -930,7 +1052,7 @@ for (const def of LANDMARK_DEFS) {
   const cands = named.filter((e) => {
     const ns = [e.tags!.name, e.tags!['name:en'], e.tags!.alt_name, e.tags!.official_name].filter(Boolean) as string[];
     if (!def.match.some((m) => ns.some((n) => m.test(n)))) return false;
-    return def.road ? !!e.tags!.highway && e.type === 'way' : !e.tags!.highway || e.tags!.highway === 'pedestrian';
+    return def.road ? !!e.tags!.highway && e.type === 'way' : !e.tags!.highway || e.tags!.highway === 'pedestrian' || def.kind === 'bridge';
   });
   if (!cands.length) { missing.push(def.name); continue; }
   let pos: Pt | null = null, ref = '';

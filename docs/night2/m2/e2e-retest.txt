@@ -1,0 +1,7 @@
+﻿
+Running 1 test using 1 worker
+
+{"china":{"s":60.13546337818349,"o":0.02023270158818491,"tried":21},"parked":{"from":[61.10918926754327,4.973799150320701e-14],"to":[62.069553054703576,6.394884621840902e-14],"recent":4},"building":{"s":39.98197978209467,"o":-0.2724264856717369,"tried":2},"carpenter":{"x":219.32965172275905,"z":46.82421461223749,"tried":14},"junction":{"x":152.95700435262864,"z":24.45038633620301,"road":"Upper China Street","tried":1},"unloaded":{"first":{"ok":false,"reason":"loading","tried":0},"second":{"ok":true,"pose":{"x":152.95700435262864,"z":24.45038633620301,"heading":-0.5949239578362115},"source":"recent","tried":1}}}
+  ok 1 [desktop-1920] › tests\e2e\driving.spec.ts:448:3 › V8 driving prototype › default V7, V8.2: R puts the car at a verified safe place (Jalan China lane, Jalan Carpenter, a junction, parked cars, a building, unloaded ground) (14.6s)
+
+  1 passed (26.2s)

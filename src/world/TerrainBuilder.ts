@@ -5,6 +5,7 @@ import { AREA_KINDS, BUILDING_KINDS, ROAD_STYLE, ROAD_TYPES } from './types.ts';
 import type { BuildContext } from './ChunkManager.ts';
 import { MB_LINE, MB_NORTH } from './district/mainBazaar.ts';
 import { stationOfChunk } from './district/props.ts';
+import { roadsEnabled, roadWidthCm, ROAD_DEEP_TUNNEL } from './roadsFlag.ts';
 
 /**
  * Hues of the land-use map (N1-M2). The terrain shader reads the surface from the hue: green = grass, warm = bare earth
@@ -47,16 +48,19 @@ function* groundTexture(data: ChunkData, size: number): Generator<void, THREE.Ca
   }
   // Roads: a fringe of red earth, the concrete beside the carriageway, then the carriageway itself (drawn as a mesh
   // near the player; far chunks leave their minor roads out, so there the paint is the road).
+  const trueRoads = roadsEnabled();
   const roads = new Map<number, RoadData[]>();
   for (const r of data.roads) {
-    if (r.f & 3 || r.p.length < 4) continue; // bridges and tunnels have no ground beside them
-    const l = roads.get(r.t * 4096 + Math.min(4095, Math.round(r.w / 20)));
-    if (l) l.push(r); else roads.set(r.t * 4096 + Math.min(4095, Math.round(r.w / 20)), [r]);
+    if (r.f & 3 || (trueRoads && (r.f & ROAD_DEEP_TUNNEL)) || r.p.length < 4) continue; // bridges and tunnels have no ground beside them
+    const wCm = roadWidthCm(r);
+    const key = r.t * 4096 + Math.min(4095, Math.round(wCm / 20));
+    const l = roads.get(key);
+    if (l) l.push(r); else roads.set(key, [r]);
   }
   const strokeRoads = (width: (type: RoadType, w: number) => number, colour: (type: RoadType) => string, alpha = 1) => {
     g.globalAlpha = alpha;
     for (const list of roads.values()) {
-      const type = ROAD_TYPES[list[0].t], w = width(type, list[0].w / QUANT);
+      const type = ROAD_TYPES[list[0].t], w = width(type, roadWidthCm(list[0]) / QUANT);
       if (w <= 0) continue;
       g.strokeStyle = colour(type); g.lineWidth = w * QUANT * s;
       g.beginPath();
@@ -71,6 +75,16 @@ function* groundTexture(data: ChunkData, size: number): Generator<void, THREE.Ca
   yield;
   strokeRoads((t, w) => (ROAD_STYLE[t].group === 0 || t === 'rail' ? 0 : w), (t) => (ROAD_STYLE[t].group >= 2 ? ASPHALT : '#' + ROAD_STYLE[t].color.toString(16).padStart(6, '0')));
   yield;
+  // N2-M2 (?roads=1): roundabout central islands and dual-carriageway medians paint green grass over the road apron.
+  if (trueRoads && (data.rbi?.length || data.med?.length)) {
+    g.fillStyle = g.strokeStyle = AREA_TINT.grass;
+    g.beginPath();
+    for (const poly of [...(data.rbi ?? []), ...(data.med ?? [])]) {
+      for (const r of poly) trace(r, true);
+    }
+    g.fill('evenodd');
+    g.globalAlpha = 0.55; g.lineWidth = 1.6; g.stroke(); g.globalAlpha = 1;
+  }
   // Buildings stand on a concrete apron (inferred): houses a narrow one, everything else a wide one, so a dense
   // block is paved from wall to wall and a house in a garden keeps its lawn.
   for (const house of [true, false]) {
