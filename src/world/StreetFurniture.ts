@@ -9,6 +9,30 @@ import { stationOf } from './district/mainBazaar.ts';
 import { signUv } from './arch/SignAtlas.ts';
 import { PAINT_WHITE, PAINT_YELLOW } from './StreetEdges.ts';
 import { roadsEnabled } from './roadsFlag.ts';
+import { decodeSignalExtra, inferredSignalsEnabled, signalsEnabled } from './signalsFlag.ts';
+
+class GlowBuf extends GeoBuf {
+  sig: number[] = [];
+  sigCur: [number, number] = [0, 0];
+  override vert(x: number, y: number, z: number, nx: number, ny: number, nz: number, c: THREE.Color, u = 0, v = 0): number {
+    this.sig.push(this.sigCur[0], this.sigCur[1]);
+    return super.vert(x, y, z, nx, ny, nz, c, u, v);
+  }
+  override build(): THREE.BufferGeometry | null {
+    const g = super.build();
+    if (g) g.setAttribute('sig', new THREE.Float32BufferAttribute(this.sig, 2));
+    return g;
+  }
+}
+
+const SIG_RED = new THREE.Color(0xf5281e);
+const SIG_AMBER = new THREE.Color(0xffad14);
+const SIG_GREEN = new THREE.Color(0x1ee85a);
+const SIG_LENSES: readonly [THREE.Color, number, number][] = [
+  [SIG_RED, 0.68, 0],
+  [SIG_AMBER, 0.37, 1],
+  [SIG_GREEN, 0.06, 2],
+];
 
 // Lamp posts, traffic signals, street-sign posts, benches and bollards, merged into one mesh per
 // chunk (plus one tiny unlit mesh for lamp heads and signal lenses). Positions come from
@@ -122,7 +146,7 @@ export function buildFurniture(data: ChunkData, ctx: BuildContext): THREE.Object
   if (!furn?.length) return [];
   const ox = data.cx * CHUNK_SIZE, oz = data.cz * CHUNK_SIZE;
   const low = ctx.quality.name === 'low';
-  const solid = new GeoBuf(), glow = new GeoBuf(), paint = new GeoBuf(), plates = new GeoBuf(true), pools = new GeoBuf();
+  const solid = new GeoBuf(), glow = new GlowBuf(), paint = new GeoBuf(), plates = new GeoBuf(true), pools = new GeoBuf();
   const ground = (x: number, z: number) => ctx.height.sample(ox + x, oz + z);
   for (let i = 0; i < furn.length; i += 5) {
     const x = furn[i + 1] / QUANT, z = furn[i + 2] / QUANT, a = (furn[i + 3] * Math.PI) / 180, extra = furn[i + 4];
@@ -159,12 +183,42 @@ export function buildFurniture(data: ChunkData, ctx: BuildContext): THREE.Object
         break;
       }
       case FURN.signal: {
+        const dec = decodeSignalExtra(extra);
+        if (signalsEnabled()) {
+          if (!dec || (dec.inferred && !inferredSignalsEnabled())) break;
+          // Lens code starts at 2: a lamp mesh without a `sig` attribute reads WebGL's generic value, which another
+          // program may have left at 1 (ShaderMaterial's default colour), and must never look like a signal.
+          const sigKey = dec.jctId * 2 + dec.group + 2;
+          const poleTop = dec.wide ? 5.65 : 3.6;
+          box(solid, x, y - 0.2, y + poleTop, z, a, -0.075, 0.075, -0.075, 0.075, dec.wide ? POLE_LIGHT : POLE);
+          // Primary kerbside signal head (y + 2.52 .. y + 3.58) with white border backing & lens hoods.
+          box(solid, x, y + 2.50, y + 3.60, z, a, -0.19, 0.19, 0.06, 0.10, WHITE);
+          box(solid, x, y + 2.53, y + 3.57, z, a, -0.17, 0.17, 0.09, 0.30, HOUSING);
+          for (const [col, dy, aspect] of SIG_LENSES) {
+            box(solid, x, y + 2.55 + dy + 0.21, y + 2.55 + dy + 0.25, z, a, -0.13, 0.13, 0.28, 0.40, HOUSING);
+            glow.sigCur = [sigKey, aspect];
+            box(glow, x, y + 2.55 + dy, y + 2.55 + dy + 0.22, z, a, -0.11, 0.11, 0.30, 0.33, col);
+          }
+          // Wide multi-lane carriageway (>= 7.8 m): Malaysian galvanised cantilever mast-arm + overhead repeater head.
+          if (dec.wide) {
+            box(solid, x, y + 5.46, y + 5.58, z, a, 0.0, 2.55, -0.055, 0.055, POLE_LIGHT);
+            box(solid, x, y + 4.76, y + 5.94, z, a, 2.02, 2.44, 0.04, 0.08, WHITE);
+            box(solid, x, y + 4.80, y + 5.90, z, a, 2.05, 2.41, 0.07, 0.28, HOUSING);
+            for (const [col, dy, aspect] of SIG_LENSES) {
+              glow.sigCur = [sigKey, aspect];
+              box(glow, x, y + 4.83 + dy * 1.06, y + 4.83 + dy * 1.06 + 0.25, z, a, 2.10, 2.36, 0.28, 0.32, col);
+            }
+          }
+          glow.sigCur = [0, 0];
+          box(solid, x, y + 1.05, y + 1.3, z, a, -0.09, 0.09, 0.07, 0.16, YELLOW);
+          break;
+        }
+        if (dec) break; // `?signals=0`: skip N2-M3 per-approach poles and draw Night 1's static single poles
+        glow.sigCur = [0, 0];
         box(solid, x, y - 0.2, y + 3.5, z, a, -0.07, 0.07, -0.07, 0.07, POLE);
         box(solid, x, y + 2.55, y + 3.55, z, a, -0.17, 0.17, 0.07, 0.3, HOUSING);
-        // Lenses face along local +Z (toward approaching traffic).
         const lens: [number, number][] = [[0xd23a2e, 3.22], [0xe0a52e, 2.92], [0x3fae5a, 2.62]];
         for (const [hex, ly] of lens) box(glow, x, y + ly, y + ly + 0.2, z, a, -0.1, 0.1, 0.3, 0.32, tmp.setHex(hex).multiplyScalar(0.75).clone());
-        // N1-M4: the pedestrian push-button box on the pole.
         box(solid, x, y + 1.05, y + 1.3, z, a, -0.09, 0.09, 0.07, 0.16, YELLOW);
         break;
       }

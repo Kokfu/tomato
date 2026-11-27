@@ -389,7 +389,31 @@ export class Materials {
     this.frond = withDetail(new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true, side: THREE.DoubleSide }), 'foliage');
     this.foliage = withDetail(new THREE.MeshLambertMaterial({ vertexColors: true }), 'foliage');
     this.furniture = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
-    this.lampGlow = new THREE.MeshBasicMaterial({ color: 0x9a9a96, vertexColors: true, side: THREE.DoubleSide });
+    // N2-M3: `lampGlow` draws both street-lamp heads (`sig.x == 0`, warm sodium at night) and synchronised R/A/G
+    // traffic-signal lenses (`sig.x >= 2`: `(jctId * 2 + group) + 2`, `sig.y`: `0 = red, 1 = amber, 2 = green`),
+    // animated in the shader from `ENV.uSignalTime` and `ENV.uNight` with zero extra draw calls or late compiles.
+    this.lampGlow = patch(new THREE.MeshBasicMaterial({ color: 0x9a9a96, vertexColors: true, side: THREE.DoubleSide }), 'k3d-lampglow', (shader) => {
+      Object.assign(shader.uniforms, ENV);
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute vec2 sig;\nvarying vec2 vSig;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSig = sig;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vSig;\nuniform float uSignalTime;\nuniform float uNight;')
+        .replace(
+          '#include <color_fragment>',
+          `#include <color_fragment>
+          if (vSig.x > 1.5) {
+            float k3code = floor(vSig.x - 2.0 + 0.25);
+            float k3jct = floor(k3code * 0.5 + 0.1);
+            float k3grp = mod(k3code, 2.0);
+            float k3asp = floor(vSig.y + 0.25);
+            float k3t = mod(mod(uSignalTime + k3jct * 7.3 - k3grp * 18.0, 36.0) + 36.0, 36.0);
+            float k3act = k3t < 15.0 ? 2.0 : (k3t < 17.0 ? 1.0 : 0.0);
+            float k3on = step(abs(k3asp - k3act), 0.25);
+            diffuseColor.rgb = vColor * mix(mix(0.09, 0.03, uNight), mix(1.4, 3.2, uNight), k3on);
+          }`,
+        );
+    });
     this.pools = new THREE.MeshBasicMaterial({ color: 0x000000, vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false, polygonOffset: true, polygonOffsetFactor: -7, polygonOffsetUnits: -28 });
     this.pools.visible = false;
     this.water = new THREE.ShaderMaterial({

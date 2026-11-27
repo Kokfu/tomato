@@ -34,6 +34,8 @@ export const EDGE_BRIDGE = 1;
 export const EDGE_TUNNEL = 2;
 /** Edge flag (drive graph): one-way, travel only from node a to node b. */
 export const EDGE_ONEWAY = 4;
+/** Edge flag (drive graph, N2-M3): roundabout / circular junction ring (circulating traffic has priority). */
+export const EDGE_ROUNDABOUT = 8;
 
 /** Real-world walking pace used for time estimates (m/s). */
 export const WALK_SPEED = 1.35;
@@ -255,6 +257,7 @@ export class RouteGraph {
 
   isBridge(edge: number): boolean { return (this.eflags[edge] & EDGE_BRIDGE) !== 0; }
   isOneWay(edge: number): boolean { return (this.eflags[edge] & EDGE_ONEWAY) !== 0; }
+  isRoundabout(edge: number): boolean { return (this.eflags[edge] & EDGE_ROUNDABOUT) !== 0; }
   nameOf(edge: number): string | undefined { return this.ename[edge] >= 0 ? this.names[this.ename[edge]] : undefined; }
   typeOf(edge: number): string { return this.types[this.etype[edge]]; }
   /** Edges that meet at a node (N1-M6 traffic). */

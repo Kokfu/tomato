@@ -1,0 +1,9 @@
+
+Running 4 tests using 1 worker
+
+  ok 1 [desktop-1920] › tests\e2e\signals.spec.ts:21:3 › N2-M3 traffic signals and road rules › an ambient car stops behind the stop line on a red signal, drives through on green, and compiles 0 programs at night (19.8s)
+  ok 2 [desktop-1920] › tests\e2e\signals.spec.ts:152:3 › N2-M3 traffic signals and road rules › ?inferredSignals=0 removes inferred main-road signals while keeping mapped ones (8.0s)
+  ok 3 [desktop-1920] › tests\e2e\signals.spec.ts:21:3 › N2-M3 traffic signals and road rules › an ambient car stops behind the stop line on a red signal, drives through on green, and compiles 0 programs at night (19.2s)
+  ok 4 [desktop-1920] › tests\e2e\signals.spec.ts:152:3 › N2-M3 traffic signals and road rules › ?inferredSignals=0 removes inferred main-road signals while keeping mapped ones (6.0s)
+
+  4 passed (1.0m)

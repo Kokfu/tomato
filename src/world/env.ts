@@ -12,6 +12,8 @@ export const ENV = {
   uRain: { value: 0 },
   /** Seconds, for ripples. */
   uEnvTime: { value: 0 },
+  /** N2-M3: traffic-signal clock in seconds (shared with Traffic.signalState). */
+  uSignalTime: { value: 0 },
   /** What a wet road mirrors: the sky near the horizon. */
   uSkyRefl: { value: new THREE.Color(0.58, 0.69, 0.74) },
 };

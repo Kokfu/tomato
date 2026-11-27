@@ -1,0 +1,10 @@
+# phone (--mobile --quality=low) views 06 and 12 shot first in a fresh page; same command on both builds
+== n2-m3-final http://localhost:5175/
+06-plaza-merdeka {"fps":60,"calls":183,"tris":537322,"geo":314,"tex":54,"chunks":21,"pos":[-91.4,3,40.5]}
+12-trunk-road-openg {"fps":60,"calls":91,"tris":119625,"geo":270,"tex":57,"chunks":24,"pos":[-321,10.9,1290]}
+== n2-m3-final http://localhost:5175/?signals=0&inferredSignals=0
+06-plaza-merdeka {"fps":60.1,"calls":183,"tris":536340,"geo":315,"tex":54,"chunks":21,"pos":[-91.4,3,40.5]}
+12-trunk-road-openg {"fps":60,"calls":91,"tris":121589,"geo":271,"tex":57,"chunks":24,"pos":[-321,10.9,1290]}
+== n2-m2 http://localhost:5176/
+06-plaza-merdeka {"fps":60,"calls":177,"tris":513410,"geo":306,"tex":54,"chunks":21,"pos":[-91.4,3,40.5]}
+12-trunk-road-openg {"fps":60,"calls":91,"tris":118643,"geo":270,"tex":57,"chunks":24,"pos":[-321,10.9,1290]}

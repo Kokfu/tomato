@@ -13,6 +13,8 @@ Since N1-M1 the merged features (and since N1-M5 the hero places) are **on by de
 | `life` | N1-M6 ambient traffic (cars and kapcai on the mapped carriageways) and walkers on footpaths and five-foot ways | `?life=0` |
 | `m7` | N1-M7 play loop: parked vehicles to take (car, kapcai, taxi, pickup), delivery and taxi jobs from the phone, the wallet, collisions with the traffic, the horn, saved progress. Needs `life` for the parked vehicles (they are drawn with the traffic) | `?m7=0` |
 | `roads` | N2-M2 true Kuching roads: kerbed roundabout central islands with grass and palms, splitter islands, give-way lines, kerbed grass/tree/lamp dual-carriageway medians with crossover gaps, `lanes` x 3.3 m and retuned Kuching widths, filleted junction corners, slip-lane gores, underground tunnel portals, and Satok suspension cables | `?roads=0` |
+| `signals` | N2-M3 working traffic lights and road rules: per-approach signal poles (plus mast arms on wide roads), R/A/G heads on the clock the traffic obeys (one cycle per junction, main corridor and crossing road as two phases) with night glow, roundabout give-way, keep-left on 6.2 m+ one-way roads, and more ambient traffic on the larger roads. `?signals=0` is night 1's static poles and traffic rules | `?signals=0` |
+| `inferredSignals` | N2-M3 inferred traffic lights at major unsignalled main-road crossroads from the audit (`docs/LIMITATIONS.md`); when `0`, only OpenStreetMap-mapped `highway=traffic_signals` junctions get signal poles and signal control | `?inferredSignals=0` |
 
 - N1-M6 (not flags, but address parameters): `?time=auto|day|evening|night` or `?time=<hour 0..24>` and
   `?rain=auto|off|on` set the time of day and the rain at start-up; they win over the saved settings

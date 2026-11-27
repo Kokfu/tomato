@@ -1,0 +1,1974 @@
+{
+  "version": 1,
+  "junctions": [
+    {
+      "id": 0,
+      "x": 824.4,
+      "z": 1139.6,
+      "lat": 1.54819,
+      "lon": 110.35191,
+      "refDeg": 107,
+      "crossDeg": 18,
+      "inferred": false,
+      "roads": [
+        "Jalan Tabuan",
+        "Jalan Central Timur",
+        "Jalan Tan Sri Datuk Ong Kee Hui"
+      ],
+      "osmSignalNodes": [
+        684033055,
+        828657235,
+        828657260,
+        2408625905
+      ],
+      "nodes": [
+        [
+          828.48,
+          1130.86
+        ],
+        [
+          819.56,
+          1148.77
+        ],
+        [
+          848.83,
+          1123.21
+        ],
+        [
+          833.86,
+          1143.23
+        ],
+        [
+          815.8,
+          1135.43
+        ]
+      ],
+      "approaches": 5
+    },
+    {
+      "id": 1,
+      "x": -338.6,
+      "z": 1108.8,
+      "lat": 1.54847,
+      "lon": 110.34146,
+      "refDeg": 7,
+      "crossDeg": 102,
+      "inferred": false,
+      "roads": [
+        "Jalan Tun Abang Haji Openg",
+        "Jalan Taman Budaya",
+        "Jalan Badruddin"
+      ],
+      "osmSignalNodes": [
+        822594916,
+        822594941,
+        822763936,
+        822763939
+      ],
+      "nodes": [
+        [
+          -332.32,
+          1097.71
+        ],
+        [
+          -329.95,
+          1116.61
+        ],
+        [
+          -346.7,
+          1100.83
+        ],
+        [
+          -345.25,
+          1119.93
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 2,
+      "x": 356,
+      "z": 1162.4,
+      "lat": 1.54799,
+      "lon": 110.3477,
+      "refDeg": 100,
+      "crossDeg": 156,
+      "inferred": false,
+      "roads": [
+        "Jalan Tan Sri Datuk Ong Kee Hui",
+        "Lorong Park",
+        "Jalan Crookshank"
+      ],
+      "osmSignalNodes": [
+        822608449,
+        822608484
+      ],
+      "nodes": [
+        [
+          359.91,
+          1154.77
+        ],
+        [
+          352,
+          1169.96
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 3,
+      "x": -402.9,
+      "z": 2487.5,
+      "lat": 1.536,
+      "lon": 110.34088,
+      "refDeg": 4,
+      "crossDeg": 69,
+      "inferred": false,
+      "roads": [
+        "Jalan Tun Abang Haji Openg",
+        "Jalan Rock",
+        "Jalan Green",
+        "Jalan Batu Lintang"
+      ],
+      "osmSignalNodes": [
+        827506543,
+        827506545,
+        861235613,
+        2422523143
+      ],
+      "nodes": [
+        [
+          -409.69,
+          2492.97
+        ],
+        [
+          -395.97,
+          2482.1
+        ],
+        [
+          -411.25,
+          2474.67
+        ],
+        [
+          -394.78,
+          2500.39
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 4,
+      "x": 1328.2,
+      "z": 234.8,
+      "lat": 1.55638,
+      "lon": 110.35644,
+      "refDeg": 38,
+      "crossDeg": 123,
+      "inferred": false,
+      "roads": [
+        "Jalan Abell",
+        "Jalan Padungan Utara",
+        "Jalan Macis"
+      ],
+      "osmSignalNodes": [
+        828708174,
+        828708214,
+        2405141437
+      ],
+      "nodes": [
+        [
+          1329.66,
+          241.64
+        ],
+        [
+          1340.15,
+          235.27
+        ],
+        [
+          1322.22,
+          235.03
+        ],
+        [
+          1332.57,
+          227.79
+        ],
+        [
+          1338.57,
+          223.07
+        ],
+        [
+          1334.19,
+          207.46
+        ],
+        [
+          1354.14,
+          206.83
+        ]
+      ],
+      "approaches": 6
+    },
+    {
+      "id": 5,
+      "x": 1682.2,
+      "z": 585.9,
+      "lat": 1.5532,
+      "lon": 110.35962,
+      "refDeg": 46,
+      "crossDeg": 136,
+      "inferred": false,
+      "roads": [
+        "Jalan Padungan"
+      ],
+      "osmSignalNodes": [
+        828708256,
+        1429723127
+      ],
+      "nodes": [
+        [
+          1677.14,
+          591.59
+        ],
+        [
+          1687.31,
+          580.23
+        ]
+      ],
+      "approaches": 2
+    },
+    {
+      "id": 6,
+      "x": 1620.8,
+      "z": 496.7,
+      "lat": 1.55401,
+      "lon": 110.35906,
+      "refDeg": 26,
+      "crossDeg": 116,
+      "inferred": false,
+      "roads": [
+        "Jalan Abell"
+      ],
+      "osmSignalNodes": [
+        828708261,
+        828708460
+      ],
+      "nodes": [
+        [
+          1615.11,
+          500.66
+        ],
+        [
+          1626.42,
+          492.68
+        ]
+      ],
+      "approaches": 1
+    },
+    {
+      "id": 7,
+      "x": 2388.3,
+      "z": 713,
+      "lat": 1.55205,
+      "lon": 110.36596,
+      "refDeg": 78,
+      "crossDeg": 119,
+      "inferred": false,
+      "roads": [
+        "Jalan Padungan",
+        "Jalan Datuk Abang Abdul Rahim"
+      ],
+      "osmSignalNodes": [
+        828708564,
+        2421364625,
+        2421376148,
+        11118016218
+      ],
+      "nodes": [
+        [
+          2399.87,
+          709.58
+        ],
+        [
+          2387.33,
+          723.82
+        ],
+        [
+          2389.16,
+          700.62
+        ],
+        [
+          2406.16,
+          690.7
+        ],
+        [
+          2376.86,
+          717.92
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 8,
+      "x": 949.6,
+      "z": 602.7,
+      "lat": 1.55305,
+      "lon": 110.35303,
+      "refDeg": 89,
+      "crossDeg": 176,
+      "inferred": false,
+      "roads": [
+        "Jalan Ban Hock",
+        "Jalan Song Thian Cheok"
+      ],
+      "osmSignalNodes": [
+        828720753,
+        828720754,
+        828720770,
+        828720772
+      ],
+      "nodes": [
+        [
+          942.48,
+          609.72
+        ],
+        [
+          956.2,
+          609.13
+        ],
+        [
+          942.92,
+          596.24
+        ],
+        [
+          956.85,
+          595.73
+        ],
+        [
+          969.18,
+          596.02
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 9,
+      "x": 972.4,
+      "z": 371.6,
+      "lat": 1.55514,
+      "lon": 110.35324,
+      "refDeg": 157,
+      "crossDeg": 87,
+      "inferred": false,
+      "roads": [
+        "Jalan Song Thian Cheok"
+      ],
+      "osmSignalNodes": [
+        828720783,
+        2408625959
+      ],
+      "nodes": [
+        [
+          977.17,
+          372.12
+        ],
+        [
+          967.59,
+          371.09
+        ]
+      ],
+      "approaches": 3
+    },
+    {
+      "id": 10,
+      "x": -759.1,
+      "z": 1057.6,
+      "lat": 1.54894,
+      "lon": 110.33768,
+      "refDeg": 177,
+      "crossDeg": 83,
+      "inferred": false,
+      "roads": [
+        "Jalan Tun Ahmad Zaidi Adruce",
+        "Jalan Badruddin",
+        "Jalan Nanas"
+      ],
+      "osmSignalNodes": [
+        830505298,
+        830505300
+      ],
+      "nodes": [
+        [
+          -767,
+          1056.16
+        ],
+        [
+          -751.18,
+          1059.05
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 11,
+      "x": 1927.2,
+      "z": 1486,
+      "lat": 1.54506,
+      "lon": 110.36182,
+      "refDeg": 72,
+      "crossDeg": 113,
+      "inferred": false,
+      "roads": [
+        "Jalan Mendu",
+        "Jalan Sekama"
+      ],
+      "osmSignalNodes": [
+        831631273,
+        844775816,
+        844775819,
+        2421407512
+      ],
+      "nodes": [
+        [
+          1910.24,
+          1484.97
+        ],
+        [
+          1929.43,
+          1492.55
+        ],
+        [
+          1922.71,
+          1479.65
+        ],
+        [
+          1946.29,
+          1486.94
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 12,
+      "x": 1179.9,
+      "z": 1850.6,
+      "lat": 1.54176,
+      "lon": 110.3551,
+      "refDeg": 36,
+      "crossDeg": 138,
+      "inferred": false,
+      "roads": [
+        "Jalan Tabuan",
+        "Jalan Simpang Tiga",
+        "Jalan Mendu",
+        "Jalan Batu Lintang"
+      ],
+      "osmSignalNodes": [
+        831631285,
+        831631297,
+        1182656408,
+        1183586971
+      ],
+      "nodes": [
+        [
+          1179.53,
+          1838.81
+        ],
+        [
+          1190.1,
+          1851.65
+        ],
+        [
+          1169.21,
+          1848.91
+        ],
+        [
+          1180.78,
+          1863.03
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 13,
+      "x": -232.8,
+      "z": 576.8,
+      "lat": 1.55328,
+      "lon": 110.34241,
+      "refDeg": 170,
+      "crossDeg": 85,
+      "inferred": false,
+      "roads": [
+        "Jalan Tun Abang Haji Openg",
+        "Jalan Satok",
+        "Jalan Taman Budaya"
+      ],
+      "osmSignalNodes": [
+        838547018,
+        838547019,
+        838547084,
+        838547128
+      ],
+      "nodes": [
+        [
+          -241.27,
+          582.95
+        ],
+        [
+          -224.2,
+          571.45
+        ],
+        [
+          -237.77,
+          568.89
+        ],
+        [
+          -227.85,
+          583.79
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 14,
+      "x": 2067.6,
+      "z": 1780.4,
+      "lat": 1.5424,
+      "lon": 110.36308,
+      "refDeg": 17,
+      "crossDeg": 120,
+      "inferred": false,
+      "roads": [
+        "Jalan Chawan",
+        "Jalan Chong Kiun Kong",
+        "Lorong Chawan 2"
+      ],
+      "osmSignalNodes": [
+        844775743
+      ],
+      "nodes": [
+        [
+          2067.57,
+          1780.39
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 15,
+      "x": -817.8,
+      "z": 2255.6,
+      "lat": 1.5381,
+      "lon": 110.33715,
+      "refDeg": 178,
+      "crossDeg": 63,
+      "inferred": false,
+      "roads": [
+        "Jalan Tun Ahmad Zaidi Adruce",
+        "Jalan Green"
+      ],
+      "osmSignalNodes": [
+        849415875,
+        849415877,
+        849415912,
+        849415913,
+        4002344476
+      ],
+      "nodes": [
+        [
+          -812.8,
+          2262.08
+        ],
+        [
+          -821.39,
+          2258.28
+        ],
+        [
+          -822.07,
+          2264.39
+        ],
+        [
+          -820.54,
+          2244.22
+        ],
+        [
+          -812.13,
+          2248.89
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 16,
+      "x": -1374.3,
+      "z": 1356.7,
+      "lat": 1.54623,
+      "lon": 110.33215,
+      "refDeg": 11,
+      "crossDeg": 103,
+      "inferred": false,
+      "roads": [
+        "Jalan Green",
+        "Jalan Pisang"
+      ],
+      "osmSignalNodes": [
+        849415891,
+        1386151577,
+        2422578892,
+        2422578894
+      ],
+      "nodes": [
+        [
+          -1378.89,
+          1353.08
+        ],
+        [
+          -1371.12,
+          1350.7
+        ],
+        [
+          -1369.64,
+          1360.11
+        ],
+        [
+          -1377.39,
+          1362.77
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 17,
+      "x": -1512.6,
+      "z": 789.2,
+      "lat": 1.55136,
+      "lon": 110.33091,
+      "refDeg": 85,
+      "crossDeg": 18,
+      "inferred": false,
+      "roads": [
+        "Jalan Rubber Barat",
+        "Jalan Rubber",
+        "Jalan Green"
+      ],
+      "osmSignalNodes": [
+        849415895,
+        855113471
+      ],
+      "nodes": [
+        [
+          -1517.39,
+          789.05
+        ],
+        [
+          -1507.9,
+          789.29
+        ],
+        [
+          -1495.06,
+          789.76
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 18,
+      "x": -1276,
+      "z": 1770.4,
+      "lat": 1.54249,
+      "lon": 110.33303,
+      "refDeg": 40,
+      "crossDeg": 123,
+      "inferred": false,
+      "roads": [
+        "Jalan Green",
+        "Jalan Sungai Maong Tengah"
+      ],
+      "osmSignalNodes": [
+        861235590,
+        861235591
+      ],
+      "nodes": [
+        [
+          -1269.84,
+          1766.65
+        ],
+        [
+          -1282.19,
+          1774.14
+        ],
+        [
+          -1280.24,
+          1751.74
+        ],
+        [
+          -1265.8,
+          1772.89
+        ],
+        [
+          -1260.21,
+          1768.07
+        ],
+        [
+          -1299.08,
+          1784.37
+        ],
+        [
+          -1294.55,
+          1756.23
+        ],
+        [
+          -1268.14,
+          1791.08
+        ]
+      ],
+      "approaches": 9
+    },
+    {
+      "id": 19,
+      "x": -731.4,
+      "z": 609.1,
+      "lat": 1.55299,
+      "lon": 110.33793,
+      "refDeg": 172,
+      "crossDeg": 88,
+      "inferred": false,
+      "roads": [
+        "Jalan Tun Ahmad Zaidi Adruce",
+        "Jalan Satok"
+      ],
+      "osmSignalNodes": [
+        861238880,
+        2415184743
+      ],
+      "nodes": [
+        [
+          -723.27,
+          609.68
+        ],
+        [
+          -739.56,
+          608.44
+        ]
+      ],
+      "approaches": 3
+    },
+    {
+      "id": 20,
+      "x": -1585.9,
+      "z": -52.8,
+      "lat": 1.55898,
+      "lon": 110.33025,
+      "refDeg": 179,
+      "crossDeg": 87,
+      "inferred": false,
+      "roads": [
+        "Jalan Muhibbah",
+        "Jalan Haji Mataim"
+      ],
+      "osmSignalNodes": [
+        1289000351
+      ],
+      "nodes": [
+        [
+          -1585.85,
+          -52.82
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 21,
+      "x": -717.8,
+      "z": 522.5,
+      "lat": 1.55377,
+      "lon": 110.33805,
+      "refDeg": 169,
+      "crossDeg": 84,
+      "inferred": false,
+      "roads": [
+        "Jalan Kulas",
+        "Jalan Haji Taha"
+      ],
+      "osmSignalNodes": [
+        1289015310,
+        1289015318
+      ],
+      "nodes": [
+        [
+          -711.66,
+          525.23
+        ],
+        [
+          -723.91,
+          519.7
+        ]
+      ],
+      "approaches": 3
+    },
+    {
+      "id": 22,
+      "x": 10.8,
+      "z": 74.3,
+      "lat": 1.55783,
+      "lon": 110.3446,
+      "refDeg": 66,
+      "crossDeg": 156,
+      "inferred": false,
+      "roads": [
+        "Jalan Pearl",
+        "Jalan Tun Abang Haji Openg"
+      ],
+      "osmSignalNodes": [
+        1386151302
+      ],
+      "nodes": [
+        [
+          10.85,
+          74.26
+        ]
+      ],
+      "approaches": 2
+    },
+    {
+      "id": 23,
+      "x": -2396,
+      "z": 301.1,
+      "lat": 1.55578,
+      "lon": 110.32297,
+      "refDeg": 50,
+      "crossDeg": 134,
+      "inferred": false,
+      "roads": [
+        "Jalan Matang"
+      ],
+      "osmSignalNodes": [
+        1425513553,
+        2422884486,
+        6012563996
+      ],
+      "nodes": [
+        [
+          -2391.69,
+          292.3
+        ],
+        [
+          -2395.26,
+          307.54
+        ],
+        [
+          -2413.19,
+          292.25
+        ],
+        [
+          -2386.19,
+          297.09
+        ],
+        [
+          -2401.02,
+          303.31
+        ],
+        [
+          -2407.83,
+          310.62
+        ],
+        [
+          -2408.81,
+          321.41
+        ],
+        [
+          -2378.62,
+          319.51
+        ],
+        [
+          -2418.62,
+          326.67
+        ],
+        [
+          -2415.97,
+          319.85
+        ],
+        [
+          -2412,
+          324.38
+        ]
+      ],
+      "approaches": 5
+    },
+    {
+      "id": 24,
+      "x": 2969,
+      "z": 1870.3,
+      "lat": 1.54159,
+      "lon": 110.37118,
+      "refDeg": 146,
+      "crossDeg": 55,
+      "inferred": false,
+      "roads": [
+        "Jalan Tun Razak",
+        "Jalan Rengas",
+        "Jalan Foochow 1"
+      ],
+      "osmSignalNodes": [
+        1429212099,
+        1429212104,
+        2422441186,
+        2422441190
+      ],
+      "nodes": [
+        [
+          2973.97,
+          1882.07
+        ],
+        [
+          2955.63,
+          1871.01
+        ],
+        [
+          2982.16,
+          1869.52
+        ],
+        [
+          2964.21,
+          1858.65
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 25,
+      "x": -2341.3,
+      "z": -1255.7,
+      "lat": 1.56986,
+      "lon": 110.32346,
+      "refDeg": 98,
+      "crossDeg": 4,
+      "inferred": false,
+      "roads": [
+        "Jalan Astana",
+        "Jalan Merdeka"
+      ],
+      "osmSignalNodes": [
+        1829167186
+      ],
+      "nodes": [
+        [
+          -2341.29,
+          -1255.7
+        ],
+        [
+          -2324.35,
+          -1247.14
+        ],
+        [
+          -2353.89,
+          -1244.27
+        ],
+        [
+          -2325.03,
+          -1270.3
+        ]
+      ],
+      "approaches": 7
+    },
+    {
+      "id": 26,
+      "x": -762.9,
+      "z": -1634.3,
+      "lat": 1.57328,
+      "lon": 110.33764,
+      "refDeg": 41,
+      "crossDeg": 132,
+      "inferred": false,
+      "roads": [
+        "Jalan Astana"
+      ],
+      "osmSignalNodes": [
+        1829170547,
+        9217713723
+      ],
+      "nodes": [
+        [
+          -767.33,
+          -1630.66
+        ],
+        [
+          -758.5,
+          -1637.95
+        ],
+        [
+          -746.87,
+          -1623.55
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 27,
+      "x": -2713.9,
+      "z": 3.2,
+      "lat": 1.55847,
+      "lon": 110.32011,
+      "refDeg": 49,
+      "crossDeg": 135,
+      "inferred": false,
+      "roads": [
+        "Jalan Matang",
+        "Matang Link",
+        "Jalan Inai"
+      ],
+      "osmSignalNodes": [
+        1829187732,
+        2422884493,
+        5702390666,
+        5702390667
+      ],
+      "nodes": [
+        [
+          -2705.27,
+          4.22
+        ],
+        [
+          -2714,
+          9.54
+        ],
+        [
+          -2722.3,
+          2.45
+        ],
+        [
+          -2714.2,
+          -3.59
+        ],
+        [
+          -2725.9,
+          14.54
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 28,
+      "x": 2826,
+      "z": 1694.9,
+      "lat": 1.54317,
+      "lon": 110.3699,
+      "refDeg": 25,
+      "crossDeg": 111,
+      "inferred": false,
+      "roads": [
+        "Jalan Three Hills Park",
+        "Jalan Foochow 1"
+      ],
+      "osmSignalNodes": [
+        1829230088
+      ],
+      "nodes": [
+        [
+          2826.03,
+          1694.86
+        ],
+        [
+          2831.97,
+          1691.91
+        ]
+      ],
+      "approaches": 3
+    },
+    {
+      "id": 29,
+      "x": 2599.3,
+      "z": 2378.1,
+      "lat": 1.53699,
+      "lon": 110.36786,
+      "refDeg": 55,
+      "crossDeg": 144,
+      "inferred": false,
+      "roads": [
+        "Jalan Tun Razak",
+        "Jalan Dato Bandar"
+      ],
+      "osmSignalNodes": [
+        1829720194
+      ],
+      "nodes": [
+        [
+          2599.33,
+          2378.15
+        ],
+        [
+          2582.87,
+          2366.1
+        ],
+        [
+          2574.23,
+          2357.15
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 30,
+      "x": -1124,
+      "z": 1957.5,
+      "lat": 1.5408,
+      "lon": 110.3344,
+      "refDeg": 41,
+      "crossDeg": 128,
+      "inferred": false,
+      "roads": [
+        "Jalan Green",
+        "Lebuh Cloud Estate",
+        "Jalan Emerald"
+      ],
+      "osmSignalNodes": [
+        1829788285,
+        1829817558
+      ],
+      "nodes": [
+        [
+          -1120.74,
+          1954.45
+        ],
+        [
+          -1127.29,
+          1960.47
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 31,
+      "x": 2648.5,
+      "z": 988.1,
+      "lat": 1.54956,
+      "lon": 110.3683,
+      "refDeg": 61,
+      "crossDeg": 161,
+      "inferred": false,
+      "roads": [
+        "Jalan Padungan",
+        "Jalan Pending",
+        "Jalan Sekama"
+      ],
+      "osmSignalNodes": [
+        1984118467,
+        13989102589,
+        13989102591,
+        13989102594
+      ],
+      "nodes": [
+        [
+          2649.29,
+          976.44
+        ],
+        [
+          2653.88,
+          994.75
+        ],
+        [
+          2646.14,
+          991.9
+        ],
+        [
+          2657.93,
+          981.04
+        ],
+        [
+          2630.05,
+          983.46
+        ],
+        [
+          2650.21,
+          987.49
+        ],
+        [
+          2640.2,
+          980.61
+        ],
+        [
+          2660.56,
+          996.99
+        ],
+        [
+          2673.48,
+          986.97
+        ],
+        [
+          2643.91,
+          998.27
+        ],
+        [
+          2683.12,
+          1004.54
+        ]
+      ],
+      "approaches": 7
+    },
+    {
+      "id": 32,
+      "x": -281.1,
+      "z": -114.6,
+      "lat": 1.55954,
+      "lon": 110.34197,
+      "refDeg": 126,
+      "crossDeg": 36,
+      "inferred": false,
+      "roads": [
+        "Jalan Market",
+        "Jalan Khoo Hun Yeang"
+      ],
+      "osmSignalNodes": [
+        2272247695
+      ],
+      "nodes": [
+        [
+          -281.08,
+          -114.61
+        ]
+      ],
+      "approaches": 2
+    },
+    {
+      "id": 33,
+      "x": 475.4,
+      "z": 139.1,
+      "lat": 1.55724,
+      "lon": 110.34877,
+      "refDeg": 170,
+      "crossDeg": 91,
+      "inferred": false,
+      "roads": [
+        "Jalan Tunku Abdul Rahman"
+      ],
+      "osmSignalNodes": [
+        2272378873
+      ],
+      "nodes": [
+        [
+          475.36,
+          139.07
+        ],
+        [
+          461.93,
+          153.52
+        ],
+        [
+          467.31,
+          146.83
+        ]
+      ],
+      "approaches": 3
+    },
+    {
+      "id": 34,
+      "x": 357.8,
+      "z": 342.2,
+      "lat": 1.5554,
+      "lon": 110.34772,
+      "refDeg": 29,
+      "crossDeg": 106,
+      "inferred": false,
+      "roads": [
+        "Jalan Tabuan",
+        "Jalan McDougall",
+        "Lebuh Wayang"
+      ],
+      "osmSignalNodes": [
+        2272402637,
+        2273306525,
+        2273307092
+      ],
+      "nodes": [
+        [
+          356.11,
+          351.11
+        ],
+        [
+          351.64,
+          339.49
+        ],
+        [
+          365.74,
+          336.11
+        ],
+        [
+          370.27,
+          347.75
+        ],
+        [
+          377.99,
+          365.3
+        ]
+      ],
+      "approaches": 5
+    },
+    {
+      "id": 35,
+      "x": 3114.6,
+      "z": 665.4,
+      "lat": 1.55248,
+      "lon": 110.37249,
+      "refDeg": 92,
+      "crossDeg": 51,
+      "inferred": false,
+      "roads": [
+        "Jalan Datuk Abang Abdul Rahim"
+      ],
+      "osmSignalNodes": [
+        2421363565
+      ],
+      "nodes": [
+        [
+          3114.64,
+          665.42
+        ]
+      ],
+      "approaches": 2
+    },
+    {
+      "id": 36,
+      "x": -1094.6,
+      "z": 484,
+      "lat": 1.55412,
+      "lon": 110.33466,
+      "refDeg": 87,
+      "crossDeg": 177,
+      "inferred": false,
+      "roads": [
+        "Jalan Kulas"
+      ],
+      "osmSignalNodes": [
+        2422612805
+      ],
+      "nodes": [
+        [
+          -1094.57,
+          484.03
+        ]
+      ],
+      "approaches": 1
+    },
+    {
+      "id": 37,
+      "x": 782.1,
+      "z": 226.9,
+      "lat": 1.55645,
+      "lon": 110.35153,
+      "refDeg": 100,
+      "crossDeg": 1,
+      "inferred": false,
+      "roads": [
+        "Jalan Bukit Mata"
+      ],
+      "osmSignalNodes": [
+        2504056149,
+        2504056151,
+        2504058790,
+        2504058791
+      ],
+      "nodes": [
+        [
+          778.46,
+          232.16
+        ],
+        [
+          785.94,
+          221.55
+        ],
+        [
+          786.33,
+          231.26
+        ],
+        [
+          797.45,
+          230.01
+        ],
+        [
+          777.86,
+          222.53
+        ],
+        [
+          759.96,
+          234.24
+        ],
+        [
+          786.52,
+          248.96
+        ],
+        [
+          779.2,
+          256.78
+        ],
+        [
+          786.72,
+          258.9
+        ]
+      ],
+      "approaches": 5
+    },
+    {
+      "id": 38,
+      "x": -1731.7,
+      "z": -2025.6,
+      "lat": 1.57682,
+      "lon": 110.32894,
+      "refDeg": 131,
+      "crossDeg": 41,
+      "inferred": false,
+      "roads": [
+        "Jln Tun Datuk Patinggi Hj. Abdul Rahman Ya'akub"
+      ],
+      "osmSignalNodes": [
+        2692399728
+      ],
+      "nodes": [
+        [
+          -1731.74,
+          -2025.59
+        ]
+      ],
+      "approaches": 2
+    },
+    {
+      "id": 39,
+      "x": 539,
+      "z": 2354.8,
+      "lat": 1.5372,
+      "lon": 110.34934,
+      "refDeg": 68,
+      "crossDeg": 156,
+      "inferred": false,
+      "roads": [
+        "Jalan Batu Lintang",
+        "Jalan Bampfylde"
+      ],
+      "osmSignalNodes": [
+        3734898894,
+        3734898895,
+        3734898896
+      ],
+      "nodes": [
+        [
+          541.89,
+          2357.53
+        ],
+        [
+          536.08,
+          2356.06
+        ],
+        [
+          538.94,
+          2350.89
+        ]
+      ],
+      "approaches": 2
+    },
+    {
+      "id": 40,
+      "x": 2697.1,
+      "z": 2242,
+      "lat": 1.53822,
+      "lon": 110.36874,
+      "refDeg": 145,
+      "crossDeg": 50,
+      "inferred": false,
+      "roads": [
+        "Jalan Tun Razak",
+        "Jalan Chawan"
+      ],
+      "osmSignalNodes": [
+        4002344477
+      ],
+      "nodes": [
+        [
+          2697.1,
+          2241.97
+        ],
+        [
+          2710.17,
+          2225.25
+        ],
+        [
+          2700.18,
+          2259.62
+        ]
+      ],
+      "approaches": 5
+    },
+    {
+      "id": 41,
+      "x": 382.6,
+      "z": 155.4,
+      "lat": 1.55709,
+      "lon": 110.34794,
+      "refDeg": 167,
+      "crossDeg": 82,
+      "inferred": false,
+      "roads": [
+        "Lebuh Wayang",
+        "Jalan Wawasan"
+      ],
+      "osmSignalNodes": [
+        11133240862
+      ],
+      "nodes": [
+        [
+          382.61,
+          155.45
+        ],
+        [
+          381.2,
+          137.44
+        ],
+        [
+          383,
+          127.88
+        ]
+      ],
+      "approaches": 3
+    },
+    {
+      "id": 42,
+      "x": -1002.2,
+      "z": -40,
+      "lat": 1.55886,
+      "lon": 110.33549,
+      "refDeg": 130,
+      "crossDeg": 39,
+      "inferred": false,
+      "roads": [
+        "Jalan Datuk Ajibah Abol",
+        "Jalan Haji Mataim",
+        "Lorong Datuk Ajibah Abol 32",
+        "Lorong Ajibah Abol 30",
+        "Lorong Bintangor 3"
+      ],
+      "osmSignalNodes": [
+        13266292899
+      ],
+      "nodes": [
+        [
+          -1002.22,
+          -40
+        ],
+        [
+          -1014.94,
+          -57.83
+        ],
+        [
+          -1008.54,
+          -48.77
+        ],
+        [
+          -992.22,
+          -26.62
+        ],
+        [
+          -1016.32,
+          -30.57
+        ],
+        [
+          -981.4,
+          -12.81
+        ],
+        [
+          -1025.54,
+          -30.99
+        ]
+      ],
+      "approaches": 7
+    },
+    {
+      "id": 43,
+      "x": -1442.1,
+      "z": 1013.9,
+      "lat": 1.54933,
+      "lon": 110.33154,
+      "refDeg": 17,
+      "crossDeg": 88,
+      "inferred": false,
+      "roads": [
+        "Jalan Green",
+        "Jalan Nanas",
+        "Jalan Nanas Barat"
+      ],
+      "osmSignalNodes": [
+        13382576961,
+        13382576965,
+        13382576969,
+        13382576976
+      ],
+      "nodes": [
+        [
+          -1439.6,
+          1010.6
+        ],
+        [
+          -1437.59,
+          1017.32
+        ],
+        [
+          -1444.48,
+          1017.13
+        ],
+        [
+          -1446.71,
+          1010.4
+        ],
+        [
+          -1438.46,
+          1035.07
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 44,
+      "x": -220.9,
+      "z": -13.4,
+      "lat": 1.55862,
+      "lon": 110.34251,
+      "refDeg": 77,
+      "crossDeg": 169,
+      "inferred": true,
+      "roads": [
+        "Jalan Gartak",
+        "Jalan Khoo Hun Yeang",
+        "Jalan Power"
+      ],
+      "osmSignalNodes": [],
+      "nodes": [
+        [
+          -219.33,
+          -24.75
+        ],
+        [
+          -222.55,
+          -2.11
+        ],
+        [
+          -198.9,
+          -16.74
+        ],
+        [
+          -218.55,
+          -40.81
+        ],
+        [
+          -231.25,
+          -36.37
+        ]
+      ],
+      "approaches": 5
+    },
+    {
+      "id": 45,
+      "x": -753.8,
+      "z": 828.1,
+      "lat": 1.55101,
+      "lon": 110.33773,
+      "refDeg": 176,
+      "crossDeg": 118,
+      "inferred": true,
+      "roads": [
+        "Jalan Tun Ahmad Zaidi Adruce",
+        "Jalan Rubber"
+      ],
+      "osmSignalNodes": [],
+      "nodes": [
+        [
+          -754.47,
+          843.34
+        ],
+        [
+          -753.18,
+          812.92
+        ],
+        [
+          -739.45,
+          846.22
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 46,
+      "x": -1632.1,
+      "z": -1005.5,
+      "lat": 1.56759,
+      "lon": 110.32983,
+      "refDeg": 177,
+      "crossDeg": 90,
+      "inferred": true,
+      "roads": [
+        "Jalan Patinggan",
+        "Jalan Tanjung",
+        "Lorong Tanjung 12"
+      ],
+      "osmSignalNodes": [],
+      "nodes": [
+        [
+          -1632.14,
+          -1005.47
+        ],
+        [
+          -1653.97,
+          -1006.87
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 47,
+      "x": -1419,
+      "z": -916.1,
+      "lat": 1.56679,
+      "lon": 110.33175,
+      "refDeg": 144,
+      "crossDeg": 45,
+      "inferred": true,
+      "roads": [
+        "Jalan Muhibbah",
+        "Jalan Tanjung",
+        "Jalan Datuk Ajibah Abol"
+      ],
+      "osmSignalNodes": [],
+      "nodes": [
+        [
+          -1419.04,
+          -916.13
+        ]
+      ],
+      "approaches": 3
+    },
+    {
+      "id": 48,
+      "x": 1153.9,
+      "z": 919.8,
+      "lat": 1.55018,
+      "lon": 110.35487,
+      "refDeg": 129,
+      "crossDeg": 47,
+      "inferred": true,
+      "roads": [
+        "Jalan Central Timur",
+        "Jalan Ellis"
+      ],
+      "osmSignalNodes": [],
+      "nodes": [
+        [
+          1182.98,
+          911.77
+        ],
+        [
+          1160.41,
+          927.7
+        ],
+        [
+          1118.23,
+          919.83
+        ],
+        [
+          1154.82,
+          932.39
+        ]
+      ],
+      "approaches": 4
+    },
+    {
+      "id": 49,
+      "x": -376.9,
+      "z": 95.7,
+      "lat": 1.55763,
+      "lon": 110.34111,
+      "refDeg": 119,
+      "crossDeg": 22,
+      "inferred": true,
+      "roads": [
+        "Jalan P. Ramlee",
+        "Jalan Haji Taha",
+        "Jalan Market",
+        "Jalan Datuk Ajibah Abol"
+      ],
+      "osmSignalNodes": [],
+      "nodes": [
+        [
+          -379.34,
+          121.76
+        ],
+        [
+          -308.5,
+          109.21
+        ],
+        [
+          -349.16,
+          118.93
+        ],
+        [
+          -411.65,
+          81.65
+        ],
+        [
+          -402.68,
+          48.46
+        ],
+        [
+          -410.13,
+          94.41
+        ]
+      ],
+      "approaches": 8
+    },
+    {
+      "id": 50,
+      "x": -1601.3,
+      "z": 452.4,
+      "lat": 1.55441,
+      "lon": 110.33011,
+      "refDeg": 179,
+      "crossDeg": 87,
+      "inferred": true,
+      "roads": [
+        "Jalan Kulas",
+        "Jalan Muhibbah"
+      ],
+      "osmSignalNodes": [],
+      "nodes": [
+        [
+          -1583.07,
+          452.03
+        ],
+        [
+          -1613.21,
+          454.35
+        ],
+        [
+          -1607.54,
+          450.69
+        ],
+        [
+          -1593.82,
+          433.56
+        ],
+        [
+          -1580.96,
+          456.12
+        ]
+      ],
+      "approaches": 5
+    },
+    {
+      "id": 51,
+      "x": 406.8,
+      "z": 233.1,
+      "lat": 1.55639,
+      "lon": 110.34816,
+      "refDeg": 133,
+      "crossDeg": 33,
+      "inferred": true,
+      "roads": [
+        "Lebuh Temple",
+        "Lebuh Wayang",
+        "Jalan Green Hill"
+      ],
+      "osmSignalNodes": [],
+      "nodes": [
+        [
+          406.79,
+          233.13
+        ],
+        [
+          406.67,
+          245.2
+        ],
+        [
+          411,
+          230.07
+        ],
+        [
+          394.15,
+          244.47
+        ],
+        [
+          413.9,
+          238.32
+        ]
+      ],
+      "approaches": 5
+    },
+    {
+      "id": 52,
+      "x": -2078.9,
+      "z": 536.2,
+      "lat": 1.55365,
+      "lon": 110.32582,
+      "refDeg": 163,
+      "crossDeg": 88,
+      "inferred": true,
+      "roads": [
+        "Jalan Satok-Kulas Interchange",
+        "Lorong Jambatan Gantung 1",
+        "Jalan Satok"
+      ],
+      "osmSignalNodes": [],
+      "nodes": [
+        [
+          -2078.9,
+          536.21
+        ]
+      ],
+      "approaches": 3
+    },
+    {
+      "id": 53,
+      "x": -2223.8,
+      "z": 751,
+      "lat": 1.55171,
+      "lon": 110.32452,
+      "refDeg": 88,
+      "crossDeg": 176,
+      "inferred": true,
+      "roads": [
+        "Jalan Rubber Barat",
+        "Lorong Jambatan Gantung 1"
+      ],
+      "osmSignalNodes": [],
+      "nodes": [
+        [
+          -2223.84,
+          751
+        ]
+      ],
+      "approaches": 3
+    },
+    {
+      "id": 54,
+      "x": -427,
+      "z": 591.2,
+      "lat": 1.55315,
+      "lon": 110.34066,
+      "refDeg": 97,
+      "crossDeg": 24,
+      "inferred": true,
+      "roads": [
+        "Jalan Satok",
+        "Jalan P. Ramlee"
+      ],
+      "osmSignalNodes": [],
+      "nodes": [
+        [
+          -413.5,
+          590.44
+        ],
+        [
+          -440.48,
+          591.94
+        ],
+        [
+          -427.78,
+          592.09
+        ]
+      ],
+      "approaches": 3
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+
+Running 19 tests using 1 worker
+
+  ok  1 [desktop-1920] › tests\e2e\driving.spec.ts:92:3 › V8 driving prototype › default V7: walk to the car, E to get in, drive forward, brake, reverse, stop, E to get out, walk on (34.1s)
+  ok  2 [desktop-1920] › tests\e2e\driving.spec.ts:225:3 › V8 driving prototype › V4: steering, handbrake, off-road note and R back to the road (27.5s)
+  ok  3 [desktop-1920] › tests\e2e\driving.spec.ts:290:3 › V8 driving prototype › V4: collisions: a shophouse wall, a parked car and the river stop the car (18.7s)
+  ok  4 [desktop-1920] › tests\e2e\driving.spec.ts:367:52 › V8 driving prototype › default V7: drives round a real block through four junctions, on the road surface all the way (51.1s)
+  ok  5 [desktop-1920] › tests\e2e\driving.spec.ts:367:52 › V8 driving prototype › V4: drives round a real block through four junctions, on the road surface all the way (37.5s)
+  ok  6 [desktop-1920] › tests\e2e\driving.spec.ts:397:3 › V8 driving prototype › default V7: lane keeping between the two rows of parked cars at 12 km/h (43.5s)
+{"china":{"s":60.13546337818349,"o":0.02023270158818491,"tried":21},"parked":{"from":[61.092700635516636,3.197442310920451e-14],"to":[62.069553054703576,6.394884621840902e-14],"recent":4},"building":{"s":39.98197978209467,"o":-0.2724264856717369,"tried":2},"carpenter":{"x":219.32965172275905,"z":46.82421461223749,"tried":14},"junction":{"x":152.95700435262864,"z":24.45038633620301,"road":"Upper China Street","tried":1},"unloaded":{"first":{"ok":false,"reason":"loading","tried":0},"second":{"ok":true,"pose":{"x":152.95700435262864,"z":24.45038633620301,"heading":-0.5949239578362115},"source":"recent","tried":1}}}
+  ok  7 [desktop-1920] › tests\e2e\driving.spec.ts:448:3 › V8 driving prototype › default V7, V8.2: R puts the car at a verified safe place (Jalan China lane, Jalan Carpenter, a junction, parked cars, a building, unloaded ground) (13.2s)
+  ok  8 [desktop-1920] › tests\e2e\driving.spec.ts:583:3 › V8 driving prototype › default V7 acceptance: pause menu Drive Car, E, hold W: the car pulls out and drives down Jalan China without touching a parked car (15.8s)
+  ok  9 [desktop-1920] › tests\e2e\driving.spec.ts:645:3 › V8 driving prototype › default V7: switching between driving, OP fly mode and walking (16.7s)
+{"road":"Jalan Tun Abang Haji Openg (northbound carriageway)","routeMetres":2119,"drivenMetres":2120,"seconds":95.1,"maxKmh":92.7,"avgKmh":80.4,"fps":58.3,"maxFrameMs":375.1,"quality":"medium","chunksFetched":125,"chunksBuilt":103,"chunksDisposed":73,"maxChunkMeshes":55,"chunkMeshesAtEnd":52,"chunkDataAtEnd":96,"chunkBuildMsMax":186.3,"geometries":[166,480],"textures":[48,85],"heapMB":[252,110],"unbuiltFrames":0,"blocked":[],"impacts":0,"maxImpact":0,"impactsAt":[],"recoveries":0,"offRoadFrames":0,"frames":5543,"viewport":{"width":1920,"height":1080}}
+  ok 10 [desktop-1920] › tests\e2e\driving.spec.ts:731:3 › V8 driving prototype › high-speed run: chunks stream ahead of the car, nothing is driven on before it is loaded, memory stays bounded (1.8m)
+  ok 11 [desktop-1920] › tests\e2e\gps.spec.ts:85:3 › V8.4 GPS navigation › choose, follow, miss a turn, cancel, arrive, reject, change modes (2.3m)
+  ok 12 [desktop-1920] › tests\e2e\m6-life.spec.ts:27:3 › N1-M6 traffic and walkers › the streets of a suburb fill with vehicles and walkers; no program is compiled for them later, by day or night (18.7s)
+  ok 13 [desktop-1920] › tests\e2e\m6-life.spec.ts:63:3 › N1-M6 traffic and walkers › a vehicle stops for the player standing in the road and drives on when they step away (22.0s)
+  ok 14 [desktop-1920] › tests\e2e\m6-life.spec.ts:100:3 › N1-M6 traffic and walkers › Low preset: fewer of them, two vehicle kinds; ?life=0: none at all (24.2s)
+  ok 15 [desktop-1920] › tests\e2e\shader-prep.spec.ts:12:3 › V8.6 shader preparation › Low: shadows stay off across a resize, and a look round at the spawn compiles no new program (6.7s)
+  ok 16 [desktop-1920] › tests\e2e\shader-prep.spec.ts:40:3 › V8.6 shader preparation › Low -> Medium -> Low: shadows follow the preset and drawing resumes after the new programs compile (7.1s)
+  ok 17 [desktop-1920] › tests\e2e\shader-prep.spec.ts:57:3 › V8.6 shader preparation › Medium: walking from spawn to the waterfront compiles zero shadow-pass programs (6.9s)
+  ok 18 [desktop-1920] › tests\e2e\signals.spec.ts:21:3 › N2-M3 traffic signals and road rules › an ambient car stops behind the stop line on a red signal, drives through on green, and compiles 0 programs at night (16.8s)
+  ok 19 [desktop-1920] › tests\e2e\signals.spec.ts:152:3 › N2-M3 traffic signals and road rules › ?inferredSignals=0 removes inferred main-road signals while keeping mapped ones (5.8s)
+
+  Slow test file: [desktop-1920] › tests\e2e\driving.spec.ts (6.1m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  19 passed (10.4m)

@@ -1,0 +1,8 @@
+[
+ {"name":"s1-openg-badruddin-queue-red","x":-336,"z":1068,"yaw":3.05,"pitch":0.22,"dist":12,"fp":false,"wait":22000,"signal":{"jct":1,"group":0,"redFor":15},"probe":[-338.6,1108.8,90]},
+ {"name":"s2-openg-badruddin-overhead-red","x":-338.6,"z":1108.8,"yaw":3.05,"pitch":1.2,"dist":70,"fp":false,"wait":1500,"signal":{"jct":1,"group":0,"redFor":15},"probe":[-338.6,1108.8,90]},
+ {"name":"s3-openg-badruddin-queue-green","x":-336,"z":1068,"yaw":3.05,"pitch":0.22,"dist":12,"fp":false,"wait":22000,"signal":{"jct":1,"group":1,"redFor":8},"probe":[-338.6,1108.8,90]},
+ {"name":"s4-openg-badruddin-queue-night","x":-336,"z":1068,"yaw":3.05,"pitch":0.22,"dist":12,"fp":false,"wait":22000,"time":"night","signal":{"jct":1,"group":0,"redFor":15},"probe":[-338.6,1108.8,90]},
+ {"name":"s5-roundabout-ong-kee-hui-giveway","x":88,"z":1095,"yaw":3.14,"pitch":1.1,"dist":80,"fp":false,"wait":8000,"time":"day","until":"yield","untilMs":90000,"probe":[88,1095,60]},
+ {"name":"s6-roundabout-ong-kee-hui-giveway-close","x":90,"z":1100,"yaw":-2.72,"pitch":0.55,"dist":24,"fp":false,"wait":3000,"time":"day","until":"yield","untilMs":90000,"probe":[100,1122,14]}
+]

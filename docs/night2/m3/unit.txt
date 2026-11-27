@@ -1,0 +1,461 @@
+
+> kuching-3d@0.1.0 test
+> node --test "tests/unit/*.test.ts"
+
+✔ sunDirection: unit vector, overhead at noon when the declination equals the latitude (2.0702ms)
+✔ sunDirection: noon altitude is 90 degrees minus the gap between latitude and declination (0.6938ms)
+✔ sunDirection: east in the morning, west in the evening, on the horizon about 06:00 and 18:00 (0.5015ms)
+✔ solarDeclination: solstices and equinoxes (0.3215ms)
+✔ Haze: density and reach are carried by the fog near / far that three.js hands to the shaders (0.5446ms)
+✔ footprint: fitted rectangle of a rotated rectangle and of an L (1.9949ms)
+✔ tags on the structure win over size and surroundings (1.2594ms)
+✔ houses: kampung only with village evidence, terrace only for long rows (0.2913ms)
+✔ untagged footprints: size, shape, land use and roads decide (0.4792ms)
+✔ a tenant never changes the building: the classifier has no shop or amenity input (6.4022ms)
+✔ massing: mapped heights are kept, defaults become plausible and varied (2.3625ms)
+✔ atlas rows: every row has its own band, the blank spot is inside the plain row (7.088ms)
+✔ real data: every building of the old-town and of a suburb chunk gets a type; machine footprints are no longer one class (51.3096ms)
+✔ flag off: c1 switch is off and the V8.6 tables are untouched (2.7021ms)
+✔ budget: chunk 0_0 grows by at most +16,487 tris (< 12 % of the 137,397 V8.6 baseline) (0.5046ms)
+✔ budget: each corner wrap is at most 1,300 tris (gross and net) (0.3442ms)
+✔ draw calls: the V5 group and chunk 0_0 make the same calls flag on and off; no new material (0.2888ms)
+✔ Pinggai Cafe sign, rule output (rowFrame + lotSpecs, no special case): UW row (Upper China face), lot 0; NOT a verified lot (0.4729ms)
+✔ row facing: UW, UE and UX frames face RowDef.face, out of their block (guards the distToStreet probe flip) (0.4728ms)
+✔ corner wraps: rise matches the neighbour floor (5 mm), piers at most 4.2 m apart (0.3233ms)
+✔ lot design: plants only removed on the nine lots; varied neighbours, windows, shopfronts and roofs (0.6642ms)
+✔ Nyan Shin (Option 1): full OSM name on two lines on UE lot 1, from the record; the note filter is unchanged for every other place (7147.2542ms)
+✔ C1a rows: UW/UE/UX ends are mapped frontage edges of the current chunk rings, and the added block is the 236495235 ring (7.043ms)
+# S2#0: 374 samples, 41 return floors, max |feet - paving| = 0.0030 m (u=9.70 v=0.12)
+# UE#0: 376 samples, 42 return floors, max |feet - paving| = 0.0061 m (u=6.40 v=-0.1)
+✔ corner wraps: the player walks on the return five-foot way, not below it (feet within 2 cm of the drawn paving) (66.6727ms)
+✔ corner wraps: V5Scene.build registers the return floors, and they stay on the return (nothing outside the return strip, its kerb and the corner sliver) (1.7032ms)
+✔ G2.1 the picker offers exactly the six approved characters, in order, with the short names and heights (16.8437ms)
+✔ G2.2 the retired Rocketbox characters and the dev/default profiles are not selectable, not in the cycle, not restorable (1.9478ms)
+✔ G2.3 every picker card has its v2 portrait (1x and @2x) in public/ui/portraits (29.471ms)
+✔ G2.4 the saved choice: a selectable id restores, anything else is first launch (the picker); no flag never reads it (0.8167ms)
+✔ G2.5 a strict swap that fails reports the error, keeps the player, persists nothing and does NOT fall back to the default (48.1176ms)
+✔ G2.6 without strict the old behaviour stays: a failed model falls back to the default (CHAR-P4) (1.2211ms)
+✔ G2.7 a first-launch strict swap that fails leaves the stand-in humanoid (usingFallback) and lets Try again work (1.0983ms)
+✔ G2.8 abort() drops a swap still loading: nothing is installed or persisted and the loaded model is disposed (1.5873ms)
+✔ G2.9 only the six approved characters carry a picker card (0.3055ms)
+✔ G2.10 withStallTimeout: a load with no activity is rejected after stallMs, and a late result is discarded (153.4349ms)
+✔ G2.11 withStallTimeout: activity re-arms it (a slow but moving load is never cut off), the total may be many times stallMs (411.3778ms)
+✔ G2.12 withStallTimeout: after "download complete" the parse gets 3x the stall time; no timeout (0) leaves the load alone (573.5234ms)
+✔ G2.13 registry with stallMs: a hung GLB makes create() reject (LoadStalledError), is not cached, Try again fetches again, the late file is disposed (111.288ms)
+✔ G2.14 a stalled GLB is a strict-swap error: the player keeps the model, nothing persisted, Try again works (100.5688ms)
+✔ G2.15 (B3) a strict swap that waited on a stalled warm-up reports the error at once: one stall timer, not two; Try again then loads (66.1604ms)
+✔ G2.16 (B3) a warm-up that failed before Confirm is not held against it (Confirm loads afresh); a non-strict swap still retries (153.9949ms)
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+✔ U1.1 casual-character.glb: creasedNormalsFast equals three's toCreasedNormals (same attributes, count and normals to 1e-6) (175.3361ms)
+✔ U1.1 adult-man.glb: creasedNormalsFast equals three's toCreasedNormals (same attributes, count and normals to 1e-6) (192.1259ms)
+✔ U1.1 adult-woman.glb: creasedNormalsFast equals three's toCreasedNormals (same attributes, count and normals to 1e-6) (154.3743ms)
+✔ U1.1 man.glb: creasedNormalsFast equals three's toCreasedNormals (same attributes, count and normals to 1e-6) (181.3348ms)
+✔ U1.1 woman.glb: creasedNormalsFast equals three's toCreasedNormals (same attributes, count and normals to 1e-6) (150.7657ms)
+✔ U1.1 teen-boy.glb: creasedNormalsFast equals three's toCreasedNormals (same attributes, count and normals to 1e-6) (153.135ms)
+✔ U1.1 teen-girl.glb: creasedNormalsFast equals three's toCreasedNormals (same attributes, count and normals to 1e-6) (175.5144ms)
+✔ U1.1 young-boy.glb: creasedNormalsFast equals three's toCreasedNormals (same attributes, count and normals to 1e-6) (237.6407ms)
+✔ U1.1 young-girl.glb: creasedNormalsFast equals three's toCreasedNormals (same attributes, count and normals to 1e-6) (156.1348ms)
+✔ U1.1 the stepped crease yields between chunks and gives the same result as the one-go version (133.8151ms)
+✔ U1.1 a non-indexed geometry falls back to three (same result, no crash) (2.6174ms)
+✔ U1.2 man: a lean build skins only the indexed geometry (box and sole candidates), never the 5x de-indexed one (212.6198ms)
+✔ U1.2 woman: a lean build skins only the indexed geometry (box and sole candidates), never the 5x de-indexed one (119.0082ms)
+✔ U1.2 teen-boy: a lean build skins only the indexed geometry (box and sole candidates), never the 5x de-indexed one (162.8731ms)
+✔ U1.2 teen-girl: a lean build skins only the indexed geometry (box and sole candidates), never the 5x de-indexed one (101.2588ms)
+✔ U1.2 young-boy: a lean build skins only the indexed geometry (box and sole candidates), never the 5x de-indexed one (87.6872ms)
+✔ U1.2 young-girl: a lean build skins only the indexed geometry (box and sole candidates), never the 5x de-indexed one (103.6288ms)
+✔ U1.3 default: the lean build and the classic build give the same character (height, gait, sole lift per frame, bone poses) (231.2113ms)
+✔ U1.3 man: the lean build and the classic build give the same character (height, gait, sole lift per frame, bone poses) (922.2612ms)
+✔ U1.3 woman: the lean build and the classic build give the same character (height, gait, sole lift per frame, bone poses) (645.1736ms)
+✔ U1.3 teen-boy: the lean build and the classic build give the same character (height, gait, sole lift per frame, bone poses) (712.9428ms)
+✔ U1.3 teen-girl: the lean build and the classic build give the same character (height, gait, sole lift per frame, bone poses) (630.2835ms)
+✔ U1.3 young-boy: the lean build and the classic build give the same character (height, gait, sole lift per frame, bone poses) (844.0797ms)
+✔ U1.3 young-girl: the lean build and the classic build give the same character (height, gait, sole lift per frame, bone poses) (641.5328ms)
+✔ U1.4 a swap with yieldToMain runs in steps (>= 3 yields before the install) and installs in one synchronous block (8.4249ms)
+✔ U1.4 a real lean build is split into steps: >= 8 yields, each stage reported, longest stretch small (65.7544ms)
+✔ U1.4 a swap superseded during a yield is dropped without side effects (1.014ms)
+✔ U1.5 after warm(next) the swap needs no fetch, no build and installs without another yield (1.8054ms)
+✔ U1.6 every staged load draws the model hidden BEFORE the install (cold swap, tap before the warm finished); a direct swap and a dropped warm do not (1.9114ms)
+✔ U1.5 warm does nothing for the model on screen or an unknown id, and a direct (no-flag) swap ignores the slot (0.4803ms)
+✔ U3.3 a warm model nobody takes is disposed: when another swap goes elsewhere, on dropWarm, and when dropped while building (19.4365ms)
+✔ U3.4 cancelPendingWarm (the game resumed): a warm still being built stops at its next step and builds no further stage; a finished warm is kept (52.072ms)
+✔ U3.1 evicting a cached file closes its decoded images exactly once and leaves a kept one alone (30.1188ms)
+✔ U3.1 a source being cloned is not evicted under the clone (the clone shares its images) (30.5001ms)
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+  [U2.3 man] sweep worst 0.000 mm, random-blend worst 0.000 mm, set 24 of 3524; depth up to 74.8 mm, non-zero in 383/400 blends
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+  [U2.3 woman] sweep worst 0.000 mm, random-blend worst 0.000 mm, set 27 of 3223; depth up to 66.1 mm, non-zero in 388/400 blends
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+  [U2.3 teen-boy] sweep worst 0.000 mm, random-blend worst 0.000 mm, set 27 of 3341; depth up to 72.0 mm, non-zero in 383/400 blends
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+  [U2.3 teen-girl] sweep worst 0.000 mm, random-blend worst 0.000 mm, set 27 of 3282; depth up to 66.4 mm, non-zero in 393/400 blends
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+  [U2.3 young-boy] sweep worst 0.000 mm, random-blend worst 0.000 mm, set 26 of 3107; depth up to 56.1 mm, non-zero in 385/400 blends
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+  [U2.3 young-girl] sweep worst 0.000 mm, random-blend worst 0.000 mm, set 31 of 3296; depth up to 53.8 mm, non-zero in 395/400 blends
+THREE.GLTFLoader: Couldn't load texture blob:stub
+THREE.GLTFLoader: Couldn't load texture blob:stub
+✔ U3.2 108 cycle-order swaps: cache bytes stay within the budget, <= 3 files, <= 2 live, fetched capped, fetchCount exact (1230.0324ms)
+✔ U3.2 the budget policy: a repeat of a cached model does not fetch, and the least recently used file is the one evicted (2.7921ms)
+✔ step 0: the timing recorder keeps stages per swap in order and caps its size (3.0571ms)
+✔ U2.1 man: an airborne update skins only the reduced sole set (<= 160 vertices, <= 1/10 of the classic set), and lifts within 1 mm of the full scan (514.9961ms)
+✔ U2.1 woman: an airborne update skins only the reduced sole set (<= 160 vertices, <= 1/10 of the classic set), and lifts within 1 mm of the full scan (473.2936ms)
+✔ U2.1 teen-boy: an airborne update skins only the reduced sole set (<= 160 vertices, <= 1/10 of the classic set), and lifts within 1 mm of the full scan (458.7885ms)
+✔ U2.1 teen-girl: an airborne update skins only the reduced sole set (<= 160 vertices, <= 1/10 of the classic set), and lifts within 1 mm of the full scan (452.4047ms)
+✔ U2.1 young-boy: an airborne update skins only the reduced sole set (<= 160 vertices, <= 1/10 of the classic set), and lifts within 1 mm of the full scan (465.6351ms)
+✔ U2.1 young-girl: an airborne update skins only the reduced sole set (<= 160 vertices, <= 1/10 of the classic set), and lifts within 1 mm of the full scan (470.1134ms)
+✔ U2.2 at the apex plateau the unchanged pose is not scanned again (20 settled frames skin <= 2x the set in total) (101.8594ms)
+✔ U2.3 man: the sole depth of the reduced set matches the full set at every sweep pose (every action, 120 times) and at 400 random blends, within 1 mm (2231.718ms)
+✔ U2.3 woman: the sole depth of the reduced set matches the full set at every sweep pose (every action, 120 times) and at 400 random blends, within 1 mm (1875.2571ms)
+✔ U2.3 teen-boy: the sole depth of the reduced set matches the full set at every sweep pose (every action, 120 times) and at 400 random blends, within 1 mm (2438.1504ms)
+✔ U2.3 teen-girl: the sole depth of the reduced set matches the full set at every sweep pose (every action, 120 times) and at 400 random blends, within 1 mm (1980.6273ms)
+✔ U2.3 young-boy: the sole depth of the reduced set matches the full set at every sweep pose (every action, 120 times) and at 400 random blends, within 1 mm (1993.0384ms)
+✔ U2.3 young-girl: the sole depth of the reduced set matches the full set at every sweep pose (every action, 120 times) and at 400 random blends, within 1 mm (1946.6405ms)
+✔ registry.create with yieldToMain and mark builds the real lean character and reports the stages (83.671ms)
+✔ every profile has a unique id, a url, a positive height and camera heights below the head (2.0419ms)
+✔ the default profile reproduces the pre-CHAR camera exactly (pivot 1.52, eye 1.62 at 1.72 m) (0.505ms)
+✔ other profiles scale the camera heights with their height (0.3402ms)
+✔ dev-only profiles are reachable by id but not offered by the cycle (0.4136ms)
+✔ resolveStartCharacter: no flag is dormant, the flag selects, invalid ids fall back (1.8613ms)
+✔ character storage uses the k3d.* try/catch pattern (0.5852ms)
+✔ bodyVisible truth table (0.3068ms)
+✔ registry: one parse per url, independent instances, failures are not cached (9.4427ms)
+✔ registry.trim drops cached files nobody uses and keeps live ones (1.1794ms)
+✔ swapper: installs, disposes the old model, applies camera + body rule and persists on request (2.2297ms)
+✔ swapper: a broken profile warns once and restores the default (0.9683ms)
+✔ swapper: unknown id and a failing default never leave the player without a model (0.4948ms)
+✔ swapper: a stale swap is thrown away and disposed (1.3395ms)
+✔ swapper: compile:false skips prepare (the no-flag path stays as before) (0.8369ms)
+✔ swapper: a prepare failure disposes the new model and falls back (1.1095ms)
+✔ regression: a model that finishes loading while driving (or flying) stays hidden (1.3788ms)
+✔ GlbCharacter: the one-argument constructor (pedestrians) still yields the 1.72 m default (181.685ms)
+✔ GlbCharacter: opts.height normalises to the profile height with the feet on the ground (123.6055ms)
+✔ findClipByName matches exact names; GlbCharacter falls back to the word search for a missing name (62.3026ms)
+✔ cloneSource keeps one skeleton per glTF skin (not one per mesh) and its own materials (38.0538ms)
+✔ adult-man: the shipped GLB has the profile's clips, its foot bones and cut-out hair; the MIT notice ships beside it (5.2268ms)
+✔ adult-woman: the shipped GLB has the profile's clips, its foot bones and cut-out hair; the MIT notice ships beside it (4.5645ms)
+✔ CHAR-P4: the six MPFB profiles exist, in the cycle, with their own file, height and the Jump clip as the airborne pose (0.4704ms)
+✔ man: the shipped GLB has the profile's clips (incl. Jump), foot_l/foot_r, one skin, two materials (cut-out hair) and two textures (6.7115ms)
+✔ woman: the shipped GLB has the profile's clips (incl. Jump), foot_l/foot_r, one skin, two materials (cut-out hair) and two textures (23.7312ms)
+✔ teen-boy: the shipped GLB has the profile's clips (incl. Jump), foot_l/foot_r, one skin, two materials (cut-out hair) and two textures (33.2125ms)
+✔ teen-girl: the shipped GLB has the profile's clips (incl. Jump), foot_l/foot_r, one skin, two materials (cut-out hair) and two textures (6.5821ms)
+✔ young-boy: the shipped GLB has the profile's clips (incl. Jump), foot_l/foot_r, one skin, two materials (cut-out hair) and two textures (5.9804ms)
+✔ young-girl: the shipped GLB has the profile's clips (incl. Jump), foot_l/foot_r, one skin, two materials (cut-out hair) and two textures (5.9342ms)
+✔ F1: setVisual keeps the rendered facing for every heading (no mirrored yaw past 90 degrees) (5.6007ms)
+✔ F2: the direct (no-flag) path loads with loadDirect only: no parse cache, no clone (0.5753ms)
+✔ F2: the swapper uses the direct path only when asked (no-flag start) and installs through the usual step (0.9226ms)
+✔ F3: an unknown id while a swap is loading does not cancel it, and loading is clear at the end (0.7006ms)
+✔ F3: asking for the model already on screen drops a pending swap and clears loading at once (1.0256ms)
+✔ F3: loading stays true until the newest of two overlapping swaps finishes (1.1794ms)
+✔ F4: a superseded failure does not load or prepare the default fallback (1.0359ms)
+✔ F8: a failing default says so (no "falling back to default" for the default itself) (0.5995ms)
+✔ F5: the parsed cache keeps the default and the last two profiles; revisits do not fetch again (1.6728ms)
+✔ F5: a file that falls out of the default + last-two set is released (registry level) (0.6301ms)
+✔ findClip prefers exact names and ignores jump variants for run (5.0191ms)
+✔ stripRootMotion removes net drift but keeps the bob (3.8163ms)
+✔ shipped character model normalises to a 1.72 m figure standing on the origin, facing +Z (431.2544ms)
+✔ a model without the required clips is rejected (17.3932ms)
+✔ follow: trails a steadily moving target by velocity / rate at any step size (2.5824ms)
+✔ the chase camera ends up in the same place at 20, 60 and 144 fps (65.2401ms)
+✔ behind the car at speed, a steady boom (no creeping or jitter) (5.7765ms)
+✔ a wall behind the car: the camera never passes it, not even on the frame it first cuts the boom (6.4095ms)
+✔ a parked car under the boom: the camera rises over it instead of entering it (2.623ms)
+✔ reversing: a short shunt keeps the view ahead; a long reverse pans round to look back, no faster than maxSwing (16.9681ms)
+✔ V cycles the chase distance through the presets (2.2456ms)
+✔ lamp state: brake lamps with the brake or handbrake, reversing lamps in reverse (1.7884ms)
+✔ phaseAt: the frozen Day setting is the untouched daylight (every factor exactly 1, no night) (3.0463ms)
+✔ phaseAt: night is dark with lamps and stars; dusk and dawn pass through it continuously (29.6545ms)
+✔ phaseAt: lamps come on through sunset and are fully lit before the sky is dark (0.6001ms)
+✔ lightAt: the sun by day, a moon by night, and the light is dark whenever they change over (22.8922ms)
+✔ advanceHour: a day of play takes 13 min 25 s (daylight 9 min 45 s, night 3 min 40 s) and wraps (5.5743ms)
+✔ withWeather: rain closes the sky, dims the sun, thickens the haze and brings the lamps on (0.611ms)
+✔ stepWeather: a shower builds, soaks the ground, stops, and the ground dries more slowly (1.0963ms)
+✔ Showers: occasional, repeatable for a seed, never before three minutes (5.0424ms)
+✔ startModes: address beats the saved choice beats the default; an automated browser gets a frozen dry day (0.7758ms)
+✔ house numbers run consecutively across the Main Bazaar frontages (1.3713ms)
+✔ every pinned business resolves to a lot on a known frontage (0.7715ms)
+✔ lot plans are deterministic and sized to the fitted lot count (1.9959ms)
+✔ goods in a five-foot way always leave a walkable corridor (5.235ms)
+✔ the median exists along most of the street and stays between the carriageways (10.868ms)
+✔ drive graph holds only carriageway classes a car may use (13.104ms)
+✔ regression: no drive edge runs along a pedestrian-only way (246.8088ms)
+✔ routes avoid the Darul Hana footbridge and pedestrian lanes such as Indian Mosque Lane (36.743ms)
+✔ one-way edges are only travelled from node a to node b (46.7153ms)
+✔ synthetic: one-way forces a detour, disconnected pieces never join, crossing ways without a node do not connect (1.0683ms)
+✔ real data: a disconnected drive component is never routed to from the main network (2.9628ms)
+✔ GPS destinations: all five reachable from the car spawn, ending on a public uncovered road (44.5557ms)
+✔ heading preference: a moving car is not sent into a U-turn when the road ahead also leads there (1.6057ms)
+✔ truth table: parseFlags (default on) (3.7395ms)
+✔ parseFlags with defaultOn=false (no location): everything off unless a value is given (0.513ms)
+✔ the result is frozen; getFlags reads location once; no location means all off (0.8472ms)
+✔ v9Enabled, ux1Enabled and charEnabled follow the registry (1.2506ms)
+✔ a business tag never decides the architectural class of a building (2.1923ms)
+✔ religious, civic and monument forms come from the footprint's own tags (0.7153ms)
+✔ uncertain evidence gives a conservative default, and the registry outranks tags (1.5969ms)
+✔ every registry entry is complete, coordinate-free and has its model files (37.3843ms)
+✔ each landmark has exactly one protected building record, classified from the registry (13.5039ms)
+✔ the temple is not a shophouse, the food court is not a shoplot, the opera stage is its own structure (4.3376ms)
+✔ no generic building remains beneath a landmark model, and no landmark is drawn twice (601.4331ms)
+✔ landmark positions, orientation and scale follow the mapped features (301.0579ms)
+✔ collision comes from the model, once: solid halls, open forecourt and dining floor (1.0813ms)
+✔ a protected landmark passed to a generic renderer fails loudly (1.3009ms)
+✔ every generic building generator is behind the guard (73.9166ms)
+✔ the carved host blocks stay ordinary shophouse rows with their business signs (68.0176ms)
+✔ no building anywhere combines a non-shop architectural class with shopfront geometry (2200.5292ms)
+✔ Jalan Carpenter runs through the Harmony Arch and midway between its blocks, junctions unmoved (341.638ms)
+✔ flag: on with ?m5=1; off without a location, where no M5 row, block, lot table or road cut exists (445.2414ms)
+✔ Carpenter Street rows are mapped frontage edges of the current chunk rings, and the two added blocks are those rings (1.198ms)
+✔ rows face the street, the corner lot of the Bishopgate row is the Carpenter Street corner, and lot tables fit (1.127ms)
+✔ generic boards carry a trade word only: no name, no number (0.3767ms)
+✔ the carriageway line lies midway between the mapped frontages, which stand 7.5 to 9.2 m apart (0.8895ms)
+✔ the chunk road and street furniture leave the new stretch to the section (0.6182ms)
+✔ no street lamp stands beside a parked car, and the north row keeps to its own block at the Jalan China end (0.6813ms)
+✔ flag off: the chunk data, the lot styles and the lists are untouched (9.1477ms)
+✔ the frontage lines are the mapped block edges (52.8734ms)
+✔ patch: the north block becomes seven stepped two-storey pieces and every block fronts India Street (94.7781ms)
+✔ street frame: 10 to 15 m between the frontages, columns on the middle line, stalls clear of them (4.2155ms)
+✔ lot styles: bright paint on India Street; Jalan Gambier keeps its paint and gains blinds (0.9834ms)
+✔ Jalan Gambier: parked cars stand at the kerb of their own street, clear of every other carriageway and building (9.6857ms)
+✔ boards: only mapped businesses get one, on the nearest lot of the street frontage (9.4352ms)
+✔ flag off: no graves (56.0552ms)
+✔ graves: inside a mapped cemetery, off every road and path, clear of buildings, lying across the direction of Mecca (42.4723ms)
+✔ City Mosque: the mapped outline has the round projection the entrance is built on; verified counts are pinned (2.4292ms)
+✔ floating mosque: one minaret, taller than the dome; the building is mapped in chunk -1_-2 (1.9869ms)
+✔ flag off: no fronts, no gate, no obstacles, no keep-out, the mapped outline stays a wall (19.2111ms)
+✔ the frontage table is what the map says: every listed edge is a mapped shophouse frontage within 12 m of Jalan Padungan (84.5806ms)
+✔ the Cat Column stands on the mapped node, on the island between the three carriageways (25.6733ms)
+✔ the paifang is open: four piers beside the two carriageways that pass under it, and the Great Cat on the island in front (26.6545ms)
+✔ kapcai stand off the carriageways and in front of a Padungan lot (7.8796ms)
+✔ flag off: no entrance, no obstacles, no sign (53.1891ms)
+✔ Plaza Merdeka: the entrance stands on a mapped face of the mall, is where the mapped footway arrives, and carries the mapped name (52.7839ms)
+✔ verified forms are pinned: a corner turret and three bays on the Square Tower, six columns under the clock tower (0.2708ms)
+✔ promenade walk: paved runs follow the railing, stay on land and off the carriageways (26.8512ms)
+✔ offsetRing grows a ring by its distance whichever way it is wound (1.5916ms)
+✔ waterfront props: festoons, palms, bins and kapcai exist only with the flag, block as they should, and festoons span lamp to lamp (11.0505ms)
+✔ promenade walk: the landward edge runs forward everywhere, also at the jetty jog near the Square Tower (50.191ms)
+✔ withDataVersion appends ?v= or &v= only when a non-empty hash is supplied (4.3397ms)
+✔ bakeStandInWalker builds a valid VAT with top, bottom, skin and hair parts at Low, Medium and High cells (116.7945ms)
+✔ Credits carries the verbatim Microsoft Rocketbox MIT notice, every shipped reference photo author, and index.html drops "plain grey" (12.1651ms)
+✔ M5 procedural landmarks build real low-detail meshes (< 35 % of high tris) and City Mosque high stays > 3000 tris (172.2317ms)
+✔ chunks -1_-1 and -2_-1 stay within +12 % of ?m5=0 at low detail (3067.3301ms)
+✔ V5Scene street-block split adds at most 6 draw calls and produces sub-corridor bounding boxes (1563.6467ms)
+✔ overrides & widths: ?roads=0 keeps Night 1 widths; ?roads=1 applies lanes * 3.3 m, overrides and Satok Bridge (6.2236ms)
+✔ false footWet bridge decks removed across Jalan Main Bazaar and Jalan Gambier (6.9124ms)
+✔ bridge & overpass clearances >= 5.3 m above crossed carriageways (28.1148ms)
+✔ roundabouts, splitters, give-way lines, medians, twin-arm lamps and Bulatan Engleham / Kipali rules (1844.2321ms)
+✔ budgets: chunk JSON stays within +35 % and per-chunk triangles stay within +15 % (?roads=1 vs ?roads=0) (2921.9816ms)
+✔ signals.json covers mapped & inferred junctions with multi-approach poles encoded in chunks (1865.0292ms)
+✔ crossing roads never share a green: skewed crossroads get two phases, one-corridor crossings one (2560.595ms)
+✔ all nodes of a split dual-carriageway signal junction cycle synchronously on one timer; ?inferredSignals=0 disables inferred ones (94.623ms)
+✔ roundabout priority: entry vehicle gives way to circulating vehicle regardless of road class, and multi-lane one-ways keep left (4.2311ms)
+✔ a junction box stops traffic at its first node on red, even where that node only splits the road, and never inside it (1.1394ms)
+✔ drive-graph marks real Kuching roundabouts with EDGE_ROUNDABOUT | EDGE_ONEWAY and GPS routes traverse them clockwise (12.6371ms)
+✔ overture ids are safe integers above every OSM id and never negative (1.9818ms)
+✔ simplification keeps a subset of vertices within the tolerance (2.3046ms)
+✔ conflation keeps free footprints and drops duplicates, road, water and tiny ones (14.3565ms)
+✔ pins hold four OSM and seven Overture businesses; every pin resolves to a lot (3.0592ms)
+✔ No. 42 is pinned to the verified OSM record; its Overture duplicate is hidden, not pinned (3.9093ms)
+✔ pin signs behaviour (child node with --experimental-transform-types) (1664.0761ms)
+✔ fares grow with the road distance; a taxi fare is more than a delivery; money is in ten sen (2.0735ms)
+✔ a job has two stages; the clock starts at the pick-up; the payout is fare plus tip (1.2712ms)
+✔ the tip falls with lateness and with collisions, and never goes below nothing (1.3812ms)
+✔ arrival: near the stopping point or the place, and nearly at rest (0.6777ms)
+✔ job places: the file holds only job groups, in whole metres, every one near a public road; no names (8.8824ms)
+✔ a place is described by its kind and street, never by a business name (2.7113ms)
+✔ offers from the car in Jalan China: up to three, each drivable on the real road graph, nearest first (65.9945ms)
+✔ save and load round trip; nothing saved reads as null (0.9148ms)
+✔ a damaged, foreign or hostile saved value is refused, never trusted and never thrown on (0.4956ms)
+✔ storage that throws or is missing: load gives null, save gives false, nothing escapes (0.6173ms)
+✔ boxOverlap: apart, touching end on, side by side and at an angle; the push takes the first box clear (0.8897ms)
+✔ closing speed counts both vehicles; damage starts above a touch; a wreck keeps 40 % power; repair has a price (0.4298ms)
+✔ shove: the body moves clear and loses its speed toward the other vehicle; not into a wall (1.3774ms)
+✔ four kinds: sizes agree between physics, traffic and model; each drives, and they feel different (136.3181ms)
+✔ models: the pickup has a load bed and no rear glasshouse; the taxi a roof sign; the parked kapcai no rider (48.6188ms)
+✔ parking places: beside service roads and residential edges only, clear of the carriageway, fixed for a chunk (238.2883ms)
+✔ settle: only clear places are kept, none overlap, and the three starters stand a short walk from the car (59.39ms)
+✔ all six kinds drive in the traffic; a bumped vehicle stands, hoots once, then drives on (175.5142ms)
+✔ the horn: a driver held up by the player within 30 m ahead edges past; one behind or far away does not (67.7796ms)
+✔ walkers ahead of a horn stop for a moment (0.7945ms)
+worst relative distance error: 1.93e-7
+✔ origin maps to (0,0) (2.1032ms)
+✔ round trip geo -> local -> geo is sub-millimetre (1.1961ms)
+✔ local distances match WGS84 geodesic distances (< 5 mm per km) (4.0315ms)
+✔ axes: north is -Z, east is +X (0.5396ms)
+✔ 1 degree-fraction scale sanity (0.001 deg lat ~ 110.57 m at the equator) (0.373ms)
+✔ flag is on by default (N1-M1): only ?ux1=0 turns it off (2.1363ms)
+✔ touch guide has no keyboard wording; keyboard guide names the keys (0.5047ms)
+✔ car direction and distance: +z is south, +x is east (0.5427ms)
+✔ no-car text: keyboard says Esc, touch says Pause, in both the car and no-car cases (0.4326ms)
+✔ P hint only over the open map, never in OP (fly) mode or on foot (0.6133ms)
+✔ E hint is suppressed in admin mode, and only on foot; G and R only on foot (0.4181ms)
+✔ hints repeat no more than once per cooldown (0.5651ms)
+✔ graph is non-trivial and inside the manifest area (4.0654ms)
+✔ waterfront spawn -> Fort Margherita crosses the river on Darul Hana Bridge (26.3499ms)
+✔ route length >= straight-line distance, endpoints exact, deterministic (59.4609ms)
+✔ no non-bridge edge of the graph has a segment midpoint in water (2100.5909ms)
+✔ routes to every landmark stay off the water; unreachable ones return null (271.5627ms)
+✔ a main road gets a kerb, a paved footpath and a drain on both sides, inside the painted concrete strip (6.2278ms)
+✔ a residential street has the drain at the road edge and no raised footpath (2.0441ms)
+✔ nothing is laid across another carriageway, and a building at the road edge narrows the layout away (0.8414ms)
+✔ one half of a dual road gets a median kerb on its right and the footpath on its left only (3.8058ms)
+✔ the Low preset keeps kerb, footpath and drain but drops service-road kerbs and uses fewer triangles (1.7405ms)
+✔ lane lines follow road class and width (1.6685ms)
+✔ a stop line covers the approach half only (traffic keeps left) and none faces traffic leaving a one-way (0.7495ms)
+✔ chunk files carry the mapped crossings and bus stops, box junctions and only known sign boards (1516.7694ms)
+✔ insetEdges moves only the frontage edge, for either winding (14.4806ms)
+✔ insetEdges mitres a corner between two frontage edges and keeps vertex count (0.5491ms)
+✔ edgeOutward points away from the polygon (0.4634ms)
+✔ procedural styling is deterministic and lot widths stay in the shophouse range (0.4806ms)
+✔ associate: inside, unambiguous adjacent, ambiguous and far points (2.2816ms)
+✔ normName folds case, punctuation and filler words (0.6767ms)
+✔ sign categories and the Google Maps link (0.5752ms)
+✔ heritage rows: frontage edges are valid, arcade inset stays inside the outline (1517.4593ms)
+✔ places: ids are unique, signs only on verified places with a valid wall edge (1488.8994ms)
+✔ traffic keeps to streets that lead on: no service road, no covered way, no dead end (39.7419ms)
+✔ vehicles appear in the ring round the player, on the left of two-way streets, and never against a one-way (181.3243ms)
+✔ vehicles do not drive into each other (no signals) (675.3761ms)
+✔ vehicles do not drive into each other (a signal at every junction) (821.2995ms)
+✔ a queue behind a stopped vehicle stays a queue: nobody drives through the one in front (78.5983ms)
+✔ a vehicle stops for a walker in its path and drives on when the way is clear (20.635ms)
+✔ vehicles wait at a red signal and cross on green (242.9348ms)
+✔ the same seed gives the same traffic (82.2314ms)
+✔ v9flag: false when location is undefined, true only for ?v9=1, read once (7.4888ms)
+✔ v9FacadePaint: same hue as the facade, more saturated by V9_PAINT_SAT and darker by V9_PAINT_DARK (HSL); greys stay grey (7.5546ms)
+✔ v9 arcade geometry (child node with --experimental-transform-types) (14890.3707ms)
+✔ accelerates smoothly from rest and tops out at the limit (42.8799ms)
+✔ S brakes to a stop, then reverses up to the reverse limit; W brakes a reversing car (11.6527ms)
+✔ coasting slows gently, the handbrake stops the car much sooner (25.9105ms)
+✔ A steers left, D steers right, and steering is eased in and returns to centre (4.5243ms)
+✔ lateral acceleration stays within tyre grip at speed (no instant spin), and a tight turn is possible when slow (7.9978ms)
+✔ the handbrake lets the tail slide in a turn (13.2348ms)
+✔ off the carriageway the car is slowed, back on it full speed returns (6.9182ms)
+✔ water, unloaded chunks and the map edge stop the car where it is (17.894ms)
+✔ a deck without a mapped carriageway (footbridge, pier) is refused (6.6792ms)
+✔ ride height, pitch and roll follow the ground under the wheels (20.8138ms)
+✔ boxContact: clear, touching and overlapping boxes (10.9013ms)
+✔ a head-on hit stops the car at the wall; it never ends up inside the building (37.4893ms)
+✔ a glancing hit slides along the wall and turns the nose away (12.4282ms)
+✔ V8.1: the same driving gives the same path at 30, 60 and 144 fps and through 100 ms stalls (34.8841ms)
+✔ a 2.7 m gap between two obstacles is passable, a 1.6 m gap is not (38.4082ms)
+✔ the parked car blocks walking but not itself (2.251ms)
+✔ R returns the car to the last pose it held on the carriageway (6.7108ms)
+✔ V8.2 R: in a narrow lane off the mapped centre line, the car is put in the lane, not on the line (3.5036ms)
+✔ V8.2 R: poses remembered while driving the lane are verified, and the newest is used (40.9488ms)
+✔ V8.2 R: a remembered pose that is now blocked, inside a building or off the drawn map is skipped (8.1802ms)
+✔ V8.2 R: with no safe place the car is not moved, and the reason says whether the ground is still loading (35.4445ms)
+✔ V8.2 R: the car is put on the carriageway with its whole body, on gentle ground, away from water (3.4639ms)
+✔ V8.2 R: a one-way street keeps its direction; the search follows the nearest carriageway at a junction (3.903ms)
+✔ the car waits on Jalan China, in the free lane between the frontages, facing the direction of the one-way street (6.4616ms)
+✔ playable area: every mapped carriageway within 300 m of Jalan China is wide enough for the car (148.9782ms)
+✔ playable area: Jalan China connects to the surrounding streets (a real block can be driven round) (9.4929ms)
+✔ walkers at Jalan Padungan: near the player, never inside a wall or the water, off the carriageway (219.482ms)
+✔ walkers at a suburb: near the player, never inside a wall or the water, off the carriageway (228.2973ms)
+✔ a walker waits rather than walk into the player, and walks on afterwards (15.5512ms)
+✔ walkers leave with the chunk they stand on (18.4498ms)
+✔ flag `life`: on by default in a browser, ?life=0 turns the traffic and the walkers off, off under node (0.3525ms)
+ℹ tests 332
+ℹ suites 0
+ℹ pass 332
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 24746.8653

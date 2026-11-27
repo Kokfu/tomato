@@ -31,10 +31,10 @@ import { ROAD_TYPES, BUILDING_KINDS } from '../../src/world/types.ts';
 import type { ChunkData, Manifest, RoadType } from '../../src/world/types.ts';
 import type { GraphFile } from '../../src/ui/Router.ts';
 import { GRAPH_SCALE, GRAPH_VERSION } from '../../src/ui/Router.ts';
-import { loadOsm, project, roadTypeOf, isWalkable, isBridge, isTunnel, isClosedWay, roadWidth } from './osm.ts';
+import { loadOsm, project, roadTypeOf, isWalkable, isBridge, isTunnel, isClosedWay, roadWidth, roadWidthTrue, overriddenTags } from './osm.ts';
 import { DRIVABLE_CLASSES, SIDE_CLEARANCE } from '../../src/vehicle/RoadQuery.ts';
 import { CAR } from '../../src/vehicle/VehiclePhysics.ts';
-import { EDGE_ONEWAY } from '../../src/ui/Router.ts';
+import { EDGE_ONEWAY, EDGE_ROUNDABOUT } from '../../src/ui/Router.ts';
 import type { Pt } from './osm.ts';
 
 const OUT = 'public/data/kuching';
@@ -66,13 +66,16 @@ const DEBUG = process.argv.includes('--debug');
 const DRIVE = process.argv.includes('--drive');
 const NO = new Set(['no', 'private']);
 /** Drive profile: may a car use this way, and in which direction (0 = both, 1 = node order, -1 = against it)? */
+function driveWidth(tags: Record<string, string>, type: RoadType): number {
+  return Math.max(roadWidth(tags, type).w, roadWidthTrue(tags, type).w);
+}
 function driveAccess(tags: Record<string, string>, type: RoadType): { ok: boolean; dir: 0 | 1 | -1 } {
   const no = { ok: false, dir: 0 as const };
   if (!DRIVABLE_CLASSES.has(type)) return no;
   if (tags.service === 'emergency_access') return no;
   const motor = tags.motorcar ?? tags.motor_vehicle ?? tags.vehicle;
   if (motor !== undefined ? NO.has(motor) : NO.has(tags.access ?? '')) return no;
-  if (roadWidth(tags, type).w < CAR.halfWid * 2 + 2 * SIDE_CLEARANCE) return no;
+  if (driveWidth(tags, type) < CAR.halfWid * 2 + 2 * SIDE_CLEARANCE) return no;
   const ow = tags.oneway;
   if (ow === '-1' || ow === 'reverse') return { ok: true, dir: -1 };
   if (ow === 'yes' || ow === 'true' || ow === '1') return { ok: true, dir: 1 };
@@ -159,23 +162,25 @@ const segs: Seg[] = [];
 const stats = { ways: 0, segments: 0, untaggedDeckSegments: 0, droppedWater: 0, droppedBuilding: 0, droppedOutside: 0, bridgeSegments: 0 };
 
 for (const el of elements) {
-  const tags = el.tags;
-  if (el.type !== 'way' || !tags || !el.geometry || !el.nodes) continue;
+  if (el.type !== 'way' || !el.tags || !el.geometry || !el.nodes) continue;
+  const tags = overriddenTags(el.id, el.tags);
   let type: RoadType | null = null;
   let bridge = false;
   let dir: 0 | 1 | -1 = 0;
+  let roundabout = false;
   if (DRIVE) {
     if (!tags.highway || (tags.area === 'yes' && isClosedWay(el))) continue;
     type = roadTypeOf(tags);
     if (!type || !DRIVABLE_CLASSES.has(type)) continue;
     const acc = driveAccess(tags, type);
     if (!acc.ok) {
-      if (roadWidth(tags, type).w < CAR.halfWid * 2 + 2 * SIDE_CLEARANCE) driveStats.excludedNarrow++; else driveStats.excludedAccess++;
+      if (driveWidth(tags, type) < CAR.halfWid * 2 + 2 * SIDE_CLEARANCE) driveStats.excludedNarrow++; else driveStats.excludedAccess++;
       continue;
     }
     dir = acc.dir;
     if (dir) driveStats.onewayWays++;
     bridge = isBridge(tags);
+    roundabout = tags.junction === 'roundabout' || tags.junction === 'circular';
   } else if (tags.man_made === 'pier') {
     if (isClosedWay(el)) continue;
     type = 'pier';
@@ -194,7 +199,7 @@ for (const el of elements) {
     n = nameIdx.get(tags.name) ?? -1;
     if (n < 0) { n = names.length; names.push(tags.name); nameIdx.set(tags.name, n); }
   }
-  const f = (bridge ? 1 : 0) | (isTunnel(tags) ? 2 : 0) | (dir ? EDGE_ONEWAY : 0);
+  const f = (bridge ? 1 : 0) | (isTunnel(tags) ? 2 : 0) | (dir ? EDGE_ONEWAY : 0) | (roundabout ? EDGE_ROUNDABOUT : 0);
   // The OSM way id is kept for bridge / pier edges only (it identifies the crossing and keeps the file small).
   const way = bridge ? el.id : 0;
   const ak = `${ROAD_TYPES.indexOf(type)}|${f}|${n}|${way}`;

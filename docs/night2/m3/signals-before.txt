@@ -1,0 +1,6 @@
+s1-openg-badruddin-queue-red-before {"fps":51.6,"calls":694,"tris":1165228,"geo":674,"tex":146,"chunks":97,"pos":[-336,8.8,1068]}
+  probe {"near":8,"stopped":3,"why":{"follow":1,"signal":2},"phase":32.2,"at":["follow@-353,1101","signal@-346,1127","signal@-331,1090"]}
+s2-openg-badruddin-overhead-red-before {"fps":58.4,"calls":182,"tris":459590,"geo":674,"tex":146,"chunks":97,"pos":[-338.6,8.3,1108.8]}
+  probe {"near":8,"stopped":5,"why":{"follow":3,"signal":2},"phase":32.2,"at":["follow@-353,1101","follow@-332,1084","signal@-346,1127","signal@-331,1090","follow@-346,1132"]}
+s4-openg-badruddin-queue-night-before {"fps":49.2,"calls":708,"tris":1147818,"geo":675,"tex":146,"chunks":97,"pos":[-336,8.8,1068]}
+  probe {"near":4,"stopped":2,"why":{"signal":1,"follow":1},"phase":32.2,"at":["signal@-331,1090","follow@-332,1084"]}

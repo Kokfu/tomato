@@ -1,0 +1,264 @@
+{
+ "baseline": "n1-final (1139856)",
+ "candidate": "n2-m3 (working tree before the N2-M3 commit)",
+ "machine": "noisy: other apps busy, CPU 18-29% sampled during the first set",
+ "loadProbe": {
+  "n1Final": {
+   "loadMs": [
+    4796,
+    4217,
+    4502
+   ],
+   "loadMsMedian": 4502,
+   "interactiveMs": [
+    4931,
+    4498,
+    5068
+   ],
+   "interactiveMsMedian": 4931,
+   "progsReady": [
+    72,
+    73,
+    73
+   ],
+   "panOver200": [
+    0,
+    1,
+    1
+   ],
+   "panProgs": [
+    76,
+    76,
+    76
+   ]
+  },
+  "n2M3": {
+   "loadMs": [
+    4329,
+    4400,
+    4436
+   ],
+   "loadMsMedian": 4400,
+   "interactiveMs": [
+    4702,
+    4591,
+    4589
+   ],
+   "interactiveMsMedian": 4591,
+   "progsReady": [
+    81,
+    79,
+    79
+   ],
+   "panOver200": [
+    1,
+    0,
+    1
+   ],
+   "panProgs": [
+    82,
+    82,
+    82
+   ],
+   "loadMsDeltaPct": -2.3
+  }
+ },
+ "phoneCold3Pairs": {
+  "pairs": 3,
+  "A": {
+   "n1P95Ms": [
+    68.8,
+    51.9,
+    31.2
+   ],
+   "n1P95Median": 51.9,
+   "n1MaxCalls": 121,
+   "n1MaxTrisK": 457,
+   "n1Over200": [
+    0,
+    0,
+    0
+   ],
+   "n1Programs": [
+    67,
+    67,
+    67
+   ],
+   "n1Compiles": [
+    0,
+    0,
+    0
+   ],
+   "m3P95Ms": [
+    60.8,
+    64.7,
+    71.4
+   ],
+   "m3P95Median": 64.7,
+   "m3MaxCalls": 123,
+   "m3MaxTrisK": 446,
+   "m3Over200": [
+    0,
+    0,
+    0
+   ],
+   "m3Programs": [
+    67,
+    67,
+    67
+   ],
+   "m3Compiles": [
+    0,
+    0,
+    0
+   ],
+   "deltaPct": 24.7
+  },
+  "C": {
+   "n1P95Ms": [
+    64.7,
+    50.9,
+    33.8
+   ],
+   "n1P95Median": 50.9,
+   "n1MaxCalls": 162,
+   "n1MaxTrisK": 519,
+   "n1Over200": [
+    0,
+    0,
+    0
+   ],
+   "n1Programs": [
+    67,
+    67,
+    67
+   ],
+   "n1Compiles": [
+    1,
+    1,
+    1
+   ],
+   "m3P95Ms": [
+    65.1,
+    55.7,
+    45.7
+   ],
+   "m3P95Median": 55.7,
+   "m3MaxCalls": 161,
+   "m3MaxTrisK": 487,
+   "m3Over200": [
+    0,
+    0,
+    0
+   ],
+   "m3Programs": [
+    67,
+    67,
+    67
+   ],
+   "m3Compiles": [
+    1,
+    1,
+    1
+   ],
+   "deltaPct": 9.4
+  },
+  "E": {
+   "n1P95Ms": [
+    49.5,
+    44.3,
+    32.7
+   ],
+   "n1P95Median": 44.3,
+   "n1MaxCalls": 187,
+   "n1MaxTrisK": 583,
+   "n1Over200": [
+    1,
+    0,
+    0
+   ],
+   "n1Programs": [
+    66,
+    66,
+    66
+   ],
+   "n1Compiles": [
+    1,
+    1,
+    1
+   ],
+   "n1Reached": [
+    false,
+    false,
+    false
+   ],
+   "m3P95Ms": [
+    43,
+    34.4,
+    40.6
+   ],
+   "m3P95Median": 40.6,
+   "m3MaxCalls": 177,
+   "m3MaxTrisK": 575,
+   "m3Over200": [
+    0,
+    1,
+    0
+   ],
+   "m3Programs": [
+    66,
+    66,
+    66
+   ],
+   "m3Compiles": [
+    1,
+    1,
+    1
+   ],
+   "m3Reached": [
+    true,
+    true,
+    true
+   ],
+   "deltaPct": -8.4
+  }
+ },
+ "scenarioARerun": {
+  "note": "Scenario A re-run alone (runs=1, cold) in 3 more alternating pairs because the first set was noisy (n1 cold p95 spread 31.2-68.8 ms; camera/minimap/world.update, which N2-M3 does not touch, scaled with render)",
+  "n1P95Ms": [
+   45,
+   48.5,
+   52.9
+  ],
+  "m3P95Ms": [
+   52.4,
+   51.2,
+   41.5
+  ],
+  "n1MedianMs": [
+   19.9,
+   19.9,
+   17.7
+  ],
+  "m3MedianMs": [
+   23.7,
+   21.1,
+   19.2
+  ],
+  "n1MaxCalls": 121,
+  "m3MaxCalls": 123,
+  "n1MaxTrisK": 455,
+  "m3MaxTrisK": 446,
+  "over200": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "n1P95Median": 48.5,
+  "m3P95Median": 51.2,
+  "deltaPct": 5.6
+ }
+}

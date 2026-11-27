@@ -19,17 +19,31 @@ export interface Flags {
   readonly life: boolean;
   readonly m7: boolean;
   readonly roads: boolean;
+  readonly signals: boolean;
+  readonly inferredSignals: boolean;
   readonly lab: boolean;
 }
 
 /** Flags that ?lab=1 switches on. Add a name here only when the owner approves it for the preview. */
-export const LAB_FLAGS = ['v9', 'ux1', 'c1', 'char', 'm5', 'life', 'm7', 'roads'] as const;
+export const LAB_FLAGS = ['v9', 'ux1', 'c1', 'char', 'm5', 'life', 'm7', 'roads', 'signals', 'inferredSignals'] as const;
 
 /** Pure: parse a query string such as "?v9=0". `defaultOn` is what a flag without a parameter means. */
 export function parseFlags(search: string, defaultOn = true): Flags {
   const q = new URLSearchParams(search);
   const resolve = (name: (typeof LAB_FLAGS)[number]): boolean => (q.has(name) ? q.get(name) !== '0' : defaultOn);
-  return Object.freeze({ v9: resolve('v9'), ux1: resolve('ux1'), c1: resolve('c1'), char: resolve('char'), m5: resolve('m5'), life: resolve('life'), m7: resolve('m7'), roads: resolve('roads'), lab: q.get('lab') === '1' });
+  return Object.freeze({
+    v9: resolve('v9'),
+    ux1: resolve('ux1'),
+    c1: resolve('c1'),
+    char: resolve('char'),
+    m5: resolve('m5'),
+    life: resolve('life'),
+    m7: resolve('m7'),
+    roads: resolve('roads'),
+    signals: resolve('signals'),
+    inferredSignals: resolve('inferredSignals'),
+    lab: q.get('lab') === '1',
+  });
 }
 
 let cached: Flags | null = null;

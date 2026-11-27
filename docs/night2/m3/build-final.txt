@@ -1,0 +1,23 @@
+[36mvite v8.3.8 [32mbuilding client environment for production...[36m[39m
+transforming...
+✓ 165 modules transformed.
+rendering chunks...
+computing gzip size...
+../Kuching3D-night-builds/n2-m3-final/index.html                                     9.97 kB │ gzip:   3.19 kB
+../Kuching3D-night-builds/n2-m3-final/assets/index-CjiNMz0M.css                     41.77 kB │ gzip:   8.82 kB
+../Kuching3D-night-builds/n2-m3-final/assets/BufferGeometryUtils-D_ngiuLD.js         2.03 kB │ gzip:   0.87 kB
+../Kuching3D-night-builds/n2-m3-final/assets/SkeletonUtils-MrVXxqjW.js               4.01 kB │ gzip:   1.54 kB
+../Kuching3D-night-builds/n2-m3-final/assets/pedestrians-AXxE3aEV.js                 5.68 kB │ gzip:   2.56 kB
+../Kuching3D-night-builds/n2-m3-final/assets/CharacterPicker-Dsalx2sp.js             8.10 kB │ gzip:   2.83 kB
+../Kuching3D-night-builds/n2-m3-final/assets/GlbCharacter-B-FclZtP.js               14.39 kB │ gzip:   5.64 kB
+../Kuching3D-night-builds/n2-m3-final/assets/meshopt_decoder.module-KQ-CQMxv.js     22.40 kB │ gzip:   6.04 kB
+../Kuching3D-night-builds/n2-m3-final/assets/GLTFLoader-CsOF-QJh.js                 44.56 kB │ gzip:  13.06 kB
+../Kuching3D-night-builds/n2-m3-final/assets/controller-Ctic0GD4.js                197.33 kB │ gzip:  67.36 kB
+../Kuching3D-night-builds/n2-m3-final/assets/index-B35iGS_z.js                   1,127.00 kB │ gzip: 354.51 kB
+
+[32m✓ built in 1.95s[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 900 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m

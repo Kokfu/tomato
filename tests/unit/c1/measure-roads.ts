@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { CHUNK_SIZE } from '../../../src/world/config.ts';
 import type { ChunkData, Manifest } from '../../../src/world/types.ts';
 import { setRoads } from '../../../src/world/roadsFlag.ts';
+import { setInferredSignals, setSignals } from '../../../src/world/signalsFlag.ts';
 import { HeightMap } from '../../../src/world/HeightMap.ts';
 import { CollisionWorld } from '../../../src/world/CollisionWorld.ts';
 import { LandmarkManager } from '../../../src/world/LandmarkManager.ts';
@@ -25,6 +26,8 @@ const runGen = <T>(g: Generator<void, T>): T => { let r = g.next(); while (!r.do
 
 function measureChunk(key: string, roadsOn: boolean) {
   setRoads(roadsOn);
+  setSignals(roadsOn);
+  setInferredSignals(roadsOn);
   const data = JSON.parse(readFileSync(`${DATA}/chunks/${key}.json`, 'utf8')) as ChunkData;
   const collision = new CollisionWorld(height);
   collision.addChunk(data);
@@ -54,6 +57,8 @@ function measureChunk(key: string, roadsOn: boolean) {
     calls++;
   });
   setRoads(null);
+  setSignals(null);
+  setInferredSignals(null);
   return { tris: Math.round(tris), calls };
 }
 

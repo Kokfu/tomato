@@ -9,8 +9,9 @@
 // Everything about the traffic itself is invented (docs/LIMITATIONS.md): which vehicles, how many, their speeds, the
 // signal timing and the priority rules (the larger road class goes first). Only the roads, their one-way flags and
 // the signal positions are mapped.
-import { EDGE_BRIDGE, EDGE_TUNNEL } from '../ui/Router.ts';
+import { EDGE_BRIDGE, EDGE_TUNNEL, EDGE_ROUNDABOUT } from '../ui/Router.ts';
 import type { RouteGraph } from '../ui/Router.ts';
+import { SIGNAL_TIMING, junctionSignalAt, signalPhaseGroup } from '../world/signalsFlag.ts';
 
 /**
  * Vehicle kinds: three cars of the parked-car kit and the kapcai (underbone motorbike) with its rider; N1-M7 adds the
@@ -21,6 +22,15 @@ export const KINDS = 6;
 /** Half length and half width by kind, metres. */
 export const SIZE: readonly { half: number; hw: number }[] = [{ half: 1.95, hw: 0.87 }, { half: 2.2, hw: 0.86 }, { half: 2.15, hw: 0.91 }, { half: 0.95, hw: 0.36 }, { half: 2.2, hw: 0.86 }, { half: 2.65, hw: 0.93 }];
 
+export interface SignalSpec {
+  /** Shared physical junction ID so all nodes and 3D signal poles of one junction cycle on one clock. */
+  jctId: number;
+  /** Reference bearing in radians (approaches within 45 deg of +-refAngle form group 0; cross-approaches form group 1). */
+  refAngle: number;
+  /** Bearing of the crossing corridor in radians; approaches nearer it than `refAngle` form group 1. */
+  crossAngle?: number;
+}
+
 export interface TrafficHost {
   /** Height of the surface under a vehicle whose wheels are at height y (bridge decks included). */
   ground(x: number, z: number, y: number): number;
@@ -30,8 +40,15 @@ export interface TrafficHost {
   width(x: number, z: number): number | null;
   /** A mapped traffic signal stands at this junction; null = its data is not loaded yet. */
   signal(x: number, z: number): boolean | null;
+  /** N2-M3: shared physical junction spec at (x, z), `false` if unsignalized, or `null` if not loaded yet. */
+  signalSpec?(x: number, z: number): SignalSpec | false | null;
   /** Streets kept free of ambient traffic, by name (optional). */
   closed?(name: string | undefined): boolean;
+  /**
+   * N2-M3 road rules (default true; `?signals=0` turns them off for night 1's traffic): entry arms give way to traffic
+   * already on a roundabout, cars keep left on 6.2 m+ one-way roads, and more traffic is spawned on the larger roads.
+   */
+  roadRules?: boolean;
 }
 
 /** Something a vehicle must not drive into: a walker or the player (on foot or in the car). */
@@ -85,10 +102,11 @@ export interface Vehicle {
 
 const SPEED: Record<string, number> = { motorway: 13, trunk: 12.5, primary: 12, secondary: 11, tertiary: 10, residential: 7.5 };
 const DEFAULT_WIDTH: Record<string, number> = { motorway: 11, trunk: 10, primary: 9, secondary: 8, tertiary: 7, residential: 6 };
+const POOL_WEIGHT: Record<string, number> = { motorway: 2.2, trunk: 2.2, primary: 1.8, secondary: 1.4, tertiary: 1.1, residential: 0.9 };
 /** Comfortable braking, braking behind a leader, hardest braking, acceleration (m/s2). */
 const B_EASY = 2.6, B_FOLLOW = 3.5, B_MAX = 7, ACCEL = 1.8;
 /** Signal cycle, seconds: each of the two directions has 15 s green and 2 s amber, with 1 s of red for all between. */
-export const SIGNAL = { cycle: 36, green: 15, amber: 2 };
+export const SIGNAL = SIGNAL_TIMING; // (one definition, shared with the signal heads' shader: src/world/signalsFlag.ts)
 /** Radius of the curve driven through a junction, metres. */
 const CORNER = 6;
 const SAMPLE = [0.8, 2.5, 4.5, 7, 10, 14, 19, 25];
@@ -131,6 +149,8 @@ export class Traffic {
   /** Per direction of each edge (edge * 2 for a -> b, + 1 for b -> a): 1 where a vehicle may travel that way. */
   readonly good: Uint8Array;
   private nOk: Uint8Array;
+  /** 1 where at least one active roundabout ring edge (`EDGE_ROUNDABOUT`) meets at this node. */
+  readonly nRoundabout: Uint8Array;
   private nRef: Int32Array;
   private nBest: Uint8Array;
   private nBestEdge: Int32Array;
@@ -145,11 +165,15 @@ export class Traffic {
   private nextId = 1;
   private cums: (Float32Array | undefined)[] = [];
   private widths = new Map<number, number>();
-  private signals = new Map<number, boolean>();
+  private sigSpecs = new Map<number, SignalSpec | false>();
   private holders = new Map<number, Holder[]>();
   private mx: Float32Array;
   private mz: Float32Array;
   private pool: number[] = [];
+  private poolCum: number[] = [];
+  private poolTotal = 0;
+  /** N2-M3 road rules on (`TrafficHost.roadRules`). */
+  private readonly rules: boolean;
   private poolAt: [number, number, number] = [Infinity, Infinity, 0];
   private bends: (number[] | undefined)[] = [];
   private fx = new Float64Array(SAMPLE.length + 1);
@@ -157,7 +181,7 @@ export class Traffic {
   private fd = new Float64Array(SAMPLE.length + 1);
 
   constructor(g: RouteGraph, host: TrafficHost, seed = 20261126) {
-    this.g = g; this.host = host; this.rand = rng(seed);
+    this.g = g; this.host = host; this.rand = rng(seed); this.rules = host.roadRules !== false;
     const E = g.edgeCount, ok = (this.ok = new Uint8Array(E));
     const deg = new Int32Array(g.nodeCount);
     for (let e = 0; e < E; e++) {
@@ -194,11 +218,12 @@ export class Traffic {
     // per junction: how many streets with traffic meet there, the first of them (the reference direction of a signal),
     // and the two largest road classes among them (the smaller the index, the larger the road)
     const N = g.nodeCount;
-    this.nOk = new Uint8Array(N); this.nRef = new Int32Array(N).fill(-1);
+    this.nOk = new Uint8Array(N); this.nRoundabout = new Uint8Array(N); this.nRef = new Int32Array(N).fill(-1);
     this.nBest = new Uint8Array(N).fill(99); this.nBestEdge = new Int32Array(N).fill(-1); this.nSecond = new Uint8Array(N).fill(99);
     for (let n = 0; n < N; n++) for (const e of g.edgesAt(n)) {
       if (!ok[e]) continue;
       this.nOk[n]++;
+      if ((g.eflags[e] & EDGE_ROUNDABOUT) && this.rules) this.nRoundabout[n] = 1;
       if (this.nRef[n] < 0) this.nRef[n] = e;
       const r = g.etype[e];
       if (r < this.nBest[n]) { this.nSecond[n] = this.nBest[n]; this.nBest[n] = r; this.nBestEdge[n] = e; } else if (r < this.nSecond[n]) this.nSecond[n] = r;
@@ -284,7 +309,10 @@ export class Traffic {
   /** How far left of the centre line this kind keeps on an edge. */
   laneOffset(e: number, kind: number): number {
     const w = this.width(e), bike = kind === KIND.kapcai;
-    if (this.g.isOneWay(e)) return w >= 7.5 ? w / 4 + (bike ? 0.7 : 0) : bike ? Math.max(0, Math.min(0.8, w / 2 - 0.9)) : 0;
+    if (this.g.isOneWay(e)) {
+      if (!this.rules) return w >= 7.5 ? w / 4 + (bike ? 0.7 : 0) : bike ? Math.max(0, Math.min(0.8, w / 2 - 0.9)) : 0; // night 1
+      return w >= 6.2 ? Math.min(2.5, w / 4) + (bike ? 0.65 : 0) : bike ? Math.max(0, Math.min(0.8, w / 2 - 0.9)) : 0;
+    }
     const off = Math.min(2.3, Math.max(w / 4, Math.min(1.15, w / 2 - 0.95)));
     return bike ? off + Math.max(0, Math.min(0.7, w / 2 - off - 0.6)) : off;
   }
@@ -317,29 +345,62 @@ export class Traffic {
     return this.leg(o[0], o[1], kind);
   }
 
-  private isSignal(n: number): boolean {
-    let s = this.signals.get(n);
-    if (s === undefined) {
-      const m = this.host.signal(this.g.nx[n], this.g.nz[n]);
-      if (m === null) return false;
-      this.signals.set(n, (s = m));
+  private specOf(n: number): SignalSpec | false | null {
+    let s = this.sigSpecs.get(n);
+    if (s !== undefined) return s;
+    if (this.host.signalSpec) {
+      const spec = this.host.signalSpec(this.g.nx[n], this.g.nz[n]);
+      if (spec === null) return null;
+      this.sigSpecs.set(n, spec);
+      return spec;
     }
+    const m = this.host.signal(this.g.nx[n], this.g.nz[n]);
+    if (m === null) return null;
+    if (!m) { this.sigSpecs.set(n, false); return false; }
+    const ref = this.nRef[n];
+    let refAngle = 0;
+    if (ref >= 0) { this.along(ref, this.g.ea[ref] === n, 0, P); refAngle = Math.atan2(P.tx, P.tz); }
+    s = { jctId: n, refAngle };
+    this.sigSpecs.set(n, s);
     return s;
+  }
+
+  private isSignal(n: number): boolean {
+    return !!this.specOf(n);
   }
 
   /** 'green' | 'amber' | 'red' for traffic arriving at signal node `n` along edge `e`. */
   signalState(n: number, e: number): 'green' | 'amber' | 'red' {
-    const g = this.g, ref = this.nRef[n];
-    const dir = (edge: number): number => { this.along(edge, g.ea[edge] === n, 0, P); return Math.atan2(P.tx, P.tz); };
-    let d = Math.abs(dir(e) - dir(ref)) % Math.PI;
-    if (d > Math.PI / 2) d = Math.PI - d;
-    const group = d < Math.PI / 4 ? 0 : 1;
-    const t = (((this.time + n * 7.3 - group * (SIGNAL.cycle / 2)) % SIGNAL.cycle) + SIGNAL.cycle) % SIGNAL.cycle;
-    this.redFor = Math.max(0, t - SIGNAL.green - SIGNAL.amber);
-    return t < SIGNAL.green ? 'green' : t < SIGNAL.green + SIGNAL.amber ? 'amber' : 'red';
+    const spec = this.specOf(n);
+    if (!spec) { this.redFor = 0; return 'green'; }
+    this.along(e, this.g.ea[e] === n, 0, P);
+    const group = signalPhaseGroup(Math.atan2(P.tx, P.tz), spec.refAngle, spec.crossAngle);
+    const { state, redFor } = junctionSignalAt(this.time, spec.jctId, group);
+    this.redFor = redFor;
+    return state;
   }
   /** Seconds the signal last asked about (signalState) has been red; 0 while it is green or amber. */
   redFor = 0;
+
+  /** Arc-length distance (m) along the clockwise roundabout ring from circulating vehicle `w` to `targetNode`, or Infinity. */
+  private ringDistToNode(w: Vehicle, targetNode: number): number {
+    const g = this.g;
+    if (!(g.eflags[w.cur.e] & EDGE_ROUNDABOUT)) return Infinity;
+    if (w.prev && (g.eflags[w.prev.e] & EDGE_ROUNDABOUT) && this.endNode(w.prev) === targetNode && w.s < 6.5) return 0;
+    let node = this.endNode(w.cur), dist = w.cur.len - w.s;
+    if (node === targetNode) return dist;
+    for (let hop = 0; hop < 4 && dist < 48; hop++) {
+      let nextEdge = -1;
+      for (const e of g.edgesAt(node)) {
+        if ((g.eflags[e] & EDGE_ROUNDABOUT) && g.ea[e] === node) { nextEdge = e; break; }
+      }
+      if (nextEdge < 0) break;
+      dist += g.elen[nextEdge];
+      node = g.eb[nextEdge];
+      if (node === targetNode) return dist;
+    }
+    return Infinity;
+  }
 
 
   /** Sharp bends of an edge's own shape: [metres from node a, ...]. */
@@ -385,10 +446,20 @@ export class Traffic {
       const k = Math.sqrt(2 * B_EASY * Math.max(0, d - 4));
       if (k < cap) { cap = k; v.why = 'turn'; }
     }
+    const g = this.g;
+    const startN = c.fwd ? g.ea[c.e] : g.eb[c.e];
+    const startSpec = this.specOf(startN), endSpec = this.specOf(n);
+    // N2-M3 junction boxes (signals.json): every node of one junction shares its signal. A vehicle stops at the first
+    // node it reaches, even where that node is only a split of the road (two edges), and never again inside the box.
+    const boxes = !!this.host.signalSpec;
+    const inBox = boxes && !!startSpec && !!endSpec && startSpec.jctId === endSpec.jctId;
+    const entering = !!endSpec && !inBox && (boxes || this.nOk[n] >= 3);
+    const onRing = (g.eflags[c.e] & EDGE_ROUNDABOUT) !== 0;
+    const atRb = this.nRoundabout[n] === 1;
     // The signal at the end of a short next street: there is no room to stop for it once on that street.
     if (v.next && v.next.len < 45) {
-      const nl = v.next, n2 = this.endNode(nl);
-      if (this.nOk[n2] >= 3 && this.isSignal(n2)) {
+      const nl = v.next, n2 = this.endNode(nl), n2Spec = this.specOf(n2);
+      if (n2Spec && (boxes || this.nOk[n2] >= 3) && (!endSpec || endSpec.jctId !== n2Spec.jctId)) {
         const room2 = d + nl.len - Math.min(7, nl.len * 0.4), st = this.signalState(n2, nl.e);
         if (st === 'red' || (st === 'amber' && room2 > (v.v * v.v) / (2 * 3.2))) {
           const k = room2 <= 0.3 ? 0 : Math.sqrt(2 * B_EASY * (room2 - 0.3));
@@ -396,16 +467,37 @@ export class Traffic {
         }
       }
     }
-    if (this.nOk[n] < 3) return cap;
+    if (this.nOk[n] < 3 && !atRb && !entering) return cap;
     const line = Math.min(7, c.len * 0.4), room = d - line;
     if (room < -0.6 || v.holds === n) return cap; // already in the junction: clear it
     let stop: '' | 'signal' | 'yield' = '';
     const to = v.next ? v.next.e : -1;
-    if (this.isSignal(n)) {
-      const st = this.signalState(n, c.e);
-      if (st === 'red' || (st === 'amber' && room > (v.v * v.v) / (2 * 3.2))) stop = 'signal';
+    if (endSpec) {
+      // (inside the box the signal already let this vehicle in: clear the junction, as at night 1's signal nodes)
+      if (entering) {
+        const st = this.signalState(n, c.e);
+        if (st === 'red' || (st === 'amber' && room > (v.v * v.v) / (2 * 3.2))) stop = 'signal';
+      }
+    } else if (atRb) {
+      // N2-M3 roundabout priority: vehicles already circulating on the ring have right-of-way; entry arms give way.
+      const held = this.holders.get(n);
+      const patience = v.waited > 20 ? 0 : v.waited > 8 ? 0.45 : 1;
+      if (!onRing) {
+        if (room < 18) cap = Math.min(cap, Math.sqrt(14 + 2 * B_EASY * Math.max(0, room)));
+        if (held) for (const h of held) if (h.id !== v.id && this.time - h.t < 12 * patience && this.conflict(h, c.e, to)) stop = 'yield';
+        if (!stop && patience > 0) {
+          for (const w of this.vehicles) {
+            if (w === v || w.dead) continue;
+            const rd = this.ringDistToNode(w, n);
+            if (rd < Math.max(30, w.v * 4.8) * patience && (w.v > 0.4 || rd < 10)) { stop = 'yield'; break; }
+          }
+        }
+      } else if (held) {
+        // Only yield on the ring if another vehicle has already physically entered `n` within the last 3 s.
+        for (const h of held) if (h.id !== v.id && this.time - h.t < 3 && this.conflict(h, c.e, to)) stop = 'yield';
+      }
     } else {
-      const g = this.g, rank = g.etype[c.e];
+      const rank = g.etype[c.e];
       const best = this.nBestEdge[n] === c.e ? this.nSecond[n] : this.nBest[n];
       const held = this.holders.get(n);
       // (a driver who has waited long takes a smaller gap, and after 20 s edges out: the others brake for it)
@@ -525,14 +617,28 @@ export class Traffic {
     if (Math.hypot(fx - this.poolAt[0], fz - this.poolAt[1]) > 40 || this.poolAt[2] !== o.rMax) {
       this.poolAt = [fx, fz, o.rMax];
       this.pool = [];
+      this.poolCum = [];
+      this.poolTotal = 0;
       const r = o.rMax + 60;
-      for (let e = 0; e < g.edgeCount; e++) if (this.ok[e] && g.elen[e] >= 18 && !(g.eflags[e] & EDGE_BRIDGE) && Math.abs(this.mx[e] - fx) < r && Math.abs(this.mz[e] - fz) < r) this.pool.push(e);
+      for (let e = 0; e < g.edgeCount; e++) {
+        if (this.ok[e] && g.elen[e] >= 18 && !(g.eflags[e] & EDGE_BRIDGE) && Math.abs(this.mx[e] - fx) < r && Math.abs(this.mz[e] - fz) < r) {
+          this.pool.push(e);
+          this.poolTotal += this.rules ? (POOL_WEIGHT[g.typeOf(e)] ?? 1) * (0.6 + 0.01 * Math.min(g.elen[e], 90)) : 1; // night 1: every edge alike
+          this.poolCum.push(this.poolTotal);
+        }
+      }
     }
     if (!this.pool.length) return null;
     let total = 0;
     for (const k of o.kinds) total += k;
     for (let attempt = 0; attempt < 6; attempt++) {
-      const e = this.pool[Math.floor(this.rand() * this.pool.length)], len = g.elen[e];
+      const target = this.rand() * this.poolTotal;
+      let lo = 0, hi = this.poolCum.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (this.poolCum[mid] < target) lo = mid + 1; else hi = mid;
+      }
+      const e = this.pool[lo], len = g.elen[e];
       const fwd = !this.good[e * 2 + 1] || (this.good[e * 2] === 1 && this.rand() < 0.5), s = 8 + this.rand() * (len - 16);
       let kind = 0, r = this.rand() * total;
       for (; kind < o.kinds.length - 1; kind++) if ((r -= o.kinds[kind]) <= 0) break;

@@ -1,0 +1,8 @@
+(node:20536) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{"dist":"n1-final","run":1,"loadMs":4796,"interactiveMs":4931,"progsReady":72,"pan":{"worst":176,"over50":8,"over200":0,"slowMs":793,"progs":76}}
+{"dist":"n2-m3","run":1,"loadMs":4329,"interactiveMs":4702,"progsReady":81,"pan":{"worst":206,"over50":8,"over200":1,"slowMs":754,"progs":82}}
+{"dist":"n1-final","run":2,"loadMs":4217,"interactiveMs":4498,"progsReady":73,"pan":{"worst":240,"over50":7,"over200":1,"slowMs":809,"progs":76}}
+{"dist":"n2-m3","run":2,"loadMs":4400,"interactiveMs":4591,"progsReady":79,"pan":{"worst":179,"over50":5,"over200":0,"slowMs":520,"progs":82}}
+{"dist":"n1-final","run":3,"loadMs":4502,"interactiveMs":5068,"progsReady":73,"pan":{"worst":263,"over50":8,"over200":1,"slowMs":851,"progs":76}}
+{"dist":"n2-m3","run":3,"loadMs":4436,"interactiveMs":4589,"progsReady":79,"pan":{"worst":236,"over50":5,"over200":1,"slowMs":749,"progs":82}}

@@ -20,7 +20,7 @@ export function watch(page: Page): Issues {
   // at that moment aborts them, which is not a fault (a download that fails for any other reason still is one).
   const late = (url: string, why: string) => {
     const clean = url.split('?')[0];
-    return why.includes('ERR_ABORTED') && (clean.endsWith('/casual-character.glb') || clean.endsWith('/drive-graph.json'));
+    return why.includes('ERR_ABORTED') && (clean.endsWith('/casual-character.glb') || clean.endsWith('/drive-graph.json') || clean.endsWith('/signals.json'));
   };
   page.on('requestfailed', (r) => { if (!r.url().includes('/chunks/') && !late(r.url(), r.failure()?.errorText ?? '')) issues.errors.push(`requestfailed: ${r.url()} ${r.failure()?.errorText ?? ''}`); });
   page.on('response', (r) => { if (r.status() >= 400) issues.errors.push(`http ${r.status()}: ${r.url()}`); });

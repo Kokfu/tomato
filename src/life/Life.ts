@@ -10,6 +10,8 @@ import { CHUNK_SIZE, DATA_ROOT, QUANT } from '../world/config.ts';
 import { withDataVersion } from '../version.ts';
 import { FURN } from '../world/types.ts';
 import { ENV } from '../world/env.ts';
+import { SIGNAL_TIMING, inferredSignalsEnabled, signalsEnabled } from '../world/signalsFlag.ts';
+import type { SignalsFile } from '../world/signalsFlag.ts';
 import { nearestDrivable } from '../vehicle/RoadQuery.ts';
 import { Traffic, rng, SIZE } from './traffic.ts';
 import type { FillOptions, Obstacle } from './traffic.ts';
@@ -107,8 +109,14 @@ export class Life {
     const token = ++this.token, { world } = this.host, c = world.collision;
     try {
       const ver = world.manifest.hash || undefined;
-      const graph = await loadRouteGraph(withDataVersion(`${this.host.baseUrl}${DATA_ROOT}/drive-graph.json`, ver));
+      const [graph, sigFile] = await Promise.all([
+        loadRouteGraph(withDataVersion(`${this.host.baseUrl}${DATA_ROOT}/drive-graph.json`, ver)),
+        fetch(withDataVersion(`${this.host.baseUrl}${DATA_ROOT}/signals.json`, ver))
+          .then((r) => (r.ok ? (r.json() as Promise<SignalsFile>) : null))
+          .catch(() => null),
+      ]);
       if (token !== this.token) return;
+      if (!sigFile && signalsEnabled()) console.warn('signals.json did not load: the traffic ignores the signals this session');
       const dataAt = (cx: number, cz: number) => world.chunks.dataAt(cx, cz);
       this.traffic ??= new Traffic(graph, {
         ground: (x, z, y) => c.groundAt(x, z, y).h,
@@ -116,6 +124,22 @@ export class Life {
         width: (x, z) => nearestDrivable(dataAt, x, z, 0, 12)?.width ?? null,
         // Jalan China is the hand-built street where the player's car waits in the only free lane between parked cars
         closed: (name) => name === 'Jalan China',
+        roadRules: signalsEnabled(),
+        // (without signals.json the traffic obeys no signal rather than night 1's per-node phases, which the N2-M3
+        // poles do not show)
+        signalSpec: signalsEnabled() ? (x, z) => {
+          if (!sigFile) return false;
+          const allowInf = inferredSignalsEnabled();
+          for (const j of sigFile.junctions) {
+            if (j.inferred && !allowInf) continue;
+            for (const [nx, nz] of j.nodes) {
+              if (Math.hypot(nx - x, nz - z) < 2.8) {
+                return { jctId: j.id, refAngle: (j.refDeg * Math.PI) / 180, crossAngle: j.crossDeg === undefined ? undefined : (j.crossDeg * Math.PI) / 180 };
+              }
+            }
+          }
+          return false;
+        } : undefined,
         signal: (x, z) => {
           // (no answer until every chunk within reach is loaded: a "no" would be remembered for the whole session)
           let known = true;
@@ -125,7 +149,7 @@ export class Life {
               if (!d) { if (world.manifest.chunks.includes(`${cx}_${cz}`)) known = false; continue; }
               const f = d.furn;
               if (!f) continue;
-              for (let i = 0; i < f.length; i += 5) if (f[i] === FURN.signal && Math.hypot(cx * CHUNK_SIZE + f[i + 1] / QUANT - x, cz * CHUNK_SIZE + f[i + 2] / QUANT - z) < 18) return true;
+              for (let i = 0; i < f.length; i += 5) if (f[i] === FURN.signal && f[i + 4] === 0 && Math.hypot(cx * CHUNK_SIZE + f[i + 1] / QUANT - x, cz * CHUNK_SIZE + f[i + 2] / QUANT - z) < 18) return true;
             }
           return known ? false : null;
         },
@@ -190,6 +214,9 @@ export class Life {
   update(dt: number, fx: number, fz: number, player: PlayerState, running: boolean, rain: number): void {
     const t = this.traffic, w = this.walkers, r = this.render;
     if (!t || !w || !r) return;
+    // The signal heads follow the traffic's own clock, also on the frames below that return early (warm-up,
+    // suspended), where WorldManager would otherwise run them on alone; wrapped to one cycle for mediump GPUs.
+    ENV.uSignalTime.value = t.time % SIGNAL_TIMING.cycle;
     r.group.visible = !this.suspended;
     if (this.suspended) return;
     const t0 = performance.now();
@@ -240,6 +267,7 @@ export class Life {
       for (let i = k; i < this.walled; i++) c.setDynamicWall(`life${i}`, null);
       this.walled = k;
     }
+    ENV.uSignalTime.value = t.time % SIGNAL_TIMING.cycle;
     r.sync(t.vehicles, w.list, this.age, this.parked);
     const ms = performance.now() - t0;
     this.cost += (ms - this.cost) * 0.02; this.costMax = Math.max(this.costMax * 0.999, ms);

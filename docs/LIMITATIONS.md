@@ -236,8 +236,23 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - **Lanes are inferred**: a vehicle keeps a quarter of the mapped (mostly inferred) carriageway width left of the centre
   line. Lane counts are not in the data; nobody overtakes; a kapcai rides a little further left but does not filter.
 - **Priority is a rule, not the real one**: the larger road class goes first, a driver who has waited 20 s edges out, and
-  two vehicles that block each other for 8 s are let through one another. **Signal timing is invented** (15 s green,
-  2 s amber, in two directions by bearing) and the drawn signal heads do not change colour.
+  two vehicles that block each other for 8 s are let through one another. Since N2-M3 (`?signals=0` = night 1) entry
+  arms give way to traffic already on a roundabout (from the right: Kuching circulates clockwise), whatever the class.
+- **Signal timing is invented** (N2-M3): every junction runs one 36 s cycle, 15 s green and 2 s amber for each of two
+  phases with 1 s all-red between, offset per junction. The two phases are the main corridor and the road crossing it
+  (by bearing); turning phases, pedestrian phases, detectors and real Kuching timings are not modelled. The heads change
+  colour on the same clock the traffic obeys. Where a junction's approaches all lie on one road (a mid-block crossing),
+  both directions share one phase.
+- **Signal poles are placed by rule** (N2-M3): one on the left kerb of every approach of a signal junction, with an
+  overhead mast arm where the approach is at least 7.8 m wide. OpenStreetMap maps the signal nodes (113, clustered into
+  44 junctions in the map area; 2 more clusters lie outside it), not the poles, heads or stop lines.
+- **11 signal junctions are inferred, not mapped** (N2-M3, from the night-2 audit's busy unsignalled main-road
+  crossroads; `?inferredSignals=0` removes them). They may have no lights in reality: Jalan Gartak / Khoo Hun Yeang /
+  Power; Tun Ahmad Zaidi Adruce / Rubber; Patinggan / Tanjung / Lorong Tanjung 12; Muhibbah / Tanjung / Datuk Ajibah
+  Abol; Central Timur / Ellis; P. Ramlee / Haji Taha / Market / Datuk Ajibah Abol; Kulas / Muhibbah; Lebuh Temple /
+  Lebuh Wayang / Green Hill; the Satok-Kulas interchange at Lorong Jambatan Gantung 1; Rubber Barat / Lorong Jambatan
+  Gantung 1; Satok / P. Ramlee. Section 4 of the owner's to-do (`docs/night2/audit/OWNER_TODO.md`) asks for these to be
+  checked on the ground.
 - **Ambient traffic keeps out of** service roads, covered ways, streets that only lead to a dead end, and Jalan China
   (the hand-built street where the player's car waits in the one free lane).
 - **Vehicles brake for the player, the player's vehicle and walkers.** Since N1-M7 the driven vehicle collides with

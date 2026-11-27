@@ -1,0 +1,14 @@
+s1-openg-badruddin-queue-red {"fps":44.5,"calls":694,"tris":1165140,"geo":689,"tex":146,"chunks":97,"pos":[-336,8.8,1068]}
+  probe {"near":12,"stopped":3,"why":{"follow":2,"signal":1},"phase":32.3,"at":["follow@-354,1101","signal@-346,1127","follow@-358,1101"]}
+s2-openg-badruddin-overhead-red {"fps":58.1,"calls":182,"tris":459238,"geo":689,"tex":146,"chunks":97,"pos":[-338.6,8.3,1108.8]}
+  probe {"near":10,"stopped":4,"why":{"follow":3,"signal":1},"phase":32.2,"at":["follow@-354,1101","signal@-346,1127","follow@-358,1101","follow@-346,1132"]}
+s3-openg-badruddin-queue-green {"fps":45.9,"calls":648,"tris":989576,"geo":689,"tex":146,"chunks":97,"pos":[-336,8.8,1068]}
+  probe {"near":14,"stopped":3,"why":{"signal":2,"follow":1},"phase":25.2,"at":["signal@-354,1101","follow@-318,1116","signal@-322,1117"]}
+s4-openg-badruddin-queue-night {"fps":49.3,"calls":708,"tris":1152430,"geo":690,"tex":146,"chunks":97,"pos":[-336,8.8,1068]}
+  probe {"near":5,"stopped":2,"why":{"follow":1,"signal":1},"phase":32.3,"at":["follow@-355,1101","signal@-347,1127"]}
+  until yield: seen
+s5-roundabout-ong-kee-hui-giveway {"fps":55.8,"calls":269,"tris":662893,"geo":812,"tex":168,"chunks":114,"pos":[88,14.3,1095]}
+  probe {"near":6,"stopped":1,"why":{"turn":1},"phase":null,"at":["turn@81,1056"]}
+  until yield: seen
+s6-roundabout-ong-kee-hui-giveway-close {"fps":51.8,"calls":568,"tris":860386,"geo":812,"tex":168,"chunks":114,"pos":[90,14.1,1100]}
+  probe {"near":3,"stopped":1,"why":{"yield":1},"phase":null,"at":["yield@101,1124"]}

@@ -342,6 +342,7 @@ export class WorldManager {
     if (this.clockRunning) {
       if (this.timeMode === 'auto') this.hour = advanceHour(this.hour, dt);
       stepWeather(this.weather, this.rainMode === 'on' ? 1 : this.rainMode === 'off' ? 0 : this.showers.step(dt), dt);
+      ENV.uSignalTime.value = (ENV.uSignalTime.value + dt) % 36; // (Life sets it from the traffic clock when traffic runs)
     }
     this.applyLight();
     ENV.uEnvTime.value = this.time % 600;

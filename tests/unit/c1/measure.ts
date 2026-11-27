@@ -21,7 +21,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 const [flagArg] = process.argv.slice(2), rootArg = process.cwd();
 const FLAG = flagArg === 'on';
-(globalThis as any).location = { search: FLAG ? '?c1=1&m5=0&roads=0' : '?c1=0&m5=0&roads=0' }; // N1-M5 and N2-M2 are measured by their own tests
+(globalThis as any).location = { search: FLAG ? '?c1=1&m5=0&roads=0&signals=0' : '?c1=0&m5=0&roads=0&signals=0' }; // N1-M5, N2-M2 and N2-M3 are measured by their own tests
 const root = rootArg.split(String.fromCharCode(92)).join('/');
 const U = (p: string) => 'file:///' + root + '/' + p;
 const THREE = await import(U('node_modules/three/build/three.module.js'));
