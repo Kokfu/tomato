@@ -12,8 +12,11 @@ It is a static site (TypeScript + Three.js + Vite). There is no backend and no m
 - **Drive:** take the car by Jalan China, or any parked car, kapcai motorbike, taxi or pickup placed round the city.
 - **Work:** open the phone (T) for food deliveries and taxi fares between mapped places, follow the GPS, get paid,
   repair your vehicle. Progress is saved in this browser.
-- **See the city live:** a passing day with lit streets at night, occasional tropical rain, traffic keeping left and
-  waiting at signals, and walkers.
+- **See the city live:** a passing day with lit streets at night, occasional tropical rain, traffic keeping left,
+  stopping at traffic lights that change colour on the same clock, giving way on roundabouts, and walkers.
+- **Drive real Kuching roads (night 2):** kerbed roundabout islands, splitter islands and give-way lines, grass medians
+  with palms and twin-arm lamps on the dual carriageways, widths from mapped lane counts, the Satok suspension bridge,
+  and signal poles with working heads at 44 mapped and 11 inferred junctions.
 - **Visit hand-built places:** Jalan China, Carpenter Street, Main Bazaar and the Waterfront, India Street,
   Jalan Gambier, the Square Tower and Old Courthouse, Plaza Merdeka's entrance, Jalan Padungan with its cat statues
   and gate, the City Mosque and the floating mosque.
@@ -21,6 +24,8 @@ It is a static site (TypeScript + Three.js + Vite). There is no backend and no m
   Most of that detail is inferred, not mapped: see [Limitations](docs/LIMITATIONS.md).
 
 Night 1 (what changed, measurements, known issues): [docs/night/REPORT.md](docs/night/REPORT.md).
+Night 2 (trust and roads): [docs/night2/REPORT.md](docs/night2/REPORT.md). Every night-2 road change can be switched off
+with `?roads=0`, `?signals=0` or `?inferredSignals=0` ([docs/FLAGS.md](docs/FLAGS.md)).
 
 ## Quick start
 

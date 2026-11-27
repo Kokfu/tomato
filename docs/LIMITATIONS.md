@@ -37,6 +37,12 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - **Roof shapes, facades, colours and window patterns are procedural**, not observed.
 - **Road widths are inferred** from class or lane count except for 6 tagged ways. Kerbs,
   medians, lane counts and markings are not mapped; the centre dashes are decorative.
+- **Roads still on default widths (N2-M2, `?roads=1`):** a road is `lanes` × 3.3 m where OpenStreetMap maps `lanes=*`
+  (plus a few overrides set in N2-M2 in `data-src/overrides/roads.json`). **89 main roads (89.2 km, 479 ways) have no
+  `lanes=*`** and use a Kuching class default (trunk 9.9 m, primary 6.8 m, secondary 6.6 m, tertiary and residential
+  6.0 m), among them Jalan Astana, Jalan Green, Jalan Tun Salahuddin, Jalan Pending, Jalan Tabuan and Jalan Demak. The
+  list is `public/data/kuching/roads-report.json` (`docs/night2/m4/roads-on-default-widths.txt`). Roundabout islands,
+  splitter islands and medians are drawn from the mapped ways, their sizes and planting are inferred.
 - **No sidewalks are mapped as such** in this area; the footpaths drawn since N1-M4 are inferred (see "Streets").
   Pedestrian movement is not restricted to paths: the character may walk on any dry ground and on roads.
 - **Terrain is an estimate.** It comes from a 30 m radar surface model that includes roofs and
@@ -90,7 +96,8 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - **Lane lines, edge lines and stop lines are inferred** (lanes from the width, not from `lanes=*`; the chunk files do
   not carry that tag). A stop line is drawn where a street ends at a junction node inside one chunk; a junction on a
   chunk border gets none. The black-and-white median kerb is drawn where two one-way main roads run side by side.
-- **Mapped:** traffic signals (113 nodes, 109 placed), zebra crossings (21 nodes, 17 placed: a node further than 3 m from a street is not moved onto it) and bus stops (36 nodes
+- **Mapped:** traffic signals (113 nodes, 109 placed in night 1; since N2-M3 they are grouped into 44 junctions with a
+  pole per approach, see "Traffic and walkers"), zebra crossings (21 nodes, 17 placed: a node further than 3 m from a street is not moved onto it) and bus stops (36 nodes
   fetched 2026-11-25, 32 placed). The crossing's paint, the bus shelter's form and the yellow box on the junction
   nearest a signal (42) are generic. **No street lamp is mapped** in this area: all 11,616 lamp posts are spaced by rule.
 - **Road signs are generic and placed by rule**: a speed limit by road class (not the posted limit), a stop sign where
@@ -234,7 +241,7 @@ This list is deliberately explicit. Nothing here is hidden by decoration in the 
 - **They exist only round the player** (130 to 230 m by preset; 8 vehicles and 9 walkers on Low, 18 and 22 on Medium,
   26 and 34 on High; about half at night, fewer walkers in rain) and appear and vanish at the edge of that ring.
 - **Lanes are inferred**: a vehicle keeps a quarter of the mapped (mostly inferred) carriageway width left of the centre
-  line. Lane counts are not in the data; nobody overtakes; a kapcai rides a little further left but does not filter.
+  line (since N2-M3, on a one-way road 6.2 m or wider it keeps left of the middle, at most 2.5 m). Lane counts are not in the data; nobody overtakes; a kapcai rides a little further left but does not filter.
 - **Priority is a rule, not the real one**: the larger road class goes first, a driver who has waited 20 s edges out, and
   two vehicles that block each other for 8 s are let through one another. Since N2-M3 (`?signals=0` = night 1) entry
   arms give way to traffic already on a roundabout (from the right: Kuching circulates clockwise), whatever the class.

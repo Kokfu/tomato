@@ -251,3 +251,16 @@ holds the same data.
 | Zebra crossings, bus stops, signals in the chunk files (N1-M4; bus stops fetched once, 2026-11-25, `tools/extract-map-data/fetch-street.ts`) | OpenStreetMap | ODbL 1.0 |
 
 No audio file was added in any milestone.
+
+## Night 2 (2026-11-26/27): summary of what was added
+
+**No third-party asset file was added in night 2** (`git diff --diff-filter=A 1139856 HEAD` lists no model, texture,
+image or audio under `public/` outside the generated map data). Roundabout and splitter islands, medians, kerbs,
+twin-arm lamps, tunnel portals, the Satok suspension bridge's pylons and cables, and the signal poles, arms and heads
+are built in code from the existing materials.
+
+| File | From | Licence |
+|---|---|---|
+| `public/data/kuching/signals.json` (N2-M3: junctions, approach bearings, phases) | OpenStreetMap `highway=traffic_signals` nodes; 11 junctions inferred from the N2-M1 audit (marked `inferred: true`) | ODbL 1.0 (OSM) |
+| `data-src/overrides/roads.json` (N2-M2: `lanes` on a few ways, the Satok suspension bridge way) | OpenStreetMap tags and way geometry (N2-M2 notes); no Google source | ODbL 1.0 |
+| Roundabout islands, medians, give-way lines in the chunk files, `roads-report.json` (N2-M2) | Derived from OpenStreetMap ways (`junction=roundabout`, `dual_carriageway`, `lanes`) | ODbL 1.0 |

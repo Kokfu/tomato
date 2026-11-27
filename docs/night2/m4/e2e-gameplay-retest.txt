@@ -1,0 +1,14 @@
+
+Running 4 tests using 1 worker
+
+[1/4] [desktop-1920] › tests\e2e\gameplay.spec.ts:22:3 › gameplay › W/A/S/D move relative to the camera, Shift runs, Space jumps
+[2/4] [desktop-1920] › tests\e2e\gameplay.spec.ts:230:3 › gameplay › chunks stream in ahead of the player and old ones are released
+[desktop-1920] › tests\e2e\gameplay.spec.ts:230:3 › gameplay › chunks stream in ahead of the player and old ones are released
+road length 1686 m, reached=true, fetched 74->129, disposed 110, loaded 47, max build 302.2 ms
+
+[3/4] [desktop-1920] › tests\e2e\gameplay.spec.ts:22:3 › gameplay › W/A/S/D move relative to the camera, Shift runs, Space jumps
+[4/4] [desktop-1920] › tests\e2e\gameplay.spec.ts:230:3 › gameplay › chunks stream in ahead of the player and old ones are released
+[desktop-1920] › tests\e2e\gameplay.spec.ts:230:3 › gameplay › chunks stream in ahead of the player and old ones are released
+road length 1686 m, reached=true, fetched 74->129, disposed 109, loaded 47, max build 109.0 ms
+
+  4 passed (7.8m)

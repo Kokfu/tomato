@@ -1,0 +1,308 @@
+
+Running 160 tests using 1 worker
+
+[1/160] [desktop-1920] › tests\e2e\char-regression-requests.spec.ts:17:1 › regression: no flag requests the same scripts and the same single character GLB, in the same order, as f1c9458
+[2/160] [desktop-1920] › tests\e2e\char-regression-visibility.spec.ts:7:1 › regression: a character model finishing its load while driving stays hidden
+[3/160] [desktop-1920] › tests\e2e\character-p5.spec.ts:67:1 › E1.1 desktop: 12 swaps in cycle order after warm-up, worst frame from tap to 1 s after <= 50 ms
+[4/160] [desktop-1920] › tests\e2e\character-p5.spec.ts:79:1 › E1.1 4x CPU throttle (emulation, not a phone): worst frame <= 100 ms
+[5/160] [desktop-1920] › tests\e2e\character-p5.spec.ts:88:1 › E1.2 stage timings: present, in order, and no build step longer than 25 ms
+[6/160] [desktop-1920] › tests\e2e\character-p5.spec.ts:113:1 › E2.1 landing and the airborne update cost, all six characters
+[7/160] [desktop-1920] › tests\e2e\character-p5.spec.ts:159:1 › E3.1 18 laps = 108 switches with the pause-menu flow (swap, then warm the next): renderer counts flat, no model piles up
+[8/160] [desktop-1920] › tests\e2e\character-p5.spec.ts:196:1 › E4.1 N9 (?char): entering OP fly mode in mid-air settles the hidden body to the rest pose once, and again on a second entry
+[9/160] [desktop-1920] › tests\e2e\character-p5.spec.ts:211:1 › E4.2 N9 without ?char: no settle call on entering OP mode (the no-flag game is unchanged)
+[10/160] [desktop-1920] › tests\e2e\character-p5.spec.ts:222:1 › E5.1 G2: the picker warms the selected card, Confirm installs it and resumes; no warm stage runs after the game resumed
+[11/160] [desktop-1920] › tests\e2e\character-p5.spec.ts:247:1 › E6.1 G1c: the first draw of a model happens hidden before it is installed (cold hook swap), and the pause menu does not start the next warm in the frames after a swap
+[12/160] [desktop-1920] › tests\e2e\character-picker-capabilities.spec.ts:13:3 › man: picked on first launch, then walks, runs, jumps, drives, routes (GPS) and flies
+[13/160] [desktop-1920] › tests\e2e\character-picker-capabilities.spec.ts:13:3 › woman: picked on first launch, then walks, runs, jumps, drives, routes (GPS) and flies
+[14/160] [desktop-1920] › tests\e2e\character-picker-capabilities.spec.ts:13:3 › teen-boy: picked on first launch, then walks, runs, jumps, drives, routes (GPS) and flies
+[15/160] [desktop-1920] › tests\e2e\character-picker-capabilities.spec.ts:13:3 › teen-girl: picked on first launch, then walks, runs, jumps, drives, routes (GPS) and flies
+[16/160] [desktop-1920] › tests\e2e\character-picker-capabilities.spec.ts:13:3 › young-boy: picked on first launch, then walks, runs, jumps, drives, routes (GPS) and flies
+[17/160] [desktop-1920] › tests\e2e\character-picker-capabilities.spec.ts:13:3 › young-girl: picked on first launch, then walks, runs, jumps, drives, routes (GPS) and flies
+[18/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:51:1 › P1 first launch: the picker comes before the world, loads nothing until a choice, hides the HUD, has no Cancel, and the choice is saved
+[19/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:81:1 › P2 returning player: starts with the saved character, no picker, a toast that says where to change it
+[20/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:94:3 › P3 an unknown or retired saved id (adult-man) falls back to the picker, not to a broken game
+[21/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:94:3 › P3 an unknown or retired saved id (adult-woman) falls back to the picker, not to a broken game
+[22/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:94:3 › P3 an unknown or retired saved id (removed-character-id) falls back to the picker, not to a broken game
+[23/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:94:3 › P3 an unknown or retired saved id (test-short) falls back to the picker, not to a broken game
+[24/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:107:1 › P4 keyboard: radiogroup with one Tab stop, arrows, Enter confirms, the focus is trapped, Escape does nothing on first launch
+[25/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:150:1 › P5 Change Character from the pause menu: the same place and camera, resumes the game, Escape cancels back to the pause menu
+[26/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:200:1 › P5b Change Character is blocked with a reason while driving and while flying, and works again afterwards
+[27/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:265:1 › P5c N1: Change Character is blocked while "Finding the car…" runs (aria-disabled, reason, focusable, no picker), and works again afterwards
+[28/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:308:1 › P5d N1: a car trip that ends while the picker is open does not resume the game behind it; Cancel returns to a paused pause menu
+[29/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:345:3 › touch › P5e N2: on touch the fly reason has no "(P)" keyboard hint; on desktop (P5b) it keeps it
+[30/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:364:1 › P6 selecting while the model is still downloading: Confirm waits for it (Loading...), no error, one install
+[31/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:389:1 › P7 a model that fails to load: the error says so, the old model stays, nothing is saved, Try again works, "You are still playing as X"
+[WebServer] 12:07:30 am [vite] (client) [console.warn] Character "teen-boy" could not be loaded: TypeError: Failed to fetch
+[WebServer]     at FileLoader.load (http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23636:3)
+[WebServer]     at GLTFLoader.load (http://localhost:5174/node_modules/.vite/deps/three_addons_loaders_GLTFLoader__js.js?v=8af882f1:83:10)
+[WebServer]     at http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23566:10
+[WebServer]     at new Promise (<anonymous>)
+[WebServer]     at GLTFLoader.loadAsync (http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23565:10)
+[WebServer]     at Object.loadGltf [as load] (http://localhost:5174/src/player/CharacterLoader.ts:6:26)
+
+[32/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:419:1 › P7b first launch with a failed model: Try again; the player is not dropped into the world without a choice
+[WebServer] 12:07:34 am [vite] (client) [console.warn] Character "woman" could not be loaded: TypeError: Failed to fetch
+[WebServer]     at FileLoader.load (http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23636:3)
+[WebServer]     at GLTFLoader.load (http://localhost:5174/node_modules/.vite/deps/three_addons_loaders_GLTFLoader__js.js?v=8af882f1:83:10)
+[WebServer]     at http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23566:10
+[WebServer]     at new Promise (<anonymous>)
+[WebServer]     at GLTFLoader.loadAsync (http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23565:10)
+[WebServer]     at Object.loadGltf [as load] (http://localhost:5174/src/player/CharacterLoader.ts:6:26)
+
+[33/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:440:1 › P8 rapid switching through the picker: 12 changes in a row end on the last choice, one live model, saved
+[34/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:471:1 › P7c a failed model, then ANOTHER card: the error clears, the other card installs, the failed one never does
+[WebServer] 12:07:48 am [vite] (client) [console.warn] Character "teen-boy" could not be loaded: TypeError: Failed to fetch
+[WebServer]     at FileLoader.load (http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23636:3)
+[WebServer]     at GLTFLoader.load (http://localhost:5174/node_modules/.vite/deps/three_addons_loaders_GLTFLoader__js.js?v=8af882f1:83:10)
+[WebServer]     at http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23566:10
+[WebServer]     at new Promise (<anonymous>)
+[WebServer]     at GLTFLoader.loadAsync (http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23565:10)
+[WebServer]     at Object.loadGltf [as load] (http://localhost:5174/src/player/CharacterLoader.ts:6:26)
+
+[35/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:507:1 › P10 N1 first launch with a GLB that hangs: after the stall timeout the picker shows the error, and another card still plays
+[WebServer] 12:07:55 am [vite] (client) [console.warn] Character "man" could not be loaded: LoadStalledError: loading models/characters/man.glb made no progress for 2500 ms
+[WebServer]     at http://localhost:5174/src/player/character/CharacterRegistry.ts:71:12
+
+[36/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:546:1 › P10b N1 change mode with a GLB that hangs: the error keeps the current character; Try again fetches again; Cancel still works
+[WebServer] 12:08:05 am [vite] (client) [console.warn] Character "teen-boy" could not be loaded: LoadStalledError: loading models/characters/teen-boy.glb made no progress for 2500 ms
+[WebServer]     at http://localhost:5174/src/player/character/CharacterRegistry.ts:71:12
+
+[WebServer] 12:08:08 am [vite] (client) [console.warn] Character "teen-boy" could not be loaded: LoadStalledError: loading models/characters/teen-boy.glb made no progress for 2500 ms
+[WebServer]     at http://localhost:5174/src/player/character/CharacterRegistry.ts:71:12
+
+[37/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:579:1 › N3a Escape while a choice is Loading (change mode), then confirming a DIFFERENT character: one live model, the saved id is the last confirmed
+[38/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:611:1 › N3a2 (abort) Escape while a choice is Loading, then resume with NO new choice: the late file is dropped, nothing installed or saved
+[39/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:647:1 › N3b a double confirm (Enter twice): ONE model built, one install, one saved write, no error
+[40/160] [desktop-1920] › tests\e2e\character-picker.spec.ts:678:1 › P9 no flag: no picker, no portrait or picker request, no pause button, the saved choice is not read
+[41/160] [desktop-1920] › tests\e2e\character-shots.spec.ts:10:3 › shots default
+[WebServer] 12:08:40 am [vite] (client) [console.warn] THREE.WebGLProgram: Program Info Log: (198,12-86): warning X3595: gradient instruction used in a loop with varying iteration; partial derivatives may have undefined value
+[WebServer] (198,12-86): warning X3595: gradient instruction used in a loop with varying iteration; partial derivatives may have undefined value
+[WebServer] (419,1): warning X4000: use of potentially uninitialized variable (f_ApplyFXAA)
+
+[42/160] [desktop-1920] › tests\e2e\character-shots.spec.ts:10:3 › shots adult-man
+[WebServer] 12:08:55 am [vite] (client) [console.warn] THREE.WebGLProgram: Program Info Log: (198,12-86): warning X3595: gradient instruction used in a loop with varying iteration; partial derivatives may have undefined value
+[WebServer] (198,12-86): warning X3595: gradient instruction used in a loop with varying iteration; partial derivatives may have undefined value
+[WebServer] (419,1): warning X4000: use of potentially uninitialized variable (f_ApplyFXAA)
+
+[43/160] [desktop-1920] › tests\e2e\character-shots.spec.ts:10:3 › shots adult-woman
+[44/160] [desktop-1920] › tests\e2e\character.spec.ts:75:3 › character seam (CHAR-P2a) › no flag: the default model only, same single GLB request, nothing read or stored, no hook, no dev button
+[45/160] [desktop-1920] › tests\e2e\character.spec.ts:99:5 › character seam (CHAR-P2a) › ?char=default: loads, fetches only its own GLB, persists the choice
+[46/160] [desktop-1920] › tests\e2e\character.spec.ts:99:5 › character seam (CHAR-P2a) › ?char=test-short: loads, fetches only its own GLB, persists the choice
+[47/160] [desktop-1920] › tests\e2e\character.spec.ts:99:5 › character seam (CHAR-P2a) › ?char=adult-man: loads, fetches only its own GLB, persists the choice
+[48/160] [desktop-1920] › tests\e2e\character.spec.ts:99:5 › character seam (CHAR-P2a) › ?char=adult-woman: loads, fetches only its own GLB, persists the choice
+[49/160] [desktop-1920] › tests\e2e\character.spec.ts:99:5 › character seam (CHAR-P2a) › ?char=man: loads, fetches only its own GLB, persists the choice
+[50/160] [desktop-1920] › tests\e2e\character.spec.ts:99:5 › character seam (CHAR-P2a) › ?char=woman: loads, fetches only its own GLB, persists the choice
+[51/160] [desktop-1920] › tests\e2e\character.spec.ts:99:5 › character seam (CHAR-P2a) › ?char=teen-boy: loads, fetches only its own GLB, persists the choice
+[52/160] [desktop-1920] › tests\e2e\character.spec.ts:99:5 › character seam (CHAR-P2a) › ?char=teen-girl: loads, fetches only its own GLB, persists the choice
+[53/160] [desktop-1920] › tests\e2e\character.spec.ts:99:5 › character seam (CHAR-P2a) › ?char=young-boy: loads, fetches only its own GLB, persists the choice
+[54/160] [desktop-1920] › tests\e2e\character.spec.ts:99:5 › character seam (CHAR-P2a) › ?char=young-girl: loads, fetches only its own GLB, persists the choice
+[55/160] [desktop-1920] › tests\e2e\character.spec.ts:115:5 › character seam (CHAR-P2a) › ?char=adult-man with its GLB missing falls back to the default with one warning
+[WebServer] 12:09:56 am [vite] (client) [console.warn] Character "adult-man" unavailable, falling back to "default": Error: fetch for "http://localhost:5174/models/characters/adult-man.glb" responded with 404: Not Found
+[WebServer]     at http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23671:17
+
+[56/160] [desktop-1920] › tests\e2e\character.spec.ts:123:5 › character seam (CHAR-P2a) › ?char=adult-man: normalised height, soles on the ground, hair is an alpha cut-out, feet found
+[57/160] [desktop-1920] › tests\e2e\character.spec.ts:115:5 › character seam (CHAR-P2a) › ?char=adult-woman with its GLB missing falls back to the default with one warning
+[WebServer] 12:10:02 am [vite] (client) [console.warn] Character "adult-woman" unavailable, falling back to "default": Error: fetch for "http://localhost:5174/models/characters/adult-woman.glb" responded with 404: Not Found
+[WebServer]     at http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23671:17
+
+[58/160] [desktop-1920] › tests\e2e\character.spec.ts:123:5 › character seam (CHAR-P2a) › ?char=adult-woman: normalised height, soles on the ground, hair is an alpha cut-out, feet found
+[59/160] [desktop-1920] › tests\e2e\character.spec.ts:115:5 › character seam (CHAR-P2a) › ?char=man with its GLB missing falls back to the default with one warning
+[WebServer] 12:10:08 am [vite] (client) [console.warn] Character "man" unavailable, falling back to "default": Error: fetch for "http://localhost:5174/models/characters/man.glb" responded with 404: Not Found
+[WebServer]     at http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23671:17
+
+[60/160] [desktop-1920] › tests\e2e\character.spec.ts:123:5 › character seam (CHAR-P2a) › ?char=man: normalised height, soles on the ground, hair is an alpha cut-out, feet found
+[61/160] [desktop-1920] › tests\e2e\character.spec.ts:115:5 › character seam (CHAR-P2a) › ?char=woman with its GLB missing falls back to the default with one warning
+[WebServer] 12:10:14 am [vite] (client) [console.warn] Character "woman" unavailable, falling back to "default": Error: fetch for "http://localhost:5174/models/characters/woman.glb" responded with 404: Not Found
+[WebServer]     at http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23671:17
+
+[62/160] [desktop-1920] › tests\e2e\character.spec.ts:123:5 › character seam (CHAR-P2a) › ?char=woman: normalised height, soles on the ground, hair is an alpha cut-out, feet found
+[63/160] [desktop-1920] › tests\e2e\character.spec.ts:115:5 › character seam (CHAR-P2a) › ?char=teen-boy with its GLB missing falls back to the default with one warning
+[WebServer] 12:10:21 am [vite] (client) [console.warn] Character "teen-boy" unavailable, falling back to "default": Error: fetch for "http://localhost:5174/models/characters/teen-boy.glb" responded with 404: Not Found
+[WebServer]     at http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23671:17
+
+[64/160] [desktop-1920] › tests\e2e\character.spec.ts:123:5 › character seam (CHAR-P2a) › ?char=teen-boy: normalised height, soles on the ground, hair is an alpha cut-out, feet found
+[65/160] [desktop-1920] › tests\e2e\character.spec.ts:115:5 › character seam (CHAR-P2a) › ?char=teen-girl with its GLB missing falls back to the default with one warning
+[WebServer] 12:10:27 am [vite] (client) [console.warn] Character "teen-girl" unavailable, falling back to "default": Error: fetch for "http://localhost:5174/models/characters/teen-girl.glb" responded with 404: Not Found
+[WebServer]     at http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23671:17
+
+[66/160] [desktop-1920] › tests\e2e\character.spec.ts:123:5 › character seam (CHAR-P2a) › ?char=teen-girl: normalised height, soles on the ground, hair is an alpha cut-out, feet found
+[67/160] [desktop-1920] › tests\e2e\character.spec.ts:115:5 › character seam (CHAR-P2a) › ?char=young-boy with its GLB missing falls back to the default with one warning
+[WebServer] 12:10:33 am [vite] (client) [console.warn] Character "young-boy" unavailable, falling back to "default": Error: fetch for "http://localhost:5174/models/characters/young-boy.glb" responded with 404: Not Found
+[WebServer]     at http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23671:17
+
+[68/160] [desktop-1920] › tests\e2e\character.spec.ts:123:5 › character seam (CHAR-P2a) › ?char=young-boy: normalised height, soles on the ground, hair is an alpha cut-out, feet found
+[69/160] [desktop-1920] › tests\e2e\character.spec.ts:115:5 › character seam (CHAR-P2a) › ?char=young-girl with its GLB missing falls back to the default with one warning
+[WebServer] 12:10:40 am [vite] (client) [console.warn] Character "young-girl" unavailable, falling back to "default": Error: fetch for "http://localhost:5174/models/characters/young-girl.glb" responded with 404: Not Found
+[WebServer]     at http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23671:17
+
+[70/160] [desktop-1920] › tests\e2e\character.spec.ts:123:5 › character seam (CHAR-P2a) › ?char=young-girl: normalised height, soles on the ground, hair is an alpha cut-out, feet found
+[71/160] [desktop-1920] › tests\e2e\character.spec.ts:161:3 › character seam (CHAR-P2a) › invalid ?char id and a bad saved id fall back to the default; storage is not touched
+[WebServer] 12:10:45 am [vite] (client) [console.warn] Unknown character "no-such-character" in ?char, using "default"
+
+[WebServer] 12:10:47 am [vite] (client) [console.warn] Unknown character "no-such-character" in ?char, using "default"
+
+[72/160] [desktop-1920] › tests\e2e\character.spec.ts:174:3 › character seam (CHAR-P2a) › a broken model url falls back to the default with exactly one warning
+[WebServer] 12:10:50 am [vite] (client) [console.warn] Character "adult-man" unavailable, falling back to "default": Error: fetch for "http://localhost:5174/models/characters/adult-man.glb" responded with 404: Not Found
+[WebServer]     at http://localhost:5174/node_modules/.vite/deps/three.js?v=8af882f1:23671:17
+
+[73/160] [desktop-1920] › tests\e2e\character.spec.ts:184:3 › character seam (CHAR-P2a) › swap keeps position, heading and camera mode; camera heights follow the profile
+[74/160] [desktop-1920] › tests\e2e\character.spec.ts:208:3 › character seam (CHAR-P2a) › swap in OP fly mode and in the car keeps the body visibility rule
+[75/160] [desktop-1920] › tests\e2e\character.spec.ts:232:3 › character seam (CHAR-P2a) › regression: the model finishing its load while driving stays hidden (default path, no flag)
+[76/160] [desktop-1920] › tests\e2e\character.spec.ts:247:3 › character seam (CHAR-P2a) › the player root's world +Z follows the heading after a late default load (no flag, GLB held back until released)
+[77/160] [desktop-1920] › tests\e2e\character.spec.ts:270:3 › character seam (CHAR-P2a) › the player root's world +Z follows the heading after every swap, into each character and back (headings pi and 2.5)
+[78/160] [desktop-1920] › tests\e2e\character.spec.ts:285:3 › character seam (CHAR-P2a) › 10 swaps leave renderer.info resources where they started (±2)
+[79/160] [desktop-1920] › tests\e2e\character.spec.ts:305:3 › character seam (CHAR-P2a) › 10 swaps through both Rocketbox adults leave renderer.info resources where they started (±2)
+[80/160] [desktop-1920] › tests\e2e\character.spec.ts:329:3 › character seam (CHAR-P2a) › 10 laps through all six MPFB characters leave renderer.info resources where they started (±2)
+[81/160] [desktop-1920] › tests\e2e\character.spec.ts:361:5 › character seam (CHAR-P2a) › default: stance feet stay planted at walking (1.6 m/s) and running (5.2 m/s) speed (slide per footfall)
+[82/160] [desktop-1920] › tests\e2e\character.spec.ts:361:5 › character seam (CHAR-P2a) › adult-man: stance feet stay planted at walking (1.6 m/s) and running (5.2 m/s) speed (slide per footfall)
+[83/160] [desktop-1920] › tests\e2e\character.spec.ts:361:5 › character seam (CHAR-P2a) › adult-woman: stance feet stay planted at walking (1.6 m/s) and running (5.2 m/s) speed (slide per footfall)
+[84/160] [desktop-1920] › tests\e2e\character.spec.ts:361:5 › character seam (CHAR-P2a) › man: stance feet stay planted at walking (1.6 m/s) and running (5.2 m/s) speed (slide per footfall)
+[85/160] [desktop-1920] › tests\e2e\character.spec.ts:361:5 › character seam (CHAR-P2a) › woman: stance feet stay planted at walking (1.6 m/s) and running (5.2 m/s) speed (slide per footfall)
+[86/160] [desktop-1920] › tests\e2e\character.spec.ts:361:5 › character seam (CHAR-P2a) › teen-boy: stance feet stay planted at walking (1.6 m/s) and running (5.2 m/s) speed (slide per footfall)
+[87/160] [desktop-1920] › tests\e2e\character.spec.ts:361:5 › character seam (CHAR-P2a) › teen-girl: stance feet stay planted at walking (1.6 m/s) and running (5.2 m/s) speed (slide per footfall)
+[88/160] [desktop-1920] › tests\e2e\character.spec.ts:361:5 › character seam (CHAR-P2a) › young-boy: stance feet stay planted at walking (1.6 m/s) and running (5.2 m/s) speed (slide per footfall)
+[89/160] [desktop-1920] › tests\e2e\character.spec.ts:361:5 › character seam (CHAR-P2a) › young-girl: stance feet stay planted at walking (1.6 m/s) and running (5.2 m/s) speed (slide per footfall)
+[90/160] [desktop-1920] › tests\e2e\character.spec.ts:437:5 › character seam (CHAR-P2a) › default: a real jump leaves the ground and the soles never sink below it on take-off, in the air or landing
+[91/160] [desktop-1920] › tests\e2e\character.spec.ts:437:5 › character seam (CHAR-P2a) › adult-man: a real jump leaves the ground and the soles never sink below it on take-off, in the air or landing
+[92/160] [desktop-1920] › tests\e2e\character.spec.ts:437:5 › character seam (CHAR-P2a) › adult-woman: a real jump leaves the ground and the soles never sink below it on take-off, in the air or landing
+[93/160] [desktop-1920] › tests\e2e\character.spec.ts:437:5 › character seam (CHAR-P2a) › man: a real jump leaves the ground and the soles never sink below it on take-off, in the air or landing
+[94/160] [desktop-1920] › tests\e2e\character.spec.ts:437:5 › character seam (CHAR-P2a) › woman: a real jump leaves the ground and the soles never sink below it on take-off, in the air or landing
+[95/160] [desktop-1920] › tests\e2e\character.spec.ts:437:5 › character seam (CHAR-P2a) › teen-boy: a real jump leaves the ground and the soles never sink below it on take-off, in the air or landing
+[96/160] [desktop-1920] › tests\e2e\character.spec.ts:437:5 › character seam (CHAR-P2a) › teen-girl: a real jump leaves the ground and the soles never sink below it on take-off, in the air or landing
+[97/160] [desktop-1920] › tests\e2e\character.spec.ts:437:5 › character seam (CHAR-P2a) › young-boy: a real jump leaves the ground and the soles never sink below it on take-off, in the air or landing
+[98/160] [desktop-1920] › tests\e2e\character.spec.ts:437:5 › character seam (CHAR-P2a) › young-girl: a real jump leaves the ground and the soles never sink below it on take-off, in the air or landing
+[99/160] [desktop-1920] › tests\e2e\character.spec.ts:483:3 › character seam (CHAR-P2a) › a fixed 10 s scripted walk / run / jump ends on the same spot for every profile (0.01 m)
+[100/160] [desktop-1920] › tests\e2e\character.spec.ts:534:3 › character seam (CHAR-P2a) › persistence: only with the flag; a bare ?char reuses the saved id
+[101/160] [desktop-1920] › tests\e2e\character.spec.ts:561:3 › character seam (CHAR-P2a) › "Change character" exists only with the flag and opens the picker; confirming switches the character
+[102/160] [desktop-1920] › tests\e2e\district.spec.ts:20:3 › Main Bazaar district › the character walks the whole street without leaving the ground or entering a building
+[103/160] [desktop-1920] › tests\e2e\district.spec.ts:35:3 › Main Bazaar district › the covered five-foot ways of two blocks are walkable end to end between piers and goods
+[104/160] [desktop-1920] › tests\e2e\district.spec.ts:49:3 › Main Bazaar district › parked cars, piers and shopfronts block the character
+[105/160] [desktop-1920] › tests\e2e\district.spec.ts:77:3 › Main Bazaar district › pinned verified businesses carry a sign; unverified pinned businesses stay on their lot without one
+[106/160] [desktop-1920] › tests\e2e\driving.spec.ts:92:3 › V8 driving prototype › default V7: walk to the car, E to get in, drive forward, brake, reverse, stop, E to get out, walk on
+[107/160] [desktop-1920] › tests\e2e\driving.spec.ts:225:3 › V8 driving prototype › V4: steering, handbrake, off-road note and R back to the road
+[108/160] [desktop-1920] › tests\e2e\driving.spec.ts:290:3 › V8 driving prototype › V4: collisions: a shophouse wall, a parked car and the river stop the car
+[109/160] [desktop-1920] › tests\e2e\driving.spec.ts:367:52 › V8 driving prototype › default V7: drives round a real block through four junctions, on the road surface all the way
+[110/160] [desktop-1920] › tests\e2e\driving.spec.ts:367:52 › V8 driving prototype › V4: drives round a real block through four junctions, on the road surface all the way
+[111/160] [desktop-1920] › tests\e2e\driving.spec.ts:397:3 › V8 driving prototype › default V7: lane keeping between the two rows of parked cars at 12 km/h
+[112/160] [desktop-1920] › tests\e2e\driving.spec.ts:448:3 › V8 driving prototype › default V7, V8.2: R puts the car at a verified safe place (Jalan China lane, Jalan Carpenter, a junction, parked cars, a building, unloaded ground)
+[desktop-1920] › tests\e2e\driving.spec.ts:448:3 › V8 driving prototype › default V7, V8.2: R puts the car at a verified safe place (Jalan China lane, Jalan Carpenter, a junction, parked cars, a building, unloaded ground)
+{"china":{"s":60.13546337818349,"o":0.02023270158818491,"tried":21},"parked":{"from":[60.997491372840756,6.394884621840902e-14],"to":[62.0332049579402,6.039613253960852e-14],"recent":4},"building":{"s":39.98356809392206,"o":-0.27242312371189925,"tried":2},"carpenter":{"x":219.32965172275905,"z":46.82421461223749,"tried":14},"junction":{"x":152.85777210689307,"z":24.38323481528927,"road":"Upper China Street","tried":1},"unloaded":{"first":{"ok":false,"reason":"loading","tried":0},"second":{"ok":true,"pose":{"x":152.85777210689307,"z":24.38323481528927,"heading":-0.5949239578362115},"source":"recent","tried":1}}}
+
+[113/160] [desktop-1920] › tests\e2e\driving.spec.ts:583:3 › V8 driving prototype › default V7 acceptance: pause menu Drive Car, E, hold W: the car pulls out and drives down Jalan China without touching a parked car
+[114/160] [desktop-1920] › tests\e2e\driving.spec.ts:645:3 › V8 driving prototype › default V7: switching between driving, OP fly mode and walking
+[115/160] [desktop-1920] › tests\e2e\driving.spec.ts:731:3 › V8 driving prototype › high-speed run: chunks stream ahead of the car, nothing is driven on before it is loaded, memory stays bounded
+[desktop-1920] › tests\e2e\driving.spec.ts:731:3 › V8 driving prototype › high-speed run: chunks stream ahead of the car, nothing is driven on before it is loaded, memory stays bounded
+{"road":"Jalan Tun Abang Haji Openg (northbound carriageway)","routeMetres":2119,"drivenMetres":2120,"seconds":95.2,"maxKmh":92.7,"avgKmh":80.4,"fps":59,"maxFrameMs":226.4,"quality":"medium","chunksFetched":125,"chunksBuilt":103,"chunksDisposed":73,"maxChunkMeshes":55,"chunkMeshesAtEnd":52,"chunkDataAtEnd":96,"chunkBuildMsMax":229.2,"geometries":[166,480],"textures":[48,85],"heapMB":[258,115],"unbuiltFrames":0,"blocked":[],"impacts":0,"maxImpact":0,"impactsAt":[],"recoveries":0,"offRoadFrames":0,"frames":5611,"viewport":{"width":1920,"height":1080}}
+
+[116/160] [desktop-1920] › tests\e2e\gameplay.spec.ts:9:3 › gameplay › spawns on valid walkable ground with collision loaded
+[117/160] [desktop-1920] › tests\e2e\gameplay.spec.ts:22:3 › gameplay › W/A/S/D move relative to the camera, Shift runs, Space jumps
+  1) [desktop-1920] › tests\e2e\gameplay.spec.ts:22:3 › gameplay › W/A/S/D move relative to the camera, Shift runs, Space jumps 
+
+    Error: expect(received).toBeLessThan(expected)
+
+    Expected: < -0.8
+    Received:   3.5594532542481474
+
+      44 |     // Camera yaw 0 looks north (-Z): W = north, S = south, A = west, D = east.
+      45 |     const w = await dir('KeyW', 900);
+    > 46 |     expect(w.dz).toBeLessThan(-0.8);
+         |                  ^
+      47 |     expect(Math.abs(w.dx)).toBeLessThan(0.4);
+      48 |     // V2 pacing: 1.6 m/s walk, 5.2 m/s run, with eased acceleration.
+      49 |     expect(w.speed).toBeGreaterThan(1.3);
+        at C:\New Project Kuching\tests\e2e\gameplay.spec.ts:46:18
+
+    Error Context: test-results\gameplay-gameplay-W-A-S-D--c7363-mera-Shift-runs-Space-jumps-desktop-1920\error-context.md
+
+
+[118/160] [desktop-1920] › tests\e2e\gameplay.spec.ts:76:3 › gameplay › camera follows the character and rotates with the mouse
+[119/160] [desktop-1920] › tests\e2e\gameplay.spec.ts:112:3 › gameplay › cannot walk through buildings
+[120/160] [desktop-1920] › tests\e2e\gameplay.spec.ts:141:3 › gameplay › the river blocks walking; only the bridge crosses it
+[121/160] [desktop-1920] › tests\e2e\gameplay.spec.ts:154:3 › gameplay › Darul Hana Bridge is traversable end to end
+[122/160] [desktop-1920] › tests\e2e\gameplay.spec.ts:186:3 › gameplay › movement is frame-rate independent
+[desktop-1920] › tests\e2e\gameplay.spec.ts:186:3 › gameplay › movement is frame-rate independent
+distance in 2.5 s at 15/30/60/144 fps: 11.631 / 11.458 / 11.458 / 11.428 m
+
+[123/160] [desktop-1920] › tests\e2e\gameplay.spec.ts:230:3 › gameplay › chunks stream in ahead of the player and old ones are released
+[desktop-1920] › tests\e2e\gameplay.spec.ts:230:3 › gameplay › chunks stream in ahead of the player and old ones are released
+road length 1686 m, reached=false, fetched 74->129, disposed 97, loaded 50, max build 321.5 ms
+
+  2) [desktop-1920] › tests\e2e\gameplay.spec.ts:230:3 › gameplay › chunks stream in ahead of the player and old ones are released 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      255 |     expect(r.sawLoading, 'player ran into an unloaded chunk').toBe(false);
+      256 |     expect(r.sawEdge).toBe(false);
+    > 257 |     expect(r.reached).toBe(true);
+          |                       ^
+      258 |     expect(after.fetched).toBeGreaterThan(before.fetched);
+      259 |     expect(after.disposed).toBeGreaterThan(0);
+      260 |     expect(after.loaded).toBeLessThan(90);
+        at C:\New Project Kuching\tests\e2e\gameplay.spec.ts:257:23
+
+    Error Context: test-results\gameplay-gameplay-chunks-s-2fa7d-r-and-old-ones-are-released-desktop-1920\error-context.md
+
+
+[124/160] [desktop-1920] › tests\e2e\gps.spec.ts:85:3 › V8.4 GPS navigation › choose, follow, miss a turn, cancel, arrive, reject, change modes
+[125/160] [desktop-1920] › tests\e2e\landmarks.spec.ts:80:3 › landmark models › load only near the landmark, switch LOD with distance and are released far away
+[126/160] [desktop-1920] › tests\e2e\landmarks.spec.ts:124:3 › landmark models › switching render modes hands the temple-area sites between the renderers, never two copies
+[127/160] [desktop-1920] › tests\e2e\landmarks.spec.ts:149:3 › landmark models › the player walks into the forecourt and the food court; halls, stalls and the stage block
+[128/160] [desktop-1920] › tests\e2e\landmarks.spec.ts:179:3 › landmark models › the street past the landmarks stays walkable and chunks keep streaming
+[129/160] [desktop-1920] › tests\e2e\landmarks.spec.ts:194:3 › landmark models › the Harmony Arch is an open gate: the player walks through it, its columns block
+[130/160] [desktop-1920] › tests\e2e\landmarks.spec.ts:212:3 › landmark models › graphics presets never remove landmark geometry
+[WebServer] 12:36:05 am [vite] (client) [console.warn] THREE.WebGLProgram: Program Info Log: (198,12-86): warning X3595: gradient instruction used in a loop with varying iteration; partial derivatives may have undefined value
+[WebServer] (198,12-86): warning X3595: gradient instruction used in a loop with varying iteration; partial derivatives may have undefined value
+[WebServer] (419,1): warning X4000: use of potentially uninitialized variable (f_ApplyFXAA)
+
+[131/160] [desktop-1920] › tests\e2e\layout.spec.ts:5:3 › layout › start screen, HUD, settings, map and pause fit the viewport
+[WebServer] 12:36:32 am [vite] (client) [console.warn] THREE.WebGLProgram: Program Info Log: (198,12-86): warning X3595: gradient instruction used in a loop with varying iteration; partial derivatives may have undefined value
+[WebServer] (198,12-86): warning X3595: gradient instruction used in a loop with varying iteration; partial derivatives may have undefined value
+[WebServer] (419,1): warning X4000: use of potentially uninitialized variable (f_ApplyFXAA)
+
+[132/160] [desktop-1920] › tests\e2e\m5-carpenter.spec.ts:8:3 › N1-M5 Carpenter Street › Carpenter Street east of Jalan China: the street, both five-foot ways and the corner block wall
+[133/160] [desktop-1920] › tests\e2e\m5-india.spec.ts:9:3 › N1-M5 India Street › India Street: the mall and the new arcade are walkable end to end; columns and stalls are solid
+[134/160] [desktop-1920] › tests\e2e\m5-mosques.spec.ts:20:3 › N1-M5 City Mosque + Floating Mosque › City Mosque: its own model with domes and minarets; the hall is solid, the cemetery is walkable
+[135/160] [desktop-1920] › tests\e2e\m5-mosques.spec.ts:39:3 › N1-M5 City Mosque + Floating Mosque › floating mosque: one slender minaret beside the dome, not two at the corners
+[136/160] [desktop-1920] › tests\e2e\m5-padungan.spec.ts:9:3 › N1-M5 Padungan + Cat Statue › the Cat Column stands on its island: a model about 8 m tall with a solid plinth
+[137/160] [desktop-1920] › tests\e2e\m5-padungan.spec.ts:33:3 › N1-M5 Padungan + Cat Statue › the paifang is open: a walker passes under it along the carriageway, its piers are solid, the Great Cat stands in front
+[138/160] [desktop-1920] › tests\e2e\m5-plaza.spec.ts:8:3 › N1-M5 Plaza Merdeka, Old Courthouse, Square Tower › Plaza Merdeka: a walker reaches the door across the forecourt; the canopy columns are solid
+[139/160] [desktop-1920] › tests\e2e\m5-plaza.spec.ts:25:3 › N1-M5 Plaza Merdeka, Old Courthouse, Square Tower › Square Tower has a corner turret (not a central tower); the Old Courthouse has its clock tower and verandah columns
+[140/160] [desktop-1920] › tests\e2e\m5-waterfront.spec.ts:16:3 › N1-M5 Kuching Waterfront › Kuching Waterfront: the paved walk behind the railing is walkable from the Square Tower to Jalan China
+[141/160] [desktop-1920] › tests\e2e\m6-daynight.spec.ts:22:3 › N1-M6 day/night and rain › night and rain switch on with no new shader program, and day comes back exactly
+[142/160] [desktop-1920] › tests\e2e\m6-daynight.spec.ts:71:3 › N1-M6 day/night and rain › settings: the day passes, stops at a chosen time and is remembered; the address can set it
+[143/160] [desktop-1920] › tests\e2e\m6-life.spec.ts:27:3 › N1-M6 traffic and walkers › the streets of a suburb fill with vehicles and walkers; no program is compiled for them later, by day or night
+[144/160] [desktop-1920] › tests\e2e\m6-life.spec.ts:63:3 › N1-M6 traffic and walkers › a vehicle stops for the player standing in the road and drives on when they step away
+[145/160] [desktop-1920] › tests\e2e\m6-life.spec.ts:100:3 › N1-M6 traffic and walkers › Low preset: fewer of them, two vehicle kinds; ?life=0: none at all
+[146/160] [desktop-1920] › tests\e2e\m7-play.spec.ts:54:3 › N1-M7 play loop › any parked vehicle can be taken: car, kapcai, taxi and pickup; horn, collision, damage and repair
+[147/160] [desktop-1920] › tests\e2e\m7-play.spec.ts:224:3 › N1-M7 play loop › a new player finishes a food delivery: phone, GPS to the pick-up and the drop-off, money, save and load
+[148/160] [desktop-1920] › tests\e2e\m7-play.spec.ts:336:3 › N1-M7 play loop › taxi fares are driven in the taxi: the way to one, the passenger rule, the fare paid at the drop-off
+[149/160] [desktop-1920] › tests\e2e\opmode.spec.ts:16:3 › OP fly mode › is off by default; P and the button toggle it; walking resumes from the same place
+[150/160] [desktop-1920] › tests\e2e\opmode.spec.ts:93:3 › OP fly mode › travels to landmarks after loading their chunk, and can put the character down there
+[151/160] [desktop-1920] › tests\e2e\opmode.spec.ts:134:3 › OP fly mode › fast flight across chunk borders keeps streaming
+[desktop-1920] › tests\e2e\opmode.spec.ts:134:3 › OP fly mode › fast flight across chunk borders keeps streaming
+fast flight: 1787 m west, chunk under camera built on 100% of frames, max chunk build 16.9 ms
+
+[152/160] [desktop-1920] › tests\e2e\shader-prep.spec.ts:12:3 › V8.6 shader preparation › Low: shadows stay off across a resize, and a look round at the spawn compiles no new program
+[153/160] [desktop-1920] › tests\e2e\shader-prep.spec.ts:40:3 › V8.6 shader preparation › Low -> Medium -> Low: shadows follow the preset and drawing resumes after the new programs compile
+[154/160] [desktop-1920] › tests\e2e\shader-prep.spec.ts:57:3 › V8.6 shader preparation › Medium: walking from spawn to the waterfront compiles zero shadow-pass programs
+[155/160] [desktop-1920] › tests\e2e\signals.spec.ts:21:3 › N2-M3 traffic signals and road rules › an ambient car stops behind the stop line on a red signal, drives through on green, and compiles 0 programs at night
+[156/160] [desktop-1920] › tests\e2e\signals.spec.ts:152:3 › N2-M3 traffic signals and road rules › ?inferredSignals=0 removes inferred main-road signals while keeping mapped ones
+[157/160] [desktop-1920] › tests\e2e\ui.spec.ts:62:3 › V8 UI cleanup › default rendering is V7 Jalan China; the legacy comparison lives in Developer settings; the build version is shown
+[WebServer] 12:43:21 am [vite] (client) [console.warn] V5 sign atlas is full: sign text dropped
+
+[WebServer] 12:43:22 am [vite] (client) [console.warn] V5 sign atlas is full: sign text dropped
+
+[158/160] [desktop-1920] › tests\e2e\ui.spec.ts:107:3 › V8 UI cleanup › ?render=v4 still starts in the legacy rendering, and saved views keep their rendering mode
+[159/160] [desktop-1920] › tests\e2e\ui.spec.ts:130:3 › V8 UI cleanup › pause menu Drive Car: streams the car's area, stands the character beside it facing it, E enters, E exits
+[160/160] [desktop-1920] › tests\e2e\ui.spec.ts:247:3 › V8 UI cleanup › contextual controls: Inspect Shop, the car taking E when both are in reach, OP mode and back
+  Slow test file: [desktop-1920] › tests\e2e\character.spec.ts (8.1m)
+  Slow test file: [desktop-1920] › tests\e2e\driving.spec.ts (6.1m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  2 failed
+    [desktop-1920] › tests\e2e\gameplay.spec.ts:22:3 › gameplay › W/A/S/D move relative to the camera, Shift runs, Space jumps 
+    [desktop-1920] › tests\e2e\gameplay.spec.ts:230:3 › gameplay › chunks stream in ahead of the player and old ones are released 
+  158 passed (42.4m)
+exit 1

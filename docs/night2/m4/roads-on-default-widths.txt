@@ -1,0 +1,90 @@
+main roads on class-default widths (no lanes=* / width=* in OSM): 89 roads, 89.2 km, 479 ways
+(unnamed)	tertiary	8.11	oneway	82
+Jalan Astana	secondary	4.88	oneway	22
+Jalan Green	secondary	4.79	oneway	21
+Jalan Tun Salahuddin	primary	3.14	oneway	7
+Jalan Merdeka	tertiary	3	two-way	4
+Jalan Pending	primary	2.82	oneway	4
+Jalan Padungan	primary	2.7	oneway	10
+Jalan Tabuan	primary	2.62	oneway	9
+Jalan Foochow 1	tertiary	2.49	oneway	16
+Jalan Demak	trunk	2.28	oneway	1
+Jalan Batu Lintang	secondary	2.01	oneway	4
+Jalan Sekama	secondary	1.78	oneway	14
+Jalan Mendu	secondary	1.65	oneway	2
+(unnamed)	secondary	1.58	oneway	34
+Jalan Ban Hock	secondary	1.56	oneway	8
+Jalan Stapok	primary	1.53	oneway	4
+Jalan Muhibbah	secondary	1.53	oneway	5
+Jalan Abell	primary	1.53	oneway	11
+Jalan Patinggan	secondary	1.49	two-way	2
+Jalan Central Timur	secondary	1.49	oneway	8
+Jalan Tan Sri Datuk Ong Kee Hui	secondary	1.47	oneway	5
+Jalan Bampfylde	tertiary	1.44	oneway	3
+Jalan Matang	primary	1.37	oneway	4
+Jalan Tan Sri Datuk William Tan	tertiary	1.37	two-way	1
+Jalan Depo	tertiary	1.36	two-way	1
+Jalan Datuk Ajibah Abol	secondary	1.34	two-way	6
+Jalan Sungai Maong Tengah	tertiary	1.31	two-way	3
+Jalan Padungan	secondary	1.26	oneway	2
+Jalan Pisang Barat	tertiary	1.21	two-way	1
+Jalan Datuk Abang Abdul Rahim	tertiary	1.19	oneway	5
+Jalan Petanak	tertiary	1.08	oneway	13
+Jalan Ellis	secondary	0.92	oneway	3
+Jalan Satok	primary	0.86	oneway	3
+Jalan Taman Budaya	secondary	0.83	oneway	9
+Jalan Three Hills Park	tertiary	0.83	two-way	2
+Jalan Song Thian Cheok	secondary	0.82	oneway	8
+Jalan Bukit Siol	tertiary	0.81	two-way	1
+Jalan Rubber	secondary	0.8	oneway	7
+Jalan Nanas	secondary	0.79	oneway	7
+Jalan Semarak	secondary	0.78	oneway	2
+Jalan Pisang	tertiary	0.76	oneway	7
+Jalan Rubber Barat	secondary	0.71	two-way	1
+Jalan Hashim Jaafar	tertiary	0.7	two-way	3
+Jalan Rengas	tertiary	0.64	oneway	6
+Jalan Gersik	tertiary	0.57	two-way	1
+Jalan P. Ramlee	secondary	0.53	oneway	10
+Lorong Pisang Barat 11	tertiary	0.52	two-way	1
+Jalan Jambu	tertiary	0.51	two-way	1
+Jalan Muda Hashim	tertiary	0.49	two-way	3
+Jalan Patinggi Ali	tertiary	0.49	two-way	1
+Lorong Datuk Temenggong Tan Meng Chong 8	tertiary	0.48	two-way	1
+Jalan Hospital	tertiary	0.46	oneway	11
+Lorong Park	tertiary	0.4	two-way	1
+Persiaran Spring	tertiary	0.4	two-way	2
+Jalan Deshon	secondary	0.39	oneway	1
+Jalan Chawan	tertiary	0.39	oneway	2
+(unnamed)	primary	0.35	oneway	15
+Jalan Rock	primary	0.32	oneway	2
+Jalan Padungan Utara	tertiary	0.31	oneway	9
+Lorong Central Timur 3	tertiary	0.3	two-way	1
+Lorong Jambatan Gantung 1	secondary	0.29	two-way	3
+Jalan Taman Riverview	tertiary	0.29	two-way	1
+Jalan Kulas	trunk	0.28	oneway	1
+Jalan Lumba Kuda	tertiary	0.27	two-way	1
+Jalan Perbadanan	tertiary	0.27	two-way	1
+Jalan Khoo Hun Yeang	primary	0.25	oneway	3
+Jalan Tanjung	secondary	0.24	two-way	1
+Jalan McDougall	primary	0.23	oneway	4
+Jalan Rumbia	tertiary	0.23	two-way	1
+Jalan Satok-Kulas Interchange	secondary	0.21	two-way	3
+Lorong Datuk Temenggong Tan Meng Chong 8F	tertiary	0.19	two-way	1
+Jalan Satok	secondary	0.19	oneway	2
+Jalan Badruddin	secondary	0.19	oneway	2
+(unnamed)	trunk	0.19	oneway	4
+Jalan Kueh Siak Hong	tertiary	0.17	two-way	1
+Jalan Haji Mataim	tertiary	0.16	two-way	1
+Jalan Khoo Hun Yeang	secondary	0.14	oneway	1
+Jalan Kulas	secondary	0.12	oneway	1
+Jalan P. Ramlee	primary	0.12	oneway	1
+Lebuh Temple	primary	0.12	oneway	1
+Jalan Market	primary	0.12	oneway	2
+Jalan Bukit Mata	secondary	0.1	oneway	1
+Jalan Gartak	primary	0.1	oneway	1
+Jalan Tan Sri Datuk Amar Sim Kheng Hong	tertiary	0.06	oneway	2
+Jalan Tunku Abdul Rahman	primary	0.03	oneway	1
+Jalan Taman Budaya	primary	0.03	oneway	2
+Jalan Satok	trunk	0.02	oneway	1
+Jalan Bukit Mata Kuching	tertiary	0.02	oneway	1
+Jalan Nanas Barat	secondary	0.01	oneway	1
